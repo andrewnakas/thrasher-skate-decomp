@@ -30,7 +30,7 @@ identities = [["andrewnakas", "nakasmakes"]]
 # struct/type headers anyone may extend: a change there re-checks every unit (gate.py).
 protected_paths = ["tools/**", "config/**", "toolchain/**", "include/**", "tests/**", "asm/**",
                    "configure.py", "requirements.txt", "Dockerfile", ".gitignore", ".gitattributes",
-                   ".gitmodules", "RULES.md", "PROVENANCE.md", "AGENTS.md", "knowledge.md",
+                   ".gitmodules", "RULES.md", "PROVENANCE.md", "AGENTS.md", "START_HERE.md", "knowledge.md",
                    "CODEOWNERS", "LICENSE", "docs/**"]
 derived_paths = ["include/game/*"]
 required_checkboxes = ["Own work:", "No leaked material:", "No game data:", "Lawful decompilation:", "Sources listed:"]
