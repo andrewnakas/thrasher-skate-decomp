@@ -7,6 +7,7 @@ Runs fresh (re-split if stale), configure.py, then ninja. On a mismatch it
 runs first_diff.py so the report names the function that broke the image.
 """
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -25,7 +26,16 @@ def main():
     if r.returncode != 0:
         tail = "\n".join(l for l in out.splitlines() if not l.startswith("[")) or out
         print(tail[-3000:], flush=True)
-        if "MISMATCH" in out:
+        grown = []
+        lines = (ROOT / "build" / "link.ld").read_text().splitlines()
+        for n in re.findall(r"link\.ld:(\d+) cannot move location counter backwards", out):
+            prev = lines[int(n) - 2] if int(n) >= 2 else ""
+            m = re.search(r"(func_[0-9A-F]{8})\.(?:c|s)\.o", prev)
+            grown.append(m.group(1) if m else prev.strip())
+        if grown:
+            for g in grown:
+                print(f"PROBLEM {g}.c: compiles larger than the original and runs into the next object")
+        elif "MISMATCH" in out:
             subprocess.run([py, "tools/first_diff.py"], cwd=ROOT)
             print("PROBLEM SLUS_009.35: linked image differs from the original (see first_diff above)")
         else:
