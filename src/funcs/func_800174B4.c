@@ -1,0 +1,27 @@
+#include "common.h"
+
+extern s32 D_8008AD88;
+extern u8 *D_8008AD90;
+extern s32 D_8008AD94;
+
+s32 func_80015E8C(s32);
+void func_80015F10(s32);
+
+void func_800174B4(s32 arg0, s32 arg1) {
+    u8 alloc;
+    u8 *e;
+
+    if (D_8008AD90 == 0) {
+        D_8008AD90 = (u8 *)func_80015E8C(D_8008AD94);
+        alloc = 0;
+    } else {
+        alloc = 1;
+    }
+    e = D_8008AD90 + D_8008AD88 * 0x50;
+    *(s32 *)(e + 0x28) = arg0;
+    *(s32 *)(e + 0x2C) = arg1;
+    if (alloc == 0) {
+        D_8008AD90 = 0;
+        func_80015F10(D_8008AD94);
+    }
+}
