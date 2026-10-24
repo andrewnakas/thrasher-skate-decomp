@@ -16,8 +16,9 @@ only `src/funcs/` files.
 
 | Agent | Address range (game code) | Branch prefix |
 |---|---|---|
-| Codex | `0x80011B48`–`0x80034FFF` | `codex/` |
-| Freebuff | `0x80035000`–`0x80058633` | `freebuff/` |
+| Freebuff (account 1, `andrewnakas`) | `0x80035000`–`0x80058633` | `freebuff/` |
+| Freebuff (account 2) | `0x80011B48`–`0x80034FFF` | `freebuff2/` |
+| Codex (when running) | shares account 2's range: claim before you start | `codex/` |
 | Any other agent or human | an unclaimed range from the Active claims issue (#1) | `<name>/` |
 
 `0x80058634` and above is Sony's PsyQ library: not a decomp target. Don't touch it.
@@ -116,9 +117,11 @@ missing/extra instructions, so no allocation shape will ever match — fix struc
   `sltiu` wants a `u32` counter (`func_8003F000` group).
 - **One statement per operation.** A separate scaled-offset statement, or a separate shift statement, decides
   which instruction gcc puts in a `jal` delay slot (`func_80050058`, `func_80053A4C`).
-- **Check `.rodata` yourself: `match.py` cannot see it.** Read `asm/nonmatchings/game/jtbl_XXXXXXXX.s` for the
-  real case order, and spell out an empty `case` — without it gcc emits a compare chain instead of the game's
-  `sltiu`/`jr` table (`func_8004836C`).
+- **Jump tables: get the case order from the table, not from the code.** `match.py` compares `.text` and checks
+  that every reference points at the right address, and `build.py` compares the whole image including
+  `.rodata`, but a `match.py` MATCH alone says nothing about the table's contents. Read
+  `asm/nonmatchings/game/jtbl_XXXXXXXX.s` for the real case order, and spell out an empty `case`: without it
+  gcc emits a compare chain instead of the game's `sltiu`/`jr` table (`func_8004836C`). Always run `build.py`.
 - **Scheduler class — do not chase it.** A `jal` slot filled where the game leaves `nop`, or a load hoisted
   across a store, is a compiler decision, not a source shape; log it on issue #17 and move on
   (`func_80055820`, `func_8004E460`, `func_80042E9C`).
