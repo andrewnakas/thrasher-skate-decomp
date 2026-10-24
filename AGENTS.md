@@ -16,8 +16,9 @@ only `src/funcs/` files.
 
 | Agent | Address range (game code) | Branch prefix |
 |---|---|---|
-| Codex | `0x80011B48`–`0x80034FFF` | `codex/` |
-| Freebuff | `0x80035000`–`0x80058633` | `freebuff/` |
+| Freebuff (account 1, `andrewnakas`) | `0x80035000`–`0x80058633` | `freebuff/` |
+| Freebuff (account 2) | `0x80011B48`–`0x80034FFF` | `freebuff2/` |
+| Codex (when running) | shares account 2's range: claim before you start | `codex/` |
 | Any other agent or human | an unclaimed range from the Active claims issue (#1) | `<name>/` |
 
 `0x80058634` and above is Sony's PsyQ library: not a decomp target. Don't touch it.
@@ -97,3 +98,33 @@ share one machine; RAM runs out before CPU does.
 - `$gp` = `0x80089F18`; small globals (8 bytes or less) are gp-relative (`-G8`).
 - Everything the game references by address is in `config/functions.us.csv`, `config/rodata.us.csv` and the
   splat output under `asm/`.
+
+## Matching findings (each proved on a merged unit — apply before reading `work/` notes)
+
+Triage first, then shapes. `match.py` reports `size 0xNNN, want 0xNNN`: if those differ the body is
+missing/extra instructions, so no allocation shape will ever match — fix structure, don't permute.
+
+- **Frame size before shape.** Compare your object size against the asm's declared size as soon as it compiles;
+  a short/long body means a missing or duplicated instruction, not register allocation (`func_800358A8`,
+  `func_80042338`).
+- **≤8 bytes goes gp-relative** (`-G8`): a small `extern` yields `lw $x, %gp_rel(...)`, so when the game uses
+  absolute `lui`/`%lo`, declare a bigger object and cast — `extern u8 D_8008B3A0[0x40]; *(u8 **) D_8008B3A0`
+  (`func_8004912C`, `func_8004126C`).
+- **Per-file cflags on line 1** — `/* cflags: -mno-split-addresses */` (allowed list:
+  `toolchain/compiler.toml`). Required when the game materialises whole addresses up front rather than leaning
+  on a split `%hi`/`%lo` base; it moved `func_8004912C` from `0xF8` to `0x100` in one step (`func_8003F964`).
+- **`andi` on a parameter means the parameter is narrow**; a `u16` loop counter produces `andi`+`sltiu`, and
+  `sltiu` wants a `u32` counter (`func_8003F000` group).
+- **One statement per operation.** A separate scaled-offset statement, or a separate shift statement, decides
+  which instruction gcc puts in a `jal` delay slot (`func_80050058`, `func_80053A4C`).
+- **Jump tables: get the case order from the table, not from the code.** `match.py` compares `.text` and checks
+  that every reference points at the right address, and `build.py` compares the whole image including
+  `.rodata`, but a `match.py` MATCH alone says nothing about the table's contents. Read
+  `asm/nonmatchings/game/jtbl_XXXXXXXX.s` for the real case order, and spell out an empty `case`: without it
+  gcc emits a compare chain instead of the game's `sltiu`/`jr` table (`func_8004836C`). Always run `build.py`.
+- **Scheduler class — do not chase it.** A `jal` slot filled where the game leaves `nop`, or a load hoisted
+  across a store, is a compiler decision, not a source shape; log it on issue #17 and move on
+  (`func_80055820`, `func_8004E460`, `func_80042E9C`).
+- **The permuter only pays on instruction-complete units.** It found nothing on `func_8003ED28` (complete, 5 of
+  60, allocation-limited) after thousands of iterations, and cannot help a body with the wrong instruction
+  count. The longest-lived near-misses here are 1-3 words of allocation residue.
