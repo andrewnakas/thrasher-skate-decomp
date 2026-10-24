@@ -16,6 +16,7 @@ options:
   build_path: build
   ld_script_path: build/splat.ld        # unused: configure.py writes the real link script
   create_c_files: True
+  generate_asm_macros_files: False     # include/macro.inc etc. are committed; splat would rewrite them with absolute paths
   create_undefined_funcs_auto: True
   undefined_funcs_auto_path: config/undefined_funcs_auto.us.txt
   create_undefined_syms_auto: True

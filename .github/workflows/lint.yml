@@ -33,5 +33,6 @@ jobs:
         run: python -m pytest -q tests
       - name: Steward config
         run: |
-          pip install "git+https://github.com/andrewnakas/decompathon-steward@54fe078"
-          python -m steward check-config steward.toml
+          git clone -q https://github.com/andrewnakas/decompathon-steward "$RUNNER_TEMP/steward"
+          git -C "$RUNNER_TEMP/steward" checkout -q afc2c61
+          PYTHONPATH="$RUNNER_TEMP/steward" python -m steward check-config steward.toml
