@@ -1,0 +1,79 @@
+# Decompathon Steward config for the Thrasher: Skate and Destroy (PS1) decomp.
+# No AI: deterministic gates and rules decide every merge. Nothing here calls a model.
+[project]
+name = "thrasher-skate-decomp"
+repo = "andrewnakas/thrasher-skate-decomp"
+default_branch = "main"
+unit_kind = "address"
+# one C file per function: src/funcs/func_XXXXXXXX.c (claims and progress are per address)
+unit_paths = ["src/funcs/**"]
+unit_regex = 'func_([0-9A-F]{8})\.c$'
+function_table = "config/functions.us.csv"
+
+[ai]
+enabled = false
+
+[policy]
+auto_merge = true
+first_timer_needs_human = true
+owner_rule_days = 7
+max_units_per_pr = 20
+claim_max_bytes = 0x2000
+claim_max_open = 3
+claim_lapse_days = 7
+claim_warn_days = 5
+maintainers = ["andrewnakas"]
+# Add each agent's GitHub account to the owner's group here, e.g. [["andrewnakas", "nakasmakes"]],
+# only for accounts the same person runs. Separate agents should use separate accounts so claims work.
+identities = [["andrewnakas", "nakasmakes"]]
+# Everything that decides what "matching" means is maintainer-only. include/game/ is shared
+# struct/type headers anyone may extend: a change there re-checks every unit (gate.py).
+protected_paths = ["tools/**", "config/**", "toolchain/**", "include/**", "tests/**", "asm/**",
+                   "configure.py", "requirements.txt", "Dockerfile", ".gitignore", ".gitattributes",
+                   ".gitmodules", "RULES.md", "PROVENANCE.md", "AGENTS.md", "knowledge.md",
+                   "CODEOWNERS", "LICENSE", "docs/**"]
+derived_paths = ["include/game/*"]
+required_checkboxes = ["Own work:", "No leaked material:", "No game data:", "Lawful decompilation:", "Sources listed:"]
+made_by_checkboxes = ["Written by me", "Prepared by an AI agent"]
+agent_marker = "Prepared by an AI agent"
+agent_checkboxes = ["Agent acknowledgement:"]
+
+# Gates run on the judge box (the owner's machine, which has the disc) from a pinned
+# checkout of main with only the PR's src/funcs files copied in: a PR cannot change the
+# tools that judge it. Order: cheapest first.
+[[gates]]
+name = "toolcheck"
+run = ".venv/bin/python tools/toolcheck.py"
+where = "judge"
+timeout = 300
+
+[[gates]]
+name = "scan"
+run = ".venv/bin/python tools/scan.py"
+where = "judge"
+timeout = 300
+
+[[gates]]
+name = "split"
+run = ".venv/bin/python tools/check_split.py"
+where = "judge"
+timeout = 900
+
+# Every unit compiles with the pinned PsyQ-era gcc 2.8.1 + maspsx pipeline and matches the
+# original instruction for instruction (relocations resolved, nothing masked).
+[[gates]]
+name = "match"
+run = ".venv/bin/python tools/gate.py"
+where = "judge"
+timeout = 3600
+
+# Whole executable: link C + asm and require SLUS_009.35 byte-identical (sha1), plus objdiff's
+# independent 100% for every unit.
+[[gates]]
+name = "build"
+run = ".venv/bin/python tools/build.py"
+where = "judge"
+timeout = 3600
+
+[github]
+app = "decompathon-steward"

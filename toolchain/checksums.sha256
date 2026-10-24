@@ -1,0 +1,3 @@
+# sha256 of pinned tool binaries (verified by tools/toolcheck.py)
+1a48ec5ac87a146a074a9d66d7a67734a4d1ad56553d02d91e8b71c7fecc2d52  toolchain/bin/cc1
+e5445089a6f707e30cb5e02992451b604619cedfd2660ee2373a86bfefd9e718  toolchain/bin/objdiff-cli

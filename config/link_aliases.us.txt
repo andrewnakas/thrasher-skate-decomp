@@ -1,0 +1,3 @@
+/* Symbols code references inside other objects (labels splat does not define).
+   Linker-script syntax. Keep sorted. */
+D_8006E5AC = 0x8006E5AC;

@@ -1,0 +1,25 @@
+name: Tooling problem
+description: The toolchain, split or a gate seems wrong (maintainers fix tools; PRs to tools/ are escalated)
+labels: [tooling]
+body:
+  - type: input
+    id: func
+    attributes:
+      label: Function
+      placeholder: func_80012345
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Minimal repro
+      description: The C you tried and the output of `tools/match.py <func> --show` (or the failing gate's output).
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why you think the tool is at fault
+    validations:
+      required: true

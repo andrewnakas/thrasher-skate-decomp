@@ -1,0 +1,29 @@
+# Game data: bring your own disc. Never commit any of it.
+disc/
+*.7z
+*.bin
+*.cue
+*.iso
+*.img
+*.exe
+SLUS_*
+*.STR
+*.XA
+
+# Generated
+asm/
+build/
+work/
+assets/
+build.ninja
+.ninja_*
+objdiff.json
+.venv/
+toolchain/bin/
+toolchain/dl/
+toolchain/m2c/
+toolchain/decomp-permuter/
+__pycache__/
+*.pyc
+.pytest_cache/
+toolchain/__pycache__/

@@ -1,0 +1,43 @@
+# Progress for ByteMatch (bytematch.dev): an objdiff report.json built from config/functions.us.csv and
+# src/funcs/ only (no disc). Every merged unit passed the match and build gates on the judge box, so each
+# counts as a 100% match. ByteMatch reads the artifact named <VERSION>_report from successful push runs
+# on main. If the BYTEMATCH_TOKEN secret is set, the report is also POSTed to the upload API.
+name: progress
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: progress-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  report:
+    runs-on: ubuntu-24.04
+    env:
+      VERSION: SLUS_009.35
+      BYTEMATCH_TOKEN: ${{ secrets.BYTEMATCH_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Generate report.json
+        run: python3 tools/objdiff_report.py -o "build/report/$VERSION/report.json"
+      - name: Upload report artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.VERSION }}_report
+          path: build/report/${{ env.VERSION }}/report.json
+          if-no-files-found: error
+      - name: Upload to ByteMatch API (optional)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && env.BYTEMATCH_TOKEN != ''
+        run: |
+          gzip -c "build/report/$VERSION/report.json" | curl --fail -sS -X POST \
+            -H "Authorization: Bearer $BYTEMATCH_TOKEN" -H "Content-Encoding: gzip" --data-binary @- \
+            "https://bytematch.dev/api/v1/projects/${GITHUB_REPOSITORY}/reports?version=$VERSION&commit=$GITHUB_SHA"

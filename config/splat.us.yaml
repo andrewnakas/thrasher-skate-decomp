@@ -1,0 +1,57 @@
+# splat config for Thrasher: Skate and Destroy (USA) main executable.
+# Always re-split with `python tools/split.py` (clean split); never run splat by hand
+# over an existing asm/ tree: splat leaves stale files behind.
+name: SLUS_009.35
+sha1: 16829afba66533e2645bf87af2774671b06ff36b
+options:
+  basename: slus_009.35
+  target_path: disc/files/SLUS_009.35
+  elf_path: build/slus_009.35.elf
+  base_path: ..
+  platform: psx
+  compiler: PSYQ
+
+  asm_path: asm
+  src_path: build/splat_src           # generated INCLUDE_ASM stubs; real C lives in src/funcs
+  build_path: build
+  ld_script_path: build/splat.ld        # unused: configure.py writes the real link script
+  create_c_files: True
+  create_undefined_funcs_auto: True
+  undefined_funcs_auto_path: config/undefined_funcs_auto.us.txt
+  create_undefined_syms_auto: True
+  undefined_syms_auto_path: config/undefined_syms_auto.us.txt
+
+  find_file_boundaries: False
+  gp_value: 0x80089F18
+  migrate_rodata_to_functions: True
+  o_as_suffix: True
+  use_legacy_include_asm: False
+  section_order: [".rodata", ".text", ".data", ".bss"]
+
+  symbol_addrs_path:
+    - config/symbol_addrs.us.txt
+    - config/psyq_syms.us.txt
+  reloc_addrs_path:
+    - config/reloc_addrs.us.txt
+
+  subalign: 2
+  string_encoding: ASCII
+  data_string_encoding: ASCII
+  rodata_string_guesser_level: 2
+  data_string_guesser_level: 2
+
+segments:
+  - name: header
+    type: header
+    start: 0x0
+
+  - name: main
+    type: code
+    start: 0x800
+    vram: 0x80010000
+    subsegments:
+      - [0x800, .rodata, game]
+      - [0x233C, c, game]        # game code (Z-Axis "zge" engine + game), the decomp target
+      - [0x48E34, c, psyq]       # 0x80058634: PsyQ 4.4 libraries (memset onward), kept as asm
+      - [0x5EDC8, data]
+  - [0x7B800]

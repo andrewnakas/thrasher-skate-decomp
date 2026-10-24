@@ -1,0 +1,28 @@
+# Every unit compiles with the pinned toolchain and has no data of its own; the toolchain canary holds.
+# (Whether a unit MATCHES needs the disc, so that is judged by Steward on the maintainer's machine.)
+name: compile
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Binutils
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends binutils-mipsel-linux-gnu
+      - name: Toolchain (pinned, sha256-verified; ends with the canary self-test)
+        run: python3 toolchain/setup.py --minimal
+      - name: Compile every unit
+        run: .venv/bin/python tools/compile_units.py

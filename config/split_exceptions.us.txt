@@ -1,0 +1,10 @@
+# Functions allowed to not end in jr/j (tools/check_split.py). One per line:
+# <name>  <reason>. Every entry needs a reason a reviewer can verify.
+func_80011B3C   12 bytes of data at the start of .text (dlabel'd, not code)
+func_8003246C   game main(): ends in a call to exit() (noreturn)
+func_8005D1B0   entry point (__start): calls main then break 0, 1
+SetVideoMode    PsyQ libetc: signature label splits the library function (library stays asm)
+func_80063154   PsyQ library fragment split by a signature label (library stays asm)
+func_80068118   PsyQ library fragment split by a signature label (library stays asm)
+func_8006CFB0   PsyQ exception handler stub: saves state and falls into the next handler
+func_8006E5AC   PsyQ libcard tail label (alias of D_8006E5AC, zero-size)

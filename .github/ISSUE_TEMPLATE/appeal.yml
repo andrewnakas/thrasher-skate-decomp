@@ -1,0 +1,17 @@
+name: Appeal a Steward decision
+description: You think a gate or rule decided your PR wrongly
+labels: [appeal]
+body:
+  - type: input
+    id: pr
+    attributes:
+      label: Pull request
+      placeholder: "#123"
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why the decision is wrong
+    validations:
+      required: true

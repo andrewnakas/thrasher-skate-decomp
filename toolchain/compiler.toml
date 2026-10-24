@@ -1,0 +1,50 @@
+# The pinned compiler pipeline. Every tool (configure.py, match.py, gate.py,
+# permute.py, decompme.py) reads this file; nothing hard-codes flags.
+# Changing anything here is a tooling change: it re-judges every function.
+
+[compiler]
+# PsyQ 4.4 libraries are linked (tools/psyq_identify.py). The compiler was
+# pinned empirically against 15 hand-written functions: see STATUS.md
+# "Compiler identification". gcc 2.8.1-psx is the only candidate that emits
+# explicit %gp_rel for small arrays and fills the epilogue delay slot.
+name = "gcc-2.8.1-psx"
+cc1 = "toolchain/bin/cc1"
+cflags = ["-quiet", "-O2", "-G8", "-mips1", "-mcpu=3000", "-mgas", "-msoft-float",
+          "-fgnu-linker", "-w"]
+cppflags = ["-undef", "-nostdinc", "-P", "-Iinclude", "-Iinclude/psyq",
+            "-D_LANGUAGE_C", "-DPSX", "-D__GNUC__=2", "-D__GNUC_MINOR__=8", "-Dmips", "-D__mips__"]
+
+[maspsx]
+# ASPSX version is tentative: no function seen so far tells 2.56..2.86 apart
+# under gcc 2.8.1 (which emits explicit relocations). Revisit if one does.
+# Division expands fully with "break 7" checks, hence --expand-div.
+args = ["--aspsx-version=2.67", "-G8", "--expand-div"]
+
+[as]
+flags = ["-EL", "-march=r3000", "-mtune=r3000", "-msoft-float", "-no-pad-sections", "-G8", "-Iinclude"]
+
+# Per-file flag overrides: a unit file may start with  /* cflags: -O1 */  and
+# only flags listed here are accepted (tools/scan.py enforces it).
+[per_file]
+# -mno-split-addresses: some files store to globals through the assembler's
+# $at macro instead of gcc's own lui/%lo split (func_80011BD4, func_80011C40).
+allowed_cflags = ["-O0", "-O1", "-O2", "-O3", "-G0", "-G4", "-G8", "-mno-split-addresses",
+                  "-fno-schedule-insns", "-fno-schedule-insns2",
+                  "-fno-strength-reduce", "-fno-inline", "-funsigned-char", "-fsigned-char"]
+
+# Known compilers: decompals/old-gcc release 0.17 assets, verified by sha256.
+[compilers."gcc-2.6.3-psx"]
+url = "https://github.com/decompals/old-gcc/releases/download/0.17/gcc-2.6.3-psx.tar.gz"
+sha256 = "01e6e8c4933414ea3f8d8e3bc766a1f5fafd4fc0110e0b75d1f691bd791989b1"
+[compilers."gcc-2.7.2-psx"]
+url = "https://github.com/decompals/old-gcc/releases/download/0.17/gcc-2.7.2-psx.tar.gz"
+sha256 = "500a459b3485e885a8d302cac23c2a4632f3900e03a09153f6190699fd723571"
+[compilers."gcc-2.7.2-cdk"]
+url = "https://github.com/decompals/old-gcc/releases/download/0.17/gcc-2.7.2-cdk.tar.gz"
+sha256 = "42bb0df96db11a9b5d2e23d78bdc962791f40046280d3d360da93fe5eef6f0bb"
+[compilers."gcc-2.8.0-psx"]
+url = "https://github.com/decompals/old-gcc/releases/download/0.17/gcc-2.8.0-psx.tar.gz"
+sha256 = "1a3c956fe8aea5ebdb251749d95de2c84f023530584d7bd663744b5ec24050b7"
+[compilers."gcc-2.8.1-psx"]
+url = "https://github.com/decompals/old-gcc/releases/download/0.17/gcc-2.8.1-psx.tar.gz"
+sha256 = "f6f6e883942d4d3289d048236c672e71ed410e546aaae8ff655952f1567e1be0"

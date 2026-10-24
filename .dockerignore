@@ -1,0 +1,13 @@
+disc/
+*.7z
+.venv/
+build/
+asm/
+work/
+toolchain/bin/
+toolchain/dl/
+toolchain/m2c/
+toolchain/decomp-permuter/
+**/__pycache__/
+build.ninja
+objdiff.json

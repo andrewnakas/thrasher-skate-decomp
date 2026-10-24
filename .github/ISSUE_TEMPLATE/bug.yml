@@ -1,0 +1,12 @@
+name: Build or setup problem
+description: setup.py, extract_disc.py, split.py or the build fails on your machine
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command, its full output, your OS and Python version. Never attach game files.
+      render: text
+    validations:
+      required: true

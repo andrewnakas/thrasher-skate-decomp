@@ -1,0 +1,37 @@
+# Checks that need no disc: forbidden constructs, tests, Steward config, and no game data in the tree.
+# Matching itself is judged on the maintainer's machine (Steward), which has the disc.
+name: lint
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Python deps
+        run: pip install -r requirements.txt
+      - name: No game data
+        run: |
+          bad=$(git ls-files | grep -iE '\.(bin|iso|cue|img|7z|exe|str|xa|zal|zsd)$|(^|/)SLUS_|(^|/)disc/' || true)
+          big=$(git ls-files -z | xargs -0 -I{} find {} -maxdepth 0 -type f -size +1M 2>/dev/null || true)
+          if [ -n "$bad$big" ]; then echo "Game data or oversized files must not be committed:"; echo "$bad"; echo "$big"; exit 1; fi
+      - name: Forbidden constructs (scan gate)
+        run: python tools/scan.py
+      - name: Tests
+        run: python -m pytest -q tests
+      - name: Steward config
+        run: |
+          pip install "git+https://github.com/andrewnakas/decompathon-steward@54fe078"
+          python -m steward check-config steward.toml
