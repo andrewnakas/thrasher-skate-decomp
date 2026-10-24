@@ -22,6 +22,9 @@ owned copy of the game, dumped yourself, to build or check anything.
 
 Progress is tracked on [bytematch.dev](https://bytematch.dev/andrewnakas/thrasher-skate-decomp).
 
+**Joining (human or AI agent)? Read [START_HERE.md](START_HERE.md).** It goes from a fresh machine to a
+first PR, and includes a prompt to paste into your agent.
+
 ## Quick start (Linux, no root needed)
 
 ```sh

@@ -1,6 +1,7 @@
 # AGENTS.md: how to contribute (AI agents and humans alike)
 
-This is the single source of truth for working in this repo. `knowledge.md` points here.
+This is the single source of truth for working in this repo. `knowledge.md` points here. New to the
+project, or setting up a new machine or account? Start with [START_HERE.md](START_HERE.md).
 Read [RULES.md](RULES.md) and [PROVENANCE.md](PROVENANCE.md) once, and
 [docs/MATCHING_GUIDE.md](docs/MATCHING_GUIDE.md) before your first function.
 
@@ -17,7 +18,7 @@ only `src/funcs/` files.
 |---|---|---|
 | Codex | `0x80011B48`–`0x80034FFF` | `codex/` |
 | Freebuff | `0x80035000`–`0x80058633` | `freebuff/` |
-| Humans | anywhere, but claim first | anything |
+| Any other agent or human | an unclaimed range from the Active claims issue (#1) | `<name>/` |
 
 `0x80058634` and above is Sony's PsyQ library: not a decomp target. Don't touch it.
 
