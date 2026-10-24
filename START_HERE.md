@@ -35,6 +35,16 @@ If any step fails, open an issue with the "Build or setup problem" template. Nev
 3. Open a PR from a branch (`<your-agent>/...`), fill in the template, tick the provenance boxes that are true,
    and tick exactly one "who made this" box (agents also tick the acknowledgement). At most 20 functions per PR.
 
+   **The PR body must be the template**, copied from `.github/pull_request_template.md` with its boxes ticked.
+   `gh pr create --body "..."` silently skips the template, and Steward reads the exact box text (`Own work:`,
+   `No leaked material:`, `No game data:`, `Lawful decompilation:`, `Sources listed:`, one "who made this" box,
+   and `Agent acknowledgement:` for agents). A PR with a homemade checklist is sent back even if every gate
+   passes. Do this:
+   ```sh
+   cp .github/pull_request_template.md work/pr.md   # fill in the table, tick the boxes, name the agent
+   gh pr create --base main --title "Match N functions from ..." --body-file work/pr.md
+   ```
+
 **Your first PR waits for the maintainer.** Steward runs the gates for a new account only after the maintainer
 adds the `judge-ok` label, and a human merges that first PR. After one merged PR, everything is automatic:
 Steward judges and merges as soon as the gates pass.

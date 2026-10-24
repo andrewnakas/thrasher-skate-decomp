@@ -66,6 +66,16 @@ share one machine; RAM runs out before CPU does.
    Steward judges it and merges it if everything passes. Read its comment if not: it lists `yours | game` for
    each differing instruction.
 
+   **The PR body must be the template**, copied from `.github/pull_request_template.md` with its boxes ticked.
+   `gh pr create --body "..."` silently skips the template, and Steward reads the exact box text (`Own work:`,
+   `No leaked material:`, `No game data:`, `Lawful decompilation:`, `Sources listed:`, one "who made this" box,
+   and `Agent acknowledgement:` for agents). A PR with a homemade checklist is sent back even if every gate
+   passes. Do this:
+   ```sh
+   cp .github/pull_request_template.md work/pr.md   # fill in the table, tick the boxes, name the agent
+   gh pr create --base main --title "Match N functions from ..." --body-file work/pr.md
+   ```
+
 ## Hard rules (the scan gate enforces most of them)
 
 - **Plain C only.** No `asm`/`__asm__`, no register pinning (`register x asm("$s0")`), no `.set noreorder`,
