@@ -376,3 +376,17 @@ whole difference (`func_80020398`). What does *not* work: the same trick on a va
 `func_80026EC8` changes nothing), and bodies whose residue is a pointer fold or a global-address home rather than
 argument birth. So read the tell first — argument register plus a pre-call copy — and only then reach for the
 multiply spelling.
+
+## `addu` operand order follows the spelling of the address
+`func_80013EEC` sat at 2/57 for eight passes on `addu $v0,$v0,$s0` against the game's `addu $v0,$s0,$v0` —
+pointer arithmetic written `s + idx * 16 + 0x184` gives the index operand first, while the same address written
+as integer addition, base first — `(u32) s + ((u32) idx << 4) + 0x184` — gives the base first and matches.
+A pointer local (`u8 *e = s + idx*16`) and a widened index local both *lose* (15/57, 16/57). So when a diff is
+one or two `addu` words with the operands swapped, look at operand order before anything else; it is a
+statement-level decision, not allocation.
+
+## The return-signature scan does not out-rank size ordering
+Scanning the unopened set for a closing `addu $v0,$zero,$zero` or a single epilogue reached from several
+returns produced five drafts and **zero** matches; size ordering in the same band converted 3 of 24. Shared
+tails are the norm in this code base, so the signature carries almost no information. Keep both tells in the
+pre-draft checklist, do not reorder the queue by them.

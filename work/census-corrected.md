@@ -1,5 +1,233 @@
 # Lane census (0x80035000-0x80058633), corrected nop rule
 
+<!-- BEGIN GENERATED TABLE -->
+
+## Table of record (generated — do not hand-edit)
+
+Every per-body number in this file is produced by `python work/verify.py --write`; the
+journal sections further down keep the reasoning that led to them and their hand-written
+counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
+number in it, so a measurement cannot go stale in a filename.
+
+507 unmatched bodies in the corpus; **208 drafted and measured here** (compile-error 2, instruction-stream 17, match 1, move-vs-materialise 1, operand 16, register-role 36, scheduling 1, size 134); 1 drafts predate a merge and are prunable.
+
+| body | best draft | words | size | class | status | class verdict |
+|---|---|---|---|---|---|---|
+| `func_80034B98` | `work/near-miss/func_80034B98-match-scan-blocked.c` | 0/16 | +0 | match | blocked | scan: needs D_801FC000 (issue #101) |
+| `func_800382C0` | `work/near-miss/func_800382C0-split.c` | 1/12 | +0 | register-role | parked | - |
+| `func_80055820` | `work/near-miss/func_80055820-draft.c` | 1/34 | +0 | scheduling | parked | - |
+| `func_8001DB74` | `work/near-miss/func_8001DB74-role.c` | 2/26 | +0 | register-role | parked | holds (register-role) |
+| `func_8001F4E8` | `work/near-miss/func_8001F4E8-2of26.c` | 2/26 | +0 | register-role | parked | holds (register-role) |
+| `func_8002BCB0` | `work/near-miss/func_8002BCB0-parked.c` | 2/17 | +0 | register-role | parked | - |
+| `func_8002C9B8` | `work/near-miss/func_8002C9B8-2of36.c` | 2/36 | +0 | register-role | parked | - |
+| `func_8002FE80` | `work/near-miss/func_8002FE80-role.c` | 2/24 | +0 | register-role | parked | holds (register-role) |
+| `func_8003BF7C` | `work/near-miss/func_8003BF7C-sweep.c` | 2/79 | +0 | register-role | parked | - |
+| `func_80042E9C` | `work/near-miss/func_80042E9C-near-miss.c` | 2/58 | +0 | register-role | parked | - |
+| `func_8004BF94` | `work/near-miss/func_8004BF94-sweep.c` | 2/52 | +0 | operand | parked | - |
+| `func_80056C90` | `work/near-miss/func_80056C90-sweep.c` | 2/36 | +0 | register-role | parked | - |
+| `func_80015D38` | `work/near-miss/func_80015D38-o1-2w.c` | 3/20 | +0 | operand | parked | - |
+| `func_80019570` | `work/near-miss/func_80019570.c` | 4/48 | +0 | register-role | parked | - |
+| `func_8002050C` | `work/near-miss/func_8002050C-4of25.c` | 4/25 | +0 | move-vs-materialise | parked | holds (move-vs-materialise) |
+| `func_80035C14` | `work/near-miss/func_80035C14-subscript.c` | 4/34 | +0 | register-role | parked | - |
+| `func_8003B8F8` | `work/near-miss/func_8003B8F8-band.c` | 4/46 | +0 | register-role | parked | - |
+| `func_8003ED28` | `work/near-miss/func_8003ED28-near-miss.c` | 5/60 | +0 | register-role | parked | - |
+| `func_80056FF4` | `work/near-miss/func_80056FF4-subscript.c` | 5/39 | +2 | size | parked | - |
+| `func_80057090` | `work/near-miss/func_80057090-near-miss.c` | 5/92 | +0 | instruction-stream | parked | - |
+| `func_800257A0` | `work/near-miss/func_800257A0-fresh.c` | 6/21 | +0 | instruction-stream | parked | - |
+| `func_8003BDB8` | `work/near-miss/func_8003BDB8-sweep.c` | 6/31 | +0 | register-role | parked | - |
+| `func_80043294` | `work/near-miss/func_80043294-g8.c` | 6/17 | +0 | register-role | parked | - |
+| `func_8002D904` | `work/near-miss/func_8002D904-7of46.c` | 7/46 | +0 | operand | parked | - |
+| `func_800535EC` | `work/near-miss/func_800535EC-band.c` | 7/67 | +0 | register-role | parked | - |
+| `func_8003AC04` | `work/near-miss/func_8003AC04-near-miss.c` | 8/30 | +0 | instruction-stream | parked | - |
+| `func_8002B060` | `work/near-miss/func_8002B060-fresh.c` | 9/32 | +0 | register-role | parked | - |
+| `func_8002BA64` | `work/near-miss/func_8002BA64-parked.c` | 9/23 | +0 | register-role | parked | - |
+| `func_8002BF9C` | `work/near-miss/func_8002BF9C-parked.c` | 9/24 | +1 | size | parked | - |
+| `func_8004E930` | `work/near-miss/func_8004E930-near-miss.c` | 9/121 | +0 | register-role | parked | - |
+| `func_800120B8` | `work/near-miss/func_800120B8-const-sched-park.c` | 10/76 | +0 | instruction-stream | parked | - |
+| `func_80032C28` | `work/near-miss/func_80032C28-signed.c` | 10/11 | -3 | size | parked | - |
+| `func_8003A09C` | `work/near-miss/func_8003A09C-near-miss.c` | 10/49 | +2 | size | parked | - |
+| `func_8003B3CC` | `work/near-miss/func_8003B3CC-sweep.c` | 10/19 | +0 | instruction-stream | parked | - |
+| `func_8001D3B4` | `work/near-miss/func_8001D3B4-11of29.c` | 11/29 | +0 | instruction-stream | parked | - |
+| `func_8001D804` | `work/near-miss/func_8001D804-parked.c` | 11/23 | +0 | instruction-stream | parked | - |
+| `func_8001DCF8` | `work/near-miss/func_8001DCF8-parked.c` | 11/24 | +1 | size | parked | - |
+| `func_8001FCB0` | `work/near-miss/func_8001FCB0-parked.c` | 11/25 | +0 | instruction-stream | parked | - |
+| `func_80034758` | `work/near-miss/func_80034758-11of41.c` | 11/41 | +0 | register-role | parked | - |
+| `func_800379F4` | `work/near-miss/func_800379F4-near-miss.c` | 11/26 | +0 | register-role | parked | - |
+| `func_8004A130` | `work/near-miss/func_8004A130-parked.c` | 11/80 | +0 | operand | parked | - |
+| `func_8004CCA0` | `work/near-miss/func_8004CCA0-sweep.c` | 11/34 | +0 | register-role | parked | - |
+| `func_80011B48` | `work/near-miss/func_80011B48-parked.c` | 12/17 | +0 | register-role | parked | - |
+| `func_80032644` | `work/near-miss/func_80032644.c` | 12/63 | +0 | operand | parked | - |
+| `func_80032FF4` | `work/near-miss/func_80032FF4-parked.c` | 12/13 | +0 | register-role | parked | - |
+| `func_80033818` | `work/near-miss/func_80033818-parked.c` | 12/13 | +0 | register-role | parked | - |
+| `func_8003C220` | `work/near-miss/func_8003C220-near-miss.c` | 12/28 | +0 | register-role | parked | - |
+| `func_80056D20` | `work/near-miss/func_80056D20-sweep.c` | 12/44 | +0 | operand | parked | - |
+| `func_8002C490` | `work/near-miss/func_8002C490-parked.c` | 13/21 | +1 | size | parked | - |
+| `func_80024F3C` | `work/near-miss/func_80024F3C-parked.c` | 14/50 | +1 | size | parked | - |
+| `func_80047A44` | `work/near-miss/func_80047A44-sweep.c` | 14/34 | +0 | register-role | parked | - |
+| `func_8004E460` | `work/near-miss/func_8004E460-near-miss.c` | 14/50 | +0 | instruction-stream | parked | - |
+| `func_80029488` | `work/near-miss/func_80029488-frame.c` | 15/29 | +0 | operand | parked | - |
+| `func_80034C8C` | `work/near-miss/func_80034C8C-role.c` | 15/25 | -1 | size | parked | - |
+| `func_8004862C` | `work/near-miss/func_8004862C-stmtorder.c` | 15/28 | +0 | instruction-stream | parked | - |
+| `func_80052518` | `work/near-miss/func_80052518-near-miss.c` | 15/73 | -1 | size | parked | - |
+| `func_8001D620` | `work/near-miss/func_8001D620-parked.c` | 16/46 | -1 | size | parked | - |
+| `func_8002BCF4` | `work/near-miss/func_8002BCF4-16of28.c` | 16/28 | +0 | instruction-stream | parked | - |
+| `func_80032CF4` | `work/near-miss/func_80032CF4-parked.c` | 16/18 | +0 | register-role | parked | - |
+| `func_800337C4` | `work/near-miss/func_800337C4-parked.c` | 16/16 | -1 | size | parked | - |
+| `func_8002DD88` | `work/near-miss/func_8002DD88-parked.c` | 17/22 | -1 | size | parked | - |
+| `func_8002DDE0` | `work/near-miss/func_8002DDE0-parked.c` | 17/14 | +4 | size | parked | - |
+| `func_8002DE18` | `work/near-miss/func_8002DE18-parked.c` | 17/18 | -1 | size | parked | - |
+| `func_80032D88` | `work/near-miss/func_80032D88-parked.c` | 17/17 | -2 | size | parked | - |
+| `func_80034004` | `work/near-miss/func_80034004-parked.c` | 17/23 | +1 | size | parked | - |
+| `func_80035810` | `work/near-miss/func_80035810-sweep.c` | 17/20 | +2 | size | parked | - |
+| `func_8001D340` | `work/near-miss/func_8001D340-parked.c` | 18/16 | +2 | size | parked | - |
+| `func_80032D3C` | `work/near-miss/func_80032D3C-sched.c` | 18/19 | -1 | size | parked | - |
+| `func_80056F4C` | `work/near-miss/func_80056F4C-sweep.c` | 18/42 | -2 | size | parked | - |
+| `func_80026E88` | `work/near-miss/func_80026E88-parked.c` | 19/16 | +3 | size | parked | - |
+| `func_80035BC0` | `work/near-miss/func_80035BC0-check.c` | 20/21 | -2 | size | parked | - |
+| `func_800432D8` | `work/near-miss/func_800432D8-near-miss.c` | 20/24 | -1 | size | parked | - |
+| `func_8001D4DC` | `work/near-miss/func_8001D4DC-parked.c` | 21/21 | -3 | size | parked | - |
+| `func_8002BFFC` | `work/near-miss/func_8002BFFC-parked.c` | 21/47 | +1 | size | parked | - |
+| `func_80030518` | `work/near-miss/func_80030518.c` | 21/55 | -1 | size | parked | - |
+| `func_8003834C` | `work/near-miss/func_8003834C-sweep.c` | 21/39 | +0 | operand | parked | - |
+| `func_8004F1E0` | `work/near-miss/func_8004F1E0-near-miss.c` | 21/28 | +0 | register-role | parked | - |
+| `func_80020D74` | `work/near-miss/func_80020D74-sched-park.c` | 22/39 | -1 | size | parked | - |
+| `func_80034824` | `work/near-miss/func_80034824-parked.c` | 22/20 | +3 | size | parked | - |
+| `func_80034C20` | `work/near-miss/func_80034C20-parked.c` | 22/23 | -1 | size | parked | - |
+| `func_8003BA14` | `work/near-miss/func_8003BA14-sweep.c` | 22/61 | +0 | operand | parked | - |
+| `func_8002C148` | `work/near-miss/func_8002C148-parked.c` | 23/27 | +2 | size | parked | - |
+| `func_80046878` | `work/near-miss/func_80046878-sweep.c` | 23/41 | -1 | size | parked | - |
+| `func_80033714` | `work/near-miss/func_80033714.c` | 24/21 | +3 | size | parked | - |
+| `func_80033E14` | `work/near-miss/func_80033E14-parked.c` | 24/25 | +0 | register-role | parked | - |
+| `func_80037968` | `work/near-miss/func_80037968-sweep.c` | 24/35 | -4 | size | parked | - |
+| `func_800494A4` | `work/near-miss/func_800494A4-check.c` | 24/32 | +1 | size | parked | - |
+| `func_80015684` | `work/near-miss/func_80015684-parked.c` | 25/44 | +2 | size | parked | - |
+| `func_80033428` | `work/near-miss/func_80033428-parked.c` | 25/22 | +4 | size | parked | - |
+| `func_80033480` | `work/near-miss/func_80033480-parked.c` | 25/22 | +4 | size | parked | - |
+| `func_800334D8` | `work/near-miss/func_800334D8-parked.c` | 25/25 | -2 | size | parked | - |
+| `func_80033DB0` | `work/near-miss/func_80033DB0-parked.c` | 25/25 | -1 | size | parked | - |
+| `func_800484B4` | `work/near-miss/func_800484B4-best.c` | 25/57 | +0 | register-role | parked | - |
+| `func_8001C2F0` | `work/near-miss/func_8001C2F0-role-park.c` | 26/49 | +0 | operand | parked | - |
+| `func_8002F4C0` | `work/near-miss/func_8002F4C0-parked.c` | 26/27 | -1 | size | parked | - |
+| `func_80032400` | `work/near-miss/func_80032400-parked.c` | 26/27 | -1 | size | parked | - |
+| `func_800333C8` | `work/near-miss/func_800333C8-parked.c` | 26/23 | +3 | size | parked | - |
+| `func_800331FC` | `work/near-miss/func_800331FC-o1-27of27.c` | 27/27 | +1 | size | parked | holds (fixed-point) |
+| `func_80011F84` | `work/near-miss/func_80011F84-parked.c` | 28/30 | +2 | size | parked | - |
+| `func_8002B194` | `work/near-miss/func_8002B194-28of31.c` | 28/31 | -3 | size | parked | - |
+| `func_80034698` | `work/near-miss/func_80034698-fresh.c` | 28/48 | +1 | size | parked | - |
+| `func_8004584C` | `work/near-miss/func_8004584C-sweep.c` | 28/38 | -2 | size | parked | - |
+| `func_80048598` | `work/near-miss/func_80048598-best.c` | 28/37 | +0 | register-role | parked | - |
+| `func_800159D8` | `work/near-miss/func_800159D8-parked.c` | 29/47 | +2 | size | parked | - |
+| `func_8001D540` | `work/near-miss/func_8001D540-parked.c` | 29/28 | +2 | size | parked | - |
+| `func_8002C0B8` | `work/near-miss/func_8002C0B8-29of36.c` | 29/36 | +3 | size | parked | - |
+| `func_8004EDF8` | `work/near-miss/func_8004EDF8-sweep.c` | 29/53 | -3 | size | parked | - |
+| `func_80057CA4` | `work/near-miss/func_80057CA4-loaddelay.c` | 29/45 | +4 | size | parked | - |
+| `func_80014170` | `work/near-miss/func_80014170-fresh.c` | 30/46 | -2 | size | parked | - |
+| `func_8002A198` | `work/near-miss/func_8002A198-parked.c` | 30/51 | -4 | size | parked | - |
+| `func_8004813C` | `work/near-miss/func_8004813C-sweep.c` | 30/51 | -1 | size | parked | - |
+| `func_80051E14` | `work/near-miss/func_80051E14-near-miss.c` | 30/74 | -2 | size | parked | - |
+| `func_80022308` | `work/near-miss/func_80022308-parked.c` | 31/41 | -3 | size | parked | holds (filled-nop) |
+| `func_800387C8` | `work/near-miss/func_800387C8-near-miss.c` | 31/37 | -1 | size | parked | - |
+| `func_8001C4BC` | `work/near-miss/func_8001C4BC-32of33.c` | 32/33 | -1 | size | parked | - |
+| `func_8002D734` | `work/near-miss/func_8002D734-role-park.c` | 32/58 | +0 | register-role | parked | - |
+| `func_8002D81C` | `work/near-miss/func_8002D81C-role-park.c` | 32/58 | +0 | register-role | parked | - |
+| `func_8002DA40` | `work/near-miss/func_8002DA40-32of33.c` | 32/33 | -2 | size | parked | - |
+| `func_80035C9C` | `work/near-miss/func_80035C9C-near-miss.c` | 32/36 | -2 | size | parked | - |
+| `func_80053EA8` | `work/near-miss/func_80053EA8-near-miss.c` | 32/39 | -3 | size | parked | - |
+| `func_8002C5FC` | `work/near-miss/func_8002C5FC-parked.c` | 33/35 | +3 | size | parked | - |
+| `func_8003353C` | `work/near-miss/func_8003353C-o1.c` | 33/30 | +3 | size | parked | holds (fixed-point) |
+| `func_8004995C` | `work/near-miss/func_8004995C-near-miss.c` | 33/46 | -1 | size | parked | - |
+| `func_8001FFB4` | `work/near-miss/func_8001FFB4-34of35.c` | 34/35 | -1 | size | parked | - |
+| `func_8002CF94` | `work/near-miss/func_8002CF94-parked.c` | 34/41 | +2 | size | parked | - |
+| `func_8003302C` | `work/near-miss/func_8003302C-64bit.c` | 34/29 | +5 | size | parked | holds (fixed-point) |
+| `func_8004734C` | `work/near-miss/func_8004734C-sweep.c` | 34/50 | -2 | size | parked | - |
+| `func_8002DFF8` | `work/near-miss/func_8002DFF8.c` | 35/55 | -1 | size | parked | - |
+| `func_80058448` | `work/near-miss/func_80058448-band.c` | 35/43 | +0 | register-role | parked | - |
+| `func_8004669C` | `work/near-miss/func_8004669C-sweep.c` | 37/104 | +0 | operand | parked | - |
+| `func_8002AB64` | `work/near-miss/func_8002AB64-parked.c` | 38/44 | -1 | size | parked | - |
+| `func_8002C1B4` | `work/near-miss/func_8002C1B4.c` | 38/52 | +2 | size | parked | - |
+| `func_800474B4` | `work/near-miss/func_800474B4-sweep.c` | 38/49 | -2 | size | parked | - |
+| `func_80047578` | `work/near-miss/func_80047578-sweep.c` | 38/49 | -1 | size | parked | - |
+| `func_80052380` | `work/near-miss/func_80052380-near-miss.c` | 38/102 | +0 | instruction-stream | parked | - |
+| `func_80035F5C` | `work/near-miss/func_80035F5C-sweep.c` | 39/49 | +1 | size | parked | - |
+| `func_800519C4` | `work/near-miss/func_800519C4-band.c` | 39/72 | -1 | size | parked | - |
+| `func_8001D428` | `work/near-miss/func_8001D428-40of43.c` | 40/43 | -8 | size | parked | - |
+| `func_8003571C` | `work/near-miss/func_8003571C-band.c` | 40/45 | -2 | size | parked | - |
+| `func_80038A80` | `work/near-miss/func_80038A80-band.c` | 41/49 | -3 | size | parked | - |
+| `func_800223AC` | `work/near-miss/func_800223AC-42of42.c` | 42/42 | -4 | size | parked | holds (filled-nop) |
+| `func_80025004` | `work/near-miss/func_80025004-parked.c` | 42/44 | +4 | size | parked | - |
+| `func_8002A044` | `work/near-miss/func_8002A044-41of45.c` | 42/45 | +4 | size | parked | - |
+| `func_80034A78` | `work/near-miss/func_80034A78.c` | 42/60 | +0 | instruction-stream | parked | - |
+| `func_80047014` | `work/near-miss/func_80047014-sweep.c` | 42/62 | -4 | size | parked | - |
+| `func_8002AD6C` | `work/near-miss/func_8002AD6C-parked.c` | 43/48 | +0 | register-role | parked | - |
+| `func_8002B2B0` | `work/near-miss/func_8002B2B0-parked.c` | 43/44 | -2 | size | parked | - |
+| `func_8002EC14` | `work/near-miss/func_8002EC14-parked.c` | 43/41 | +2 | size | parked | - |
+| `func_8002C8B8` | `work/near-miss/func_8002C8B8.c` | 44/64 | +0 | operand | parked | - |
+| `func_8004836C` | `work/near-miss/func_8004836C-near-miss.c` | 44/57 | -5 | size | parked | - |
+| `func_80019F10` | `work/near-miss/func_80019F10-parked.c` | 45/47 | -5 | size | parked | - |
+| `func_8001A108` | `work/near-miss/func_8001A108.c` | 45/57 | +0 | instruction-stream | parked | - |
+| `func_8002C688` | `work/near-miss/func_8002C688.c` | 46/61 | +7 | size | parked | - |
+| `func_800201AC` | `work/near-miss/func_800201AC.c` | 47/56 | -2 | size | parked | - |
+| `func_80038970` | `work/near-miss/func_80038970-sweep.c` | 47/68 | +0 | instruction-stream | parked | - |
+| `func_80019670` | `work/near-miss/func_80019670-role-park.c` | 48/55 | +0 | operand | parked | - |
+| `func_8004A094` | `work/near-miss/func_8004A094-near-miss.c` | 48/39 | +11 | size | parked | - |
+| `func_80038864` | `work/near-miss/func_80038864-sweep.c` | 49/67 | +0 | instruction-stream | parked | - |
+| `func_8004912C` | `work/near-miss/func_8004912C-sweep.c` | 49/65 | -1 | size | parked | - |
+| `func_8001C0AC` | `work/near-miss/func_8001C0AC-parked.c` | 50/50 | -3 | size | parked | - |
+| `func_8001F9D0` | `work/near-miss/func_8001F9D0.c` | 50/59 | +2 | size | parked | - |
+| `func_80022148` | `work/near-miss/func_80022148.c` | 51/53 | -1 | size | parked | - |
+| `func_8004E7EC` | `work/near-miss/func_8004E7EC-clamp-park.c` | 51/81 | +0 | instruction-stream | parked | - |
+| `func_800358A8` | `work/near-miss/func_800358A8-near-miss.c` | 52/61 | -3 | size | parked | - |
+| `func_8001BD0C` | `work/near-miss/func_8001BD0C.c` | 53/56 | -5 | size | parked | - |
+| `func_80036F64` | `work/near-miss/func_80036F64-sweep.c` | 53/67 | -1 | size | parked | - |
+| `func_80047268` | `work/near-miss/func_80047268-sweep.c` | 53/57 | -2 | size | parked | - |
+| `func_8004E6CC` | `work/near-miss/func_8004E6CC-band.c` | 53/72 | -2 | size | parked | - |
+| `func_8002A9E0` | `work/near-miss/func_8002A9E0-parked.c` | 54/50 | +4 | size | parked | - |
+| `func_8002DF04` | `work/near-miss/func_8002DF04.c` | 54/61 | +1 | size | parked | - |
+| `func_8002221C` | `work/near-miss/func_8002221C.c` | 56/59 | -5 | size | parked | - |
+| `func_80042338` | `work/near-miss/func_80042338-sweep.c` | 56/64 | -1 | size | parked | - |
+| `func_80046EFC` | `work/near-miss/func_80046EFC-sweep.c` | 56/70 | +0 | operand | parked | - |
+| `func_8002FEE0` | `work/near-miss/func_8002FEE0.c` | 57/63 | +0 | operand | parked | - |
+| `func_80053A4C` | `work/near-miss/func_80053A4C-sweep.c` | 57/58 | +4 | size | parked | - |
+| `func_80029CCC` | `work/near-miss/func_80029CCC.c` | 58/56 | +2 | size | parked | - |
+| `func_80015D88` | `work/near-miss/func_80015D88.c` | 59/65 | -2 | size | parked | - |
+| `func_8001D88C` | `work/near-miss/func_8001D88C.c` | 60/58 | +5 | size | parked | - |
+| `func_80026EC8` | `work/near-miss/func_80026EC8-near-miss.c` | 60/61 | +2 | size | parked | - |
+| `func_8002F730` | `work/near-miss/func_8002F730.c` | 60/56 | +4 | size | parked | - |
+| `func_8004DBF0` | `work/near-miss/func_8004DBF0-parked.c` | 60/82 | -7 | size | parked | - |
+| `func_8002D0B0` | `work/near-miss/func_8002D0B0.c` | 61/58 | +11 | size | parked | - |
+| `func_8003A1B8` | `work/near-miss/func_8003A1B8-sweep.c` | 61/71 | +3 | size | parked | - |
+| `func_800511C0` | `work/near-miss/func_800511C0-parked.c` | 61/101 | +0 | operand | parked | - |
+| `func_80032B1C` | `work/near-miss/func_80032B1C.c` | 62/64 | +1 | size | parked | - |
+| `func_80057B94` | `work/near-miss/func_80057B94-sweep.c` | 62/68 | +1 | size | parked | - |
+| `func_8003B478` | `work/near-miss/func_8003B478-sweep.c` | 65/71 | -2 | size | parked | - |
+| `func_8002EE94` | `work/near-miss/func_8002EE94.c` | 66/78 | -3 | size | parked | - |
+| `func_8003BE34` | `work/near-miss/func_8003BE34-sweep.c` | 66/82 | +2 | size | parked | - |
+| `func_8004AF80` | `work/near-miss/func_8004AF80-sweep.c` | 66/66 | -3 | size | parked | - |
+| `func_80035D2C` | `work/near-miss/func_80035D2C-sweep.c` | 67/69 | -2 | size | parked | - |
+| `func_80018FBC` | `work/near-miss/func_80018FBC.c` | 68/73 | +2 | size | parked | - |
+| `func_8003AF4C` | `work/near-miss/func_8003AF4C-sweep.c` | 68/71 | -2 | size | parked | - |
+| `func_8001C540` | `work/near-miss/func_8001C540.c` | 70/59 | +11 | size | parked | - |
+| `func_80029320` | `work/near-miss/func_80029320.c` | 71/64 | +7 | size | parked | - |
+| `func_8004E528` | `work/near-miss/func_8004E528-sched-park.c` | 82/105 | -1 | size | parked | - |
+| `func_800568C0` | `work/near-miss/func_800568C0-sweep.c` | 90/95 | -11 | size | parked | - |
+| `func_80051844` | `work/near-miss/func_80051844-near-miss.c` | 92/96 | -5 | size | parked | - |
+| `func_8002DAE8` | `work/near-miss/func_8002DAE8-near-miss.c` | 94/98 | -19 | size | parked | - |
+| `func_80017140` | `work/near-miss/func_80017140-near-miss.c` | 113/153 | -10 | size | parked | - |
+| `func_8003682C` | `work/near-miss/func_8003682C-sweep.c` | 130/138 | +5 | size | parked | - |
+| `func_80051354` | `work/near-miss/func_80051354-parked.c` | 131/136 | -5 | size | parked | - |
+| `func_80037DC4` | `work/near-miss/func_80037DC4-sweep.c` | 143/190 | +1 | size | parked | - |
+| `func_8003A5A4` | `work/near-miss/func_8003A5A4-sweep.c` | 144/144 | +7 | size | parked | - |
+| `func_8003BB1C` | `work/near-miss/func_8003BB1C-sweep.c` | 166/167 | -73 | size | parked | - |
+| `func_8003B068` | `work/near-miss/func_8003B068-sweep.c` | 195/217 | -103 | size | parked | - |
+| `func_80025544` | `work/near-miss/func_80025544-near-miss.c` | - | - | compile-error | broken | - |
+| `func_800363F8` | `work/near-miss/func_800363F8.c` | - | - | compile-error | broken | - |
+
+<!-- END GENERATED TABLE -->
+
+---
+
+## Pass journal (history: numbers here are superseded by the table above)
+
 Rule (verified by probe on issue #38): a `nop` after a load is only wrong when the loaded
 register is consumed by a following *store*; a load feeding a branch or arithmetic matches.
 `ld_st` counts the #38 pattern; `ld_ok` counts load-delays that compile fine; `jal_nop` is
@@ -850,3 +1078,36 @@ whole difference. Tested on the two siblings the pass named: `func_80026EC8` re-
 `func_80052380`'s residue is the pointer fold plus the `&D_8008A998` home, not argument birth, and its
 two-live-pointer form went 38 → 68. So the form needs a **constant** scale and a value that is a call argument
 first and a cross-call temporary second.
+
+## Return-signature scan vs size ordering: the scan lost
+
+The pass scanned the unopened set for the two tells that converted at the end of the last batch — a closing
+`addu $v0,$zero,$zero` (explicit `return 0` on the fall-through) and one epilogue reached from several returns
+— and drafted five bodies picked by that signature rather than by size. All five parked:
+
+| body | scan hit | first draft | residue |
+|---|---|---|---|
+| `func_80032644` | shared tail return, 0x400 head test | 62/64 (0x108 vs 0x104) | 4 words over; the two `return` arms share an epilogue but our tail merges earlier |
+| `func_8002EE94` | several `beqz` to one exit | 68/84 | loop guard order; the shared exit is reproduced, the loop body is not |
+| `func_80018FBC` | trailing `addu $v0,$zero,$zero` | 71/73 | two words short at the tail |
+| `func_80020C34` | 4-arm span-table dispatch, one exit | 76/80 (0x134 vs 0x140) | 3 words short: the `10800v` scale folds differently |
+| `func_8001D1E8` | one `j` exit per arm | 69/71 (0x130 vs 0x11C) | 5 words over: the `$gp` address is materialised per arm instead of reused |
+
+Verdict: **0 of 5** from the scan, against 3 of 24 from size ordering last pass. The two tells are real but they
+are *already* what `enumerate.py` bodies usually have — the shared-tail shape is the norm, not a discriminator —
+so the scan does not rank the queue better than size does. Do not rebuild the queue around it; keep the tells
+as pre-draft checklist items only.
+
+## The four close parks: three re-measured, one matched on a new tell
+
+| body | before | this pass | what was tried |
+|---|---|---|---|
+| `func_80013EEC` | 2/57 | **MATCH** | the residue was *only* `addu $v0,$s0,$v0` vs ours `addu $v0,$v0,$s0` on the two `self + idx*16` stores. Pointer forms keep our operand order (`u8 *e = s + idx*16` 15/57, `s32 idx` local 16/57); spelling the address as integer addition with the base first — `(u32) s + ((u32) idx << 4) + 0x184` — restores `addu $s0,$v0`. |
+| `func_8002FEE0` | 57/63 | 57/63 | no movement; the body is allocation-shaped, not tail-shaped |
+| `func_8002C8B8` | 44/64 | 44/64 | no movement |
+| `func_80032B1C` | 62/64 | 62/64 (0x104 vs 0x100) | no movement; one word over |
+
+**New tell: `addu` operand order is a source-order decision.** When a diff is one or two `addu` words whose
+operands are swapped and the game adds the base first, write the address as integer arithmetic
+(`(u32) base + scaled + offset`) rather than pointer arithmetic. This is the cheapest close in the corpus:
+it is a two-line edit and it converted a body parked since the -O1 sweep.
