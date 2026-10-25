@@ -565,3 +565,41 @@ Band yield: **8 of 11 drafts**. Parks: `8002B194` 28/31 (reverse scan of 9 slots
 right but the frame is 0x70 against 0x7c), `80029488` 15/29 (frame 0x20 against 0x28 — one saved register
 the game has and we do not), `8003302C` 34/29 and `8003353C` 37/30 (both the 64-bit `>> 16` codegen class).
 The register-role parks were not touched this pass.
+
+### 33-40 word band: 11 units from 16 drafts
+
+| unit | words | shape |
+|---|---|---|
+| `func_80019FF4` | 33 | `func_8001B3A0()` then a guard call; on the early path `return 1`, else five gp-relative zero stores (two of them to `D_8008ADFC`), two calls, `func_8001D6D8(0x30, 0x40)`, `return 0` |
+| `func_80025988` | 33 | `u8 work[0x30]` declared before `u16 hdr[3]` so the two stack slots land at sp+0x10 and sp+0x40; `memset(hdr, 0, 6)`, `hdr[0] = D_8008A2C0[D_8008A2BC]`, two calls, then the tail call |
+| `func_80025A8C` | 33 | twin of `80025988` on `D_8008A2C4`, storing `hdr[1]` |
+| `func_8002D9BC` | 33 | mask test `p[0] & 0x2400000`, three predicates, then `D_800A1C80[-1] = p; return 1` — the store must reuse the `D_800A1C80` base symbol (offset −4) or the `addiu` disappears |
+| `func_80013FD0` | 34 | `*(s32 *)(arg0 + i * 0x10 + 0x17C)` indexed straight off the base, **not** through a `u8 *p = arg0` walker: the local makes gcc fold the base into `arg0 + 0x184` and the whole body shifts |
+| `func_8002EFCC` | 34 | point-in-polygon over a pointer array at +0x1C; the counter is the third field's ternary (`(p[0] & 1) ? 3 : 2`) declared **before** the array load, and the loop is `do { … } while (i != -1)` |
+| `func_800275A4` | 35 | two `memset`s (`0x60`, `0x4E00`) then twelve gp-relative stores then three calls |
+| `func_80026DEC` | 35 | `s32 buf[3]; s32 vec[3];` in that order, `memset(buf,0,0xC)`, three copies, `func_800331FC(vec, 0x10000)`, then the five-argument call |
+| `func_8002770C` | 35 | `a1 >= 0x81` guard, two `memset`s, `sh` of `a0` into a `u16` global, two zero stores, tail call, return the `D_800A4F00` base |
+| `func_8002CB00` | 35 | `/* cflags: -mno-split-addresses */` — without it gcc hoists the `lui` of `D_80089F18` above `lw 0x18(a3)` and four words differ |
+| `func_80033F78` | 35 | the fill loop is **duplicated in both arms** of `if (a0)` (the `sb $zero` after the first makes them unequal), and the base is recomputed per arm so the shared `lui` is reused |
+
+Band yield: **11 of 16 drafts (69%)**. Parks, each with its residue:
+
+| body | best | residue |
+|---|---|---|
+| `func_8002C9B8` | **2/36** | the second inner counter lands in `$v0` where the game uses `$v1`; the base-symbol fix (`D_800A4F00[1]` instead of `D_800A4F00 + 4`) took it from 29 to 2, and four declaration/scope shapes on the two counters did not move the role |
+| `func_8002DA40` | 32/33 | size 0x7c against 0x84: gcc sinks each `sh` of the midpoint into the `bgez` delay slot where the game keeps `sh` before the branch and a `nop` in the slot; ternary `abs` and separate locals both reproduce the sink |
+| `func_8001C4BC` | 32/33 | size 0x80 against 0x84: gcc cross-jumps the two `return -1` blocks into one and jumps back, the game materialises `-1` twice; `if`/`return`, ternary and mixed forms all merge |
+| `func_8001FFB4` | 34/35 | size 0x88 against 0x8c: the game materialises `D_8006F2C0[+8]` in `$v0` and copies to `$s0`; we fold `%lo` straight into `$s0`, and the two saved-register roles (`$s1`/`$s2`) come out swapped |
+| `func_8002C0B8` | 29/36 | the half-extent `lw 0x10(a1)` is hoisted before the `abs`, the game loads it beside `lw 0x4(a1)`; `s32 *f` (not `s16 *f`) was needed for the four `lw`s and `a0[2]` for the y component |
+
+### The 64-bit class under `-O1`: sequence reached, one dead word left
+
+`func_800331FC` re-tested with `/* cflags: -O1 */` and the multiply written as three explicit locals in a
+`u32` result variable: **27 of 27 words differing, size 0x70 against 0x6c**. The `mult / mflo / mfhi / srl 16 /
+sll 16 / or` group is emitted in the game's order — at the default level the same source spills the DImode
+pair to the stack (0x8c, 35/27). The single extra word is a dead `srl` of the high half that `-O1` will not
+eliminate; `-O2`, `-O3`, `-O1/-O2` with `-fno-schedule-insns{,2}` and the `unsigned long long` / `u32` /
+implicit-truncation / explicit-temp spellings all stop at 0x70 or worse. Same treatment on the other two:
+`8003302C` 34/29 → **34/29 at `-O1`, 0x88 against 0x74**; `8003353C` 37/30 → **33/30, 0x84 against 0x78**.
+Verdict: the class is *reachable* at `-O1` but not closed; the residue is one dead shift per multiply, which
+no source spelling tested removes. Drafts parked as `work/near-miss/func_80033{1FC,02C,53C}-o1*.c`.

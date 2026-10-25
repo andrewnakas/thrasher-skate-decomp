@@ -180,3 +180,25 @@ Two recurring word-level tells: an asymmetric compare written the wrong way roun
 `mult; mflo; mfhi; srl 16; sll 16; or`. gcc 2.8.1-psx expands the 64-bit shift into a full shift sequence
 (35/27, 34/29, 37/30 and larger). Do not spend shapes on this class until the shift is expressible another
 way; record and park.
+
+## The 33-40 word band: indexed off the base, not through a walker
+Eleven of sixteen drafts matched. The one shape that decided several of them: when the game's loop pointer
+equals the function's own base pointer (as in `func_80013FD0`, `v1 = a0` with fields at +0x17C), writing a
+`u8 *p = arg0` walker makes gcc fold the base into `p` (`addiu $v1, $a0, 0x1A0` / `lw -0xC($v1)`) and every
+offset in the body shifts. Index straight off the parameter instead and the game's `0x17C($v1)` comes back.
+The same folding costs a body its base symbol: `D_800A4F00 + 4` becomes a `lui` of `D_800A4F04`, while
+`((s32 *) D_800A4F00)[1]` keeps the `lui`/`lw 0x4` pair. Declaring the global as a typed array and indexing it
+is what holds the symbol still.
+
+Two smaller tells from the band: a loop whose counter is also a value the game keeps in the loaded register
+wants `do { } while (i != -1)` (a `for` with a pre-test adds the guard word), and duplicated straight-line
+code in both arms of an `if` only stays duplicated when the arms differ by more than a constant — moving the
+shared base assignment into each arm is what reproduced `func_80033F78`'s two loops.
+
+## `-O1` reaches the 64-bit `>> 16` sequence; it does not close it
+`800331FC` under `/* cflags: -O1 */` with explicit locals emits exactly `mult; mflo; mfhi; srl 16; sll 16; or`
+per element — the shape the class was parked on. It is one word over (0x70 against 0x6c): gcc materialises the
+high half of the 64-bit shift result as a dead `srl` that `-O1` does not delete, and `-O2` replaces that with a
+stack spill of the DImode pair. Read a 64-bit body's `-O1` result as "sequence correct, one word per multiply
+too long" rather than as a source problem; `8003302C` and `8003353C` behave the same way (34/29 and 33/30).
+Do not spend shapes on this class without a way to make the truncated DImode result visible to the optimiser.
