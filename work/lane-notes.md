@@ -148,7 +148,8 @@ Do not apply `volatile` to a body whose stores already match — `80026E88` went
   `(a + 4) - m` (4/15); `t = m - 4; result = a - t;` stops the reassociation and matches.
 
 ## The unopened-body queue starts at 20 instructions
-`work/enum_fresh.py` (no draft, no census mention, no handwritten/GTE) finds 290 bodies, smallest **20**.
+`work/enumerate.py --fresh` (no draft, no census mention, no handwritten/GTE) finds the queue; it starts at
+**20** instructions.
 The sub-16 and 16-19 bands are now empty of unopened bodies, so the tail ends here; every future pass
 should start at the 20-word floor and re-run that script because it excludes anything this file mentions.
 
@@ -224,7 +225,7 @@ legal file, not a source shape — the same code with the constant materialised 
 before the `sw`) is what the game has, and the C that produces it is `e->f[0] = 7` with the constant written
 inline. Treat a 3-4 word deficit on an otherwise word-perfect body as this class before re-reading the source.
 
-## A re-measure is cheaper than a re-think: `work/retest.py`
+## A re-measure is cheaper than a re-think: `work/verify.py`
 Re-running every draft in `work/near-miss/` (313 files, one line each) against current `main` takes one
 command and gives the pass its cheapest-first ordering *measured*, not remembered. Three of the bodies the
 census listed as 4-8 words off now measure 2, and one (`func_80012274`) converted on a single type change.
@@ -378,7 +379,7 @@ argument birth. So read the tell first — argument register plus a pre-call cop
 multiply spelling.
 
 ## The constant-scale rule needs all three parts, and the multiply direction is the weak one
-`work/scale_sweep.py` applied every constant-only equivalence to 174 parked bodies: 0 conversions, 6 partial
+A corpus-wide rewrite sweep (now part of `work/verify.py`) applied every constant-only equivalence to 174 parked bodies: 0 conversions, 6 partial
 improvements. `shift2mul` (the `func_80020398` form) moved two bodies and neither is near a match. Read the rule
 as: **call argument + live after the call + constant scale**, and do not reach for it when the shifted value is
 only cached in a variable — that case is already what gcc wants.
@@ -424,3 +425,26 @@ signedness, not the spelling — and `80048598`'s remaining residue is a registe
 symbol there, and `config/symbol_addrs.us.txt` is a protected path this lane must not edit. Filed as
 https://github.com/andrewnakas/thrasher-skate-decomp/issues/101 with the match evidence and the exact
 one-line fix (`D_801FC000 = 0x801FC000;`). Do not re-draft the body: it needs the symbol, not a shape.
+
+## One owner per fact (read this before adding a script)
+The tab carried twenty-eight scripts with four re-measurement entry points and two copies of the corpus
+table, which is how two passes came to chase baselines that did not reproduce. The split is now:
+
+| script | owns | does not |
+|---|---|---|
+| `work/verify.py` | **every measurement**: per-draft words differing, size delta, residue class, best draft, the generated table | find candidates |
+| `work/enumerate.py` | the queue: unmatched bodies by instruction count, band, window, or scaled-index shape | measure anything |
+| `work/cluster.py` + `work/family_queue.py` | disassembly families, ranked for template reuse | measure anything |
+| `work/memberbase.py` | the member-base scan for the pointer-local shape | measure anything |
+
+Rules that follow from it:
+
+- **Never** record a count that `verify.py` can produce. Run `python work/verify.py --write` and the table of
+  record at the top of the census is replaced; the journal keeps prose and reasoning only.
+- **Drafts have two homes**: `work/near-miss/` is history (any number in a filename is historical), and
+  `work/best/<body>.c` is the canonical draft the table points at. The canonical path has no number in it, so
+  it cannot go stale.
+- A body already merged keeps a draft only until the next run lists it as stale; the script prints those to
+  prune, and pruning is part of shipping a unit.
+- The cache in `work/verify-cache.json` is keyed by draft content and the toolchain fingerprint; bump
+  `verify.VERSION` when the classifier changes or you will read old classes.
