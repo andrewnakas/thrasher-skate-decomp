@@ -482,3 +482,22 @@ a *type* decision read off the assembly, not on statement order:
 
 Parks: `800159D8` 29/47, `80019F10` 45/47, `8002BFFC` 21/47, `8001C0AC` 50/50, `80024F3C` 14/50 — all
 frame or argument-register residue rather than missing structure.
+
+## The tells held; the yield came from type-reading, not from luck (3 of 6 this batch)
+Second volume batch: six drafts, two shapes each, three matched (`8002AE2C`, `8001D6D8`, `8001EA78`). The
+five tells from the first batch were used on all six; what actually decided the three conversions was
+again a *declaration* read off the assembly:
+
+- **A global used with `lui`/`lw` must be declared larger than 8 bytes.** `extern u32 D_800A4F04[2];` is
+  exactly 8 bytes, so `-G8` makes it gp-relative and the whole body mis-allocates; `u32[4]` restores the
+  game's `lui`/`lw` and converted `func_8002AE2C` outright. This is the mirror of the small-extern rule and
+  the single most common blocker seen in this batch.
+- **Do not cache a pointer the game re-reads.** `func_8001EA78` stores the same node field twice; writing
+  `p = *(u32 *)(s0 + 0x1C)` once emits one `lw` where the game has two, and re-spelling both stores as
+  independent dereferences converted it (7/53 → MATCH).
+- **A body that sets `v0 = 0` before the epilogue returns `int`, not `void`.** Declaring `void` drops that
+  word and shifts the epilogue (`func_8001EA78`).
+
+Parks in the same batch were structural, not type-level: `8002A9E0` 54/50 (an extra callee-saved pointer
+gcc derives for the last field), `8002A198` 30/51 (recursive dispose, 4 words short), `8002AD6C` 43/48
+(three-level loop over a table of records).
