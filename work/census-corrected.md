@@ -339,3 +339,61 @@ game keeps it in `$v1` (same residue as `func_8001D340`).
 `0x80019000`: `80019C0C`/`80019EE4` parked; next is `80019444`, `80019410`.
 `0x80025000`: `800257A0`(21) `80025A58`(done) `80025B5C`(done); remaining >=19 instr: `80025A0C`/`80025B10` done.
 `0x8001F000` (unclaimed): 7 easy bodies including `8001F374`(14), `8001F3AC`(10), `8001FD14`(16), `8001F984`(19).
+
+### Flag matrix on the parked clone set (register-role / scheduling residues)
+
+Fifteen cells per body over the per-file flags `toolchain/compiler.toml` permits: none,
+`-mno-split-addresses`, `-fno-schedule-insns`, `-fno-schedule-insns2`, `-G0`, `-G4`,
+`-fno-strength-reduce`, `-O1`, `-O3`, and the pairs `-mno-split-addresses`+each scheduler flag,
+`-fno-schedule-insns`+`-fno-schedule-insns2`, `-mno-split-addresses -G4`, `-G4 -fno-schedule-insns`,
+`-O1 -mno-split-addresses`. Source shape held fixed at each body's best draft (variants were
+scored first, baseline cell = the best draft).
+
+| body | base | distinct diff counts across cells | best cell |
+|---|---|---|---|
+| `80033818` | 12/13 | 12 | 12/13 (none) |
+| `80032CF4` | 16/18 | 16 | 16/18 (none) |
+| `8002BCB0` | 2/17 | 2, 4 | 2/17 (none) |
+| `8001D804` | 11/23 | 11, 18, 24 | 11/23 (none) |
+| `80036F24` | 4/13 | 4, 15 | 4/13 (none) |
+| `80034BD8` | 4/15 | 4, 13 | 4/15 (none) |
+| `8002DE18` | 17/18 | 7, 14, 17, 18, 19 | 7/18 `-fno-schedule-insns2` |
+| `8001DCF8` | 11/24 | 11 | 11/24 (none) |
+| `800382C0` | 1/12 | 1 | 1/12 (none) |
+| `80032FE0` | 3/5 | 3 | 3/5 (none) |
+| `80033804` | 3/5 | 3 | 3/5 (none) |
+| `80019C0C` | 4/11 | 4, 11 | 4/11 (none) |
+| `80019EE4` | 4/11 | 4, 11 | 4/11 (none) |
+| `80012274` | 3/11 | 3, 13 | 3/11 (none) |
+| `800122A0` | 10/11 | 8, 10 | 8/11 `-G0` |
+| `8001CD7C` | 2/10 | 2, 5, 10, 11 | 2/10 (none) |
+| `80056A3C` | 2/10 | 0, 2, 10 | 0/0 `-O1` |
+| `80032FF4` | 12/13 | 12 | 12/13 (none) |
+| `800132FC` | 6/15 | 6 | 6/15 (none) |
+| `80032D88` | 17/17 | 17 | 17/17 (none) |
+| `80011B48` | 12/17 | 12, 16, 18 | 12/17 (none) |
+| `8002DDE0` | 17/14 | 17, 20 | 17/14 (none) |
+
+**Reading the matrix.** The register-role class is invariant: `80033818` (12/13 in every cell),
+`80032CF4` (16/18 in every cell), `8002BCB0` (2/17 except `-G0` 4/17), `8001D804` (11/23, only `-G0`/`-O1`
+and both scheduler flags make it worse), `800132FC`, `80032FF4`, `80032D88`, `80011B48` likewise. Flags
+move the *scheduling* bodies, not the allocation bodies:
+
+- **`80056A3C` converts: `-O1` takes it from 2/10 to MATCH**, and the matching source is the plain
+  `extern u8 D_80082FA4[]; ... D_80082FA4[idx & 0xFFFF] + *(s32 *) D_8008A160;` shape that was parked
+  at 2/10 under `-O2`. This is the first `-O1` conversion of a body outside issue #46's narrow-mask class.
+- `8002DE18` improves 17/18 → **7/18 under `-fno-schedule-insns2`** (size becomes exact), but the
+  remaining seven are the missing `addu` copy of the bump pointer, not scheduling; parked.
+- `800122A0` improves 10/11 → 8/11 under `-G0`; still parked.
+- Everything else has a flat row: the flags are inert.
+
+### Sub-16-word tail, this pass
+Opened `8002DCA8` (9 words) → **MATCH on first draft** (`struct { u32,u32,u32 }` table at `D_8006F834`,
+store at `+8`, `u8` index narrowed by `andi`). Opened fresh `8002DDE0` (14 words) → parked, the loop
+exit needs the game's single shared epilogue and the two-return form duplicates it (17 words vs 14).
+Re-tested the two closest parked clones by hand after the matrix: `8001CD7C` (2/10, base/offset register
+roles swapped in the `addu`; separate `off` statement and a struct-typed table both leave it at 2/10) and
+`80012274` (3/11, `negu` in the branch delay slot vs gcc's in-place negate; `r = v; if (f) r = -v;`
+leaves it at 3/11) — both parked.
+
+Yield this pass: 2 units (`8002DCA8`, `80056A3C`) from 2 fresh bodies plus the 22-body matrix.
