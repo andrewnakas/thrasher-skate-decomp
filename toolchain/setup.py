@@ -11,7 +11,8 @@ Installs into toolchain/ (git-ignored):
   m2c/, decomp-permuter/       pinned commits
   dl/psx_psyq_signatures/      pinned commit (tools/psyq_identify.py)
   ../.venv                     Python deps from requirements.txt (via uv if present)
-  maspsx                       git submodule at the commit recorded in the superproject
+  maspsx                       git submodule at the commit recorded in the superproject,
+                               plus toolchain/patches/maspsx/*.patch (applied in order)
 
 Ends with a self-test: a canary C file must compile to known bytes, so a
 broken toolchain is caught before it judges anything.
@@ -155,12 +156,29 @@ def install_git(check):
             subprocess.run(["git", "-C", str(dest), "checkout", "-q", rev], check=True)
 
 
+def maspsx_patches():
+    """-> [(patch, applied)] for toolchain/patches/maspsx/*.patch against the submodule's working tree."""
+    out = []
+    for p in sorted((TC / "patches" / "maspsx").glob("*.patch")):
+        r = subprocess.run(["git", "-C", str(TC / "maspsx"), "apply", "--reverse", "--check", str(p)],
+                           capture_output=True)
+        out.append((p, r.returncode == 0))
+    return out
+
+
 def install_submodules(check):
     if check:
         if not (TC / "maspsx" / "maspsx.py").exists():
             sys.exit("maspsx submodule missing: git submodule update --init")
+        for p, applied in maspsx_patches():
+            if not applied:
+                sys.exit(f"maspsx patch {p.name} not applied: python3 toolchain/setup.py")
         return
     subprocess.run(["git", "submodule", "update", "--init", "--recursive"], cwd=ROOT, check=True)
+    for p, applied in maspsx_patches():
+        if not applied:
+            say(f"patch maspsx: {p.name}")
+            subprocess.run(["git", "-C", str(TC / "maspsx"), "apply", str(p)], check=True)
 
 
 def install_venv(check):

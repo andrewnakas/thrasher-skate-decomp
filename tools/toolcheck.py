@@ -4,7 +4,7 @@
     python tools/toolcheck.py
 
 Checks: cc1 and objdiff-cli sha256 (toolchain/checksums.sha256), the maspsx
-submodule commit, and a canary compile: tests/fixtures/canary.c must compile to
+submodule commit and its toolchain/patches/maspsx/*.patch, and a canary compile: tests/fixtures/canary.c must compile to
 .text bytes with the sha1 in tests/fixtures/canary.sha1. No disc needed.
 """
 import hashlib
@@ -54,6 +54,11 @@ def main():
     if len(pinned) >= 3 and pinned[2] != actual:
         bad.append(f"maspsx at {actual[:10]}, superproject pins {pinned[2][:10]}: "
                    "git submodule update --init")
+    for p in sorted((TOOLCHAIN / "patches" / "maspsx").glob("*.patch")):
+        r = subprocess.run(["git", "-C", str(TOOLCHAIN / "maspsx"), "apply", "--reverse", "--check", str(p)],
+                           capture_output=True)
+        if r.returncode != 0:
+            bad.append(f"maspsx patch {p.name} not applied: python3 toolchain/setup.py")
 
     try:
         subprocess.run([tool("mipsel-linux-gnu-as"), "--version"], capture_output=True, check=True)
