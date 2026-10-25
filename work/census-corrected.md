@@ -397,3 +397,216 @@ roles swapped in the `addu`; separate `off` statement and a struct-typed table b
 leaves it at 3/11) — both parked.
 
 Yield this pass: 2 units (`8002DCA8`, `80056A3C`) from 2 fresh bodies plus the 22-body matrix.
+
+### Optimization-level axis over the whole parked corpus
+
+Every draft under `work/near-miss/` (326 files, 164 distinct bodies) was re-matched at the
+default flags, `-O1`, `-O0` and `-O3`, source held at each draft unchanged. `-Os` is **not** a
+permitted per-file flag: `tools/scan.py` rejects it (`cflag -Os is not in
+toolchain/compiler.toml allowed_cflags`), so no `-Os` cell exists. Cells show `differ/target-words`;
+`MATCH` is exact. The best non-default level for a body is in the last column.
+
+| body | default | -O1 | -O0 | -O3 | best |
+|---|---|---|---|---|---|
+| `80011B48` | 12/17 | 18/17 | 39/17 | 12/17 | (default) |
+| `80011F84` | 28/30 | 36/30 | 66/30 | 28/30 | (default) |
+| `80012274` | 3/11 | 3/11 | 31/11 | 3/11 | (default) |
+| `800122A0` | 10/11 | 10/11 | 32/11 | 10/11 | (default) |
+| `800132FC` | 6/15 | 6/15 | 38/15 | 6/15 | (default) |
+| `80015D38` | 17/20 | 9/20 | 56/20 | 17/20 | -O1 |
+| `80019C0C` | 4/11 | 11/11 | 45/11 | 4/11 | (default) |
+| `80019EE4` | 4/11 | 11/11 | 42/11 | 4/11 | (default) |
+| `8001CD7C` | 2/10 | 10/10 | 36/10 | 2/10 | (default) |
+| `8001D040` | 2/16 | 6/16 | 32/16 | 2/16 | (default) |
+| `8001D340` | 18/16 | 18/16 | 63/16 | 18/16 | (default) |
+| `8001D4DC` | 21/21 | 21/21 | 68/21 | 21/21 | (default) |
+| `8001D804` | 11/23 | 18/23 | 66/23 | 11/23 | (default) |
+| `8001DCF8` | 11/24 | 11/24 | 65/24 | 11/24 | (default) |
+| `8001FCB0` | 11/25 | 25/25 | 80/25 | 11/25 | (default) |
+| `80026E88` | 19/16 | 10/16 | 64/16 | 19/16 | -O1 |
+| `8002BA64` | 9/23 | 21/23 | 69/23 | 9/23 | (default) |
+| `8002BCB0` | 2/17 | 2/17 | 23/17 | 2/17 | (default) |
+| `8002C148` | 23/27 | 23/27 | 80/27 | 23/27 | (default) |
+| `8002C490` | 13/21 | 23/21 | 38/21 | 13/21 | (default) |
+| `8002C5FC` | 33/35 | 32/35 | 104/35 | 33/35 | -O1 |
+| `8002DCA8` | 3/9 | 3/9 | 23/9 | 3/9 | (default) |
+| `8002DD88` | 17/22 | 17/22 | 41/22 | 17/22 | (default) |
+| `8002DDE0` | 17/14 | 20/14 | 47/14 | 17/14 | (default) |
+| `8002DE18` | 17/18 | 19/18 | 48/18 | 17/18 | (default) |
+| `80032400` | 26/27 | 23/27 | 55/27 | 26/27 | -O1 |
+| `80032C28` | 10/11 | 10/11 | 24/11 | 10/11 | (default) |
+| `80032CF4` | 16/18 | 16/18 | 70/18 | 16/18 | (default) |
+| `80032D88` | 17/17 | 17/17 | 40/17 | 17/17 | (default) |
+| `80032FE0` | 3/5 | 3/5 | 20/5 | 3/5 | (default) |
+| `80032FF4` | 12/13 | 12/13 | 58/13 | 12/13 | (default) |
+| `800333C8` | 26/23 | 26/23 | 42/23 | 26/23 | (default) |
+| `80033428` | 25/22 | 28/22 | 44/22 | 25/22 | (default) |
+| `80033480` | 25/22 | 28/22 | 43/22 | 25/22 | (default) |
+| `800334D8` | 25/25 | 25/25 | 42/25 | 25/25 | (default) |
+| `80033714` | 27/21 | 28/21 | 46/21 | 27/21 | (default) |
+| `800337C4` | 16/16 | 16/16 | 60/16 | 16/16 | (default) |
+| `80033804` | 3/5 | 3/5 | 18/5 | 3/5 | (default) |
+| `80033818` | 12/13 | 12/13 | 63/13 | 12/13 | (default) |
+| `80033DB0` | 25/25 | 23/25 | 42/25 | 25/25 | -O1 |
+| `80033E14` | 24/25 | 24/25 | 118/25 | 24/25 | (default) |
+| `80034004` | 17/23 | 13/23 | 71/23 | 17/23 | -O1 |
+| `80034824` | 22/20 | 22/20 | 73/20 | 22/20 | (default) |
+| `80034B98` | 2/16 | 11/16 | 28/16 | 2/16 | (default) |
+| `80034BD8` | 4/15 | 4/15 | 36/15 | 4/15 | (default) |
+| `80034C20` | 22/23 | 19/23 | 64/23 | 22/23 | -O1 |
+| `8003571C` | 40/45 | 46/45 | 85/45 | 40/45 | (default) |
+| `80035810` | 17/20 | 15/20 | 45/20 | 17/20 | -O1 |
+| `800358A8` | 52/61 | 67/61 | 138/61 | 52/61 | (default) |
+| `80035BC0` | 20/21 | 18/21 | 42/21 | 20/21 | -O1 |
+| `80035C14` | 10/34 | 16/34 | 90/34 | 10/34 | (default) |
+| `80035C9C` | 32/36 | 33/36 | 85/36 | 32/36 | (default) |
+| `80035D2C` | 67/69 | 68/69 | 137/69 | 67/69 | (default) |
+| `80035F5C` | 39/49 | 48/49 | 64/49 | 39/49 | (default) |
+| `80036324` | 28/28 | 29/28 | 75/28 | 28/28 | (default) |
+| `800363F8` | MATCH | MATCH | MATCH | MATCH | (default) |
+| `800367F4` | 4/14 | 4/14 | 39/14 | 4/14 | (default) |
+| `8003682C` | 130/138 | 147/138 | 219/138 | 130/138 | (default) |
+| `80036A78` | 36/40 | 37/40 | 110/40 | 36/40 | (default) |
+| `80036F24` | 4/13 | 4/13 | 18/13 | 4/13 | (default) |
+| `80036F64` | 53/67 | 67/67 | 161/67 | 53/67 | (default) |
+| `80037968` | 24/35 | 27/35 | 62/35 | 24/35 | (default) |
+| `800379F4` | 11/26 | 26/26 | 39/26 | 11/26 | (default) |
+| `80037DC4` | 143/190 | 146/190 | 326/190 | 143/190 | (default) |
+| `800382C0` | 1/12 | 1/12 | 30/12 | 1/12 | (default) |
+| `8003834C` | 21/39 | 41/39 | 74/39 | 21/39 | (default) |
+| `800387C8` | 31/37 | 33/37 | 50/37 | 31/37 | (default) |
+| `80038864` | 49/67 | 64/67 | 167/67 | 49/67 | (default) |
+| `80038970` | 47/68 | 72/68 | 167/68 | 47/68 | (default) |
+| `80038A80` | 41/49 | 51/49 | 85/49 | 41/49 | (default) |
+| `80039D1C` | 29/29 | 30/29 | 57/29 | 29/29 | (default) |
+| `8003A09C` | 10/49 | 51/49 | 113/49 | 10/49 | (default) |
+| `8003A1B8` | 61/71 | 73/71 | 149/71 | 61/71 | (default) |
+| `8003A33C` | 37/34 | 19/34 | 73/34 | 37/34 | -O1 |
+| `8003A4A0` | 23/54 | 53/54 | 91/54 | 23/54 | (default) |
+| `8003A5A4` | 144/144 | 149/144 | 216/144 | 144/144 | (default) |
+| `8003A94C` | 24/41 | 39/41 | 47/41 | 24/41 | (default) |
+| `8003AB50` | 34/45 | 35/45 | 69/45 | 34/45 | (default) |
+| `8003AC04` | 8/30 | 30/30 | 48/30 | 8/30 | (default) |
+| `8003AE0C` | 13/35 | 35/35 | 44/35 | 13/35 | (default) |
+| `8003AF4C` | 68/71 | 68/71 | 107/71 | 68/71 | (default) |
+| `8003B068` | 195/217 | 212/217 | 200/217 | 195/217 | (default) |
+| `8003B3CC` | 10/19 | 10/19 | 46/19 | 10/19 | (default) |
+| `8003B478` | 65/71 | 69/71 | 160/71 | 65/71 | (default) |
+| `8003B854` | 7/19 | 19/19 | 31/19 | 7/19 | (default) |
+| `8003B8F8` | 4/46 | 21/46 | 68/46 | 4/46 | (default) |
+| `8003BA14` | 22/61 | 64/61 | 106/61 | 22/61 | (default) |
+| `8003BB1C` | 166/167 | 167/167 | 161/167 | 166/167 | -O0 |
+| `8003BDB8` | 6/31 | 25/31 | 44/31 | 6/31 | (default) |
+| `8003BE34` | 66/82 | 73/82 | 124/82 | 66/82 | (default) |
+| `8003BF7C` | 2/79 | 90/79 | 161/79 | 2/79 | (default) |
+| `8003C220` | 12/28 | 21/28 | 65/28 | 12/28 | (default) |
+| `8003ED04` | MATCH | MATCH | 15/7 | MATCH | (default) |
+| `8003ED28` | 5/60 | 62/60 | 97/60 | 5/60 | (default) |
+| `8003EE18` | 32/33 | 37/33 | 78/33 | 32/33 | (default) |
+| `80042338` | 56/64 | 60/64 | 113/64 | 56/64 | (default) |
+| `80042E9C` | 4/58 | 54/58 | 142/58 | 4/58 | (default) |
+| `80043294` | 16/17 | 16/17 | 43/17 | 16/17 | (default) |
+| `800432D8` | 20/24 | 15/24 | 63/24 | 20/24 | -O1 |
+| `8004584C` | 28/38 | 37/38 | 67/38 | 28/38 | (default) |
+| `8004669C` | 37/104 | 79/104 | 156/104 | 37/104 | (default) |
+| `80046878` | 23/41 | 34/41 | 109/41 | 23/41 | (default) |
+| `80046EFC` | 56/70 | 55/70 | 104/70 | 56/70 | -O1 |
+| `80047014` | 42/62 | 55/62 | 99/62 | 42/62 | (default) |
+| `8004710C` | 3/55 | 52/55 | 93/55 | 3/55 | (default) |
+| `80047268` | 53/57 | 44/57 | 111/57 | 53/57 | -O1 |
+| `8004734C` | 34/50 | 28/50 | 104/50 | 34/50 | -O1 |
+| `800474B4` | 38/49 | 39/49 | 99/49 | 38/49 | (default) |
+| `80047578` | 38/49 | 44/49 | 98/49 | 38/49 | (default) |
+| `80047A44` | 14/34 | 26/34 | 104/34 | 14/34 | (default) |
+| `80047ACC` | 6/23 | 23/23 | 89/23 | 6/23 | (default) |
+| `8004813C` | 30/51 | 51/51 | 99/51 | 30/51 | (default) |
+| `8004836C` | 44/57 | 51/57 | 72/57 | 44/57 | (default) |
+| `80048450` | 20/22 | 18/22 | 44/22 | 20/22 | -O1 |
+| `800484B4` | 37/57 | 46/57 | 137/57 | 37/57 | (default) |
+| `80048598` | 34/37 | 35/37 | 120/37 | 34/37 | (default) |
+| `8004862C` | 15/28 | 27/28 | 51/28 | 15/28 | (default) |
+| `8004869C` | 10/40 | 41/40 | 99/40 | 10/40 | (default) |
+| `8004912C` | 64/65 | 64/65 | 164/65 | 64/65 | (default) |
+| `800494A4` | 24/32 | 34/32 | 53/32 | 24/32 | (default) |
+| `8004995C` | 33/46 | 32/46 | 111/46 | 33/46 | -O1 |
+| `8004A094` | 48/39 | 45/39 | 86/39 | 48/39 | -O1 |
+| `8004A130` | 11/80 | 35/80 | 121/80 | 11/80 | (default) |
+| `8004AB44` | 8/27 | 21/27 | 73/27 | 8/27 | (default) |
+| `8004ABB0` | 3/27 | 13/27 | 36/27 | 3/27 | (default) |
+| `8004AF80` | 66/66 | 34/66 | 102/66 | 66/66 | -O1 |
+| `8004B448` | 7/24 | 7/24 | 53/24 | 7/24 | (default) |
+| `8004BF94` | 2/52 | 52/52 | 83/52 | 2/52 | (default) |
+| `8004C2C8` | MATCH | 51/55 | 96/55 | MATCH | (default) |
+| `8004CCA0` | 11/34 | 11/34 | 117/34 | 11/34 | (default) |
+| `8004D8DC` | 13/41 | 46/41 | 84/41 | 13/41 | (default) |
+| `8004DBF0` | 60/82 | 77/82 | 152/82 | 60/82 | (default) |
+| `8004E460` | 14/50 | 55/50 | 90/50 | 14/50 | (default) |
+| `8004E6CC` | 53/72 | 74/72 | 160/72 | 53/72 | (default) |
+| `8004E930` | 9/121 | 115/121 | 220/121 | 9/121 | (default) |
+| `8004EDF8` | 29/53 | 63/53 | 105/53 | 29/53 | (default) |
+| `8004EECC` | 20/33 | 26/33 | 57/33 | 20/33 | (default) |
+| `8004F1E0` | 21/28 | 24/28 | 63/28 | 21/28 | (default) |
+| `800511C0` | 61/101 | 105/101 | 184/101 | 61/101 | (default) |
+| `80051354` | 131/136 | 125/136 | 269/136 | 131/136 | -O1 |
+| `80051844` | 92/96 | 84/96 | 168/96 | 92/96 | -O1 |
+| `800519C4` | 39/72 | 74/72 | 118/72 | 39/72 | (default) |
+| `80051B2C` | 16/22 | 19/22 | 70/22 | 16/22 | (default) |
+| `80051E14` | 30/74 | 40/74 | 151/74 | 30/74 | (default) |
+| `800522D4` | 9/43 | 19/43 | 73/43 | 9/43 | (default) |
+| `80052518` | 15/73 | 62/73 | 88/73 | 15/73 | (default) |
+| `800535EC` | 7/67 | 59/67 | 150/67 | 7/67 | (default) |
+| `80053A4C` | 57/58 | 56/58 | 161/58 | 57/58 | -O1 |
+| `80053EA8` | 32/39 | 36/39 | 86/39 | 32/39 | (default) |
+| `80055820` | 1/34 | 8/34 | 43/34 | 1/34 | (default) |
+| `8005689C` | 3/9 | 3/9 | 32/9 | 3/9 | (default) |
+| `800568C0` | 90/95 | 93/95 | 188/95 | 90/95 | (default) |
+| `80056A3C` | 2/10 | MATCH | 24/10 | 2/10 | -O1 |
+| `80056C90` | 2/36 | 25/36 | 36/36 | 2/36 | (default) |
+| `80056D20` | 12/44 | 34/44 | 44/44 | 12/44 | (default) |
+| `80056F4C` | 18/42 | 40/42 | 61/42 | 18/42 | (default) |
+| `80056FF4` | 12/39 | 39/39 | 65/39 | 12/39 | (default) |
+| `80057090` | 5/92 | 102/92 | 177/92 | 5/92 | (default) |
+| `8005726C` | 14/16 | 16/16 | 30/16 | 14/16 | (default) |
+| `800572AC` | 6/23 | 8/23 | 38/23 | 6/23 | (default) |
+| `80057B94` | 62/68 | 45/68 | 140/68 | 62/68 | -O1 |
+| `80057CA4` | 31/45 | 29/45 | 96/45 | 31/45 | -O1 |
+| `80058448` | 35/43 | 27/43 | 54/43 | 35/43 | -O1 |
+| `8005853C` | 44/58 | 31/58 | 112/58 | 44/58 | -O1 |
+
+**Reading the level axis.** Across all 164 bodies, an optimization level different from the default is the
+best cell for 27 of them, but **no body converts that was not already converted**: the only `MATCH` cells
+in the corpus belong to drafts whose units are already merged (`8003ED04`, `8004C2C8`, and — as of #78 —
+`8002DCA8`, `80056A3C`). The axis paid once, on `80056A3C`, and is now measured flat:
+
+- **`-O3` is byte-identical to the default in all 164 bodies** (0 better, 0 worse, 164 unchanged). For this
+  compiler `-O3` adds nothing over `-O2`; never bother trying it again.
+- **`-O0` is unusable**: 162 bodies worse, 1 better (`8003BB1C`, 166→161, still nowhere near), median
+  difference 71.5 vs 20. It changes block layout enough to lose the functions entirely.
+- **`-O1` improves 26 bodies and worsens 103** (35 unchanged); median 29 vs 20. It is a lever for a
+  specific shape, not a general one — the ones it helps are the ones whose residue is a `lui` hoist or a
+  loop-invariant move. The improved set becomes the next pass's near-miss queue, best first:
+  `80015D38` 17→9, `80026E88` 19→10, `80034004` 17→13, `80035810` 17→15, `800432D8` 20→15, `80035BC0`
+  20→18, `80048450` 20→18, `80034C20` 22→19, `8003A33C` 37→19, `80032400` 26→23, `80033DB0` 25→23,
+  `80058448` 35→27, `8004734C` 34→28, `80057CA4` 31→29, `8005853C` 44→31, `8002C5FC` 33→32,
+  `8004995C` 33→32, `8004AF80` 66→34, `80047268` 53→44, `8004A094` 48→45, `80057B94` 62→45,
+  `80046EFC` 56→55, `80051354` 131→125, `80051844` 92→84, `80053A4C` 57→56.
+- `8003BB1C` is the sole `-O0` improvement (166→161); not worth a unit file.
+
+**The two closest clones, one shape each under the level that helped them.**
+`8002DE18` under `-fno-schedule-insns2` stays at **7/18**: the seven words are the game's `addu a1,v0`
+copy of the bump pointer plus the `lui` placement — with `q` as a second local gcc still folds the copy
+away (13/18). `800122A0` under `-G0` stays at **8/11** with `r = d; if (flag) r = -d;`: gcc keeps the
+negation in place instead of the branch's delay-slot copy. Both parked with the level recorded.
+
+**Corpus hygiene.** The sweep found four bodies whose near-miss draft is a copy of an already-merged unit
+(`8003ED04`, `8004C2C8`, `8002DCA8`, `80056A3C`). Their `MATCH` cells are stale, not conversions; the
+census yield for the level axis is 0 new units. Prune a draft when its unit lands so the next sweep does
+not re-report it.
+
+Level axis yield this pass: **0 new units** from 164 bodies × 4 levels (656 cells, 326 drafts), plus the
+24-body `-O1` near-miss queue above.
+
+**One shape tried on the best `-O1` body.** `80026E88` with the loop reordered to the game's
+`dst[0]; i--; dst[3]; dst[6]; src -= 3; dst -= 1` order goes 10/16 → 12/16 but grows to 0x48 vs 0x40:
+the two extra words are load-delay `nop`s after `lw $v0,4($a0)` and `lw $v0,8($a0)`, which the game fills
+with the neighbouring stores. That is the load-delay class, not an `-O1` shape; parked.
