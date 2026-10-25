@@ -711,6 +711,31 @@ same expression that produces it (or is not an argument at all), and gcc still a
 the `-mno-split-addresses` shape, and that flag is measured wrong for these bodies (`8003BF7C` 78/79,
 `80056C90` 31/36). The class stays closed; do not spend another axis on it without a compiler-side lever.
 
+### Subscript-versus-walker sweep: 9 bodies re-formed in the opposite access style, 0 conversions, 2 halved
+
+`work/addrscan.py` / `work/addrpairs.py` enumerate every parked draft whose differing words are address
+builds (a base and an index register pair, or an offset in the wrong operand), and `work/unopened.py` lists
+the unopened bodies whose assembly scales an index into a base before a load. Each body below was re-formed
+in the access style its draft did *not* use, capped at three shapes:
+
+| body | before | style the draft used → style tried | after | verdict |
+|---|---|---|---|---|
+| `func_80056FF4` | 12/39 | member subscript `t->rec[idx]` → **array member into a local pointer, then subscript** (`Rec *recs = t->rec; recs[idx]`) | **5/39** | **subscript** — the local forces `addiu $v1,$a1,0x4D4` before the index scale, which is the game's form; residue is a duplicated `return 7` block (size 0xa4 vs 0x9c) and one `lui` register |
+| `func_80035C14` | 10/34 | `u8 *p = base; p += a1 * 12` walker → **typed 12-byte record table + subscript** | **4/34** | **subscript** — residue is only the hi/lo byte register roles and the `andi`/`sll` order |
+| `func_8002B060` | none (unopened) | first draft, typed 0x24-byte table + subscript, handle reloaded at the call | **9/32** | subscript codegen reached on the first draft (`sll/addu/sll` then `addu` with the base last); residue is the index register (`$a0` for `$v1`) and base-materialisation order |
+| `func_8002D904` | 7/46 | `p -= 4` walker → subscript on `self + 0x34` | 31/46 | **walker** — the subscript rewrites the loop and costs 24 words |
+| `func_8001D804` | 11/23 | struct-block walker → index copy loop (`dst[i] = src[i]`) | 21–25/23 | **walker** |
+| `func_8001D3B4` | 11/29 | two parallel walkers (`p`, `v = p + 1`) → typed 2-word element walker | 27/29 | **neither** — the parallel-walker draft is right; residue is `$v0` vs `$a1` for the key compare |
+| `func_8002BA64` | 9/23 | struct local over `D_800A4F00` → symbol-offset form (`*(u8 **)(D_800A4F00 + 0x58)`) | 12/23 | **walker/struct local** — the symbol-offset form folds into a fresh literal (`lui D_800A4F5C`), exactly the anti-pattern in lane-notes |
+| `func_8001CD7C` | 2/10 | (converted last pass with the subscript form) | **MATCH** | **subscript** |
+| `func_8003A09C` | 10/41 | not an access-style residue: `j` targets land one block off | 10/41 | **neither** — block layout, not addressing |
+
+**Tally: subscript wins 3 of 9 (one converted last pass, two halved here), walker wins 2, neither 4.**
+The rule that survives: a subscript converts when the body does a **single-shot table access with a struct
+element** (`func_8001CD7C`, `func_80035C14`) or when the **array member is taken into a local pointer before
+the subscript** (`func_80056FF4`); a body whose access sits inside a loop keeps the walker form, and every
+attempt to index such a body rewrote the loop instead of the address.
+
 ### Fresh-ground pass: the member-base scan, one unit, four fresh parks
 
 `work/memberbase.py` finds every body whose assembly loads a member base and then adds a scaled index into it —
