@@ -547,3 +547,21 @@ after the loads by us), `8001D3B4` **11/29** (value pointer must be `p + 1` — 
 load order and an insert-path `addiu` placement), `8002F4C0` 23/27 (`sw $ra` sinks below the guard),
 `8001D540` 27/28, `800331FC` 35/27 (64-bit `>> 16` codegen: gcc emits a full shift sequence instead of the
 game's `mfhi/mflo` recombination).
+
+### 29-35 word band: 8 units from 11 drafts
+
+| unit | words | shape |
+|---|---|---|
+| `func_8002EBA0` | 29 | `memset(out, 0, 8)` then a lookup; `out[0] = 1` and `out[1] = r->f3C` on success, returning 1 |
+| `func_8002B708` | 29 | nested list walk (outer +0x94, inner +0x40); the tag compare must be written `key == (*(u16 *)(e + 2) & 0x1F)` — the reversed operand order is one word |
+| `func_8001C410` | 30 | three identical alloc/clear blocks (`0x1400`, `0x400`, `0x180`); the size words are `u16` globals beside each pointer |
+| `func_8001D0E4` | 30 | five-argument call with `1` as the second argument, `func_8001D3B4(0x44484C50, func_8001D15C)`, then lookup/attach |
+| `func_8002D038` | 30 | walk `D_8008B050` by +8, call, then store the argument to the absolute `D_800A1C50` and set the flag |
+| `func_8002E0D4` | 30 | same body with `func_8002E14C` — the pair confirms the shape |
+| `func_8001F2FC` | 30 | walk `self+0x24` by `next`, break on the predicate, then clear `*(*(self+0x60)+0x4C)` when bit 1 of `self+0x5C` is set |
+| `func_8001DBDC` | 31 | filter walk over `D_8008AEB0` at stride 0x6C, `u16` flag bit 0, pointer match at +0x1C |
+
+Band yield: **8 of 11 drafts**. Parks: `8002B194` 28/31 (reverse scan of 9 slots; the `do/while` shape is
+right but the frame is 0x70 against 0x7c), `80029488` 15/29 (frame 0x20 against 0x28 — one saved register
+the game has and we do not), `8003302C` 34/29 and `8003353C` 37/30 (both the 64-bit `>> 16` codegen class).
+The register-role parks were not touched this pass.
