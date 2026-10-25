@@ -888,3 +888,39 @@ the game's frame is `h[3]` at 0x10, a 16-byte output array at 0x18, `v` at 0x28 
 from the stack), the diff went **102/101 → 87/101**, frame 0x19c against 0x194. Two words of frame and 87 words
 of order: the body is not recoverable by spelling, so it is parked with the cause named — stack-slot order and
 register reuse, not load/store grouping.
+
+## Slot-map helper, October 25: layout is a lever for the frame, not for word order
+
+`work/slots.py` reads a body's listing and prints its stack-slot map — frame size, every `($sp)` access with
+its width and access kinds, and which slots have their address taken — plus a declaration set that fills the
+same offsets. It sits next to `verify.py` and `enumerate.py` and writes nothing.
+
+    python work/slots.py func_80011D60 --decls
+
+Recorded slot maps (evidence, not advice):
+
+| body | frame | slots |
+|---|---|---|
+| `func_80011D60` | 0x50 | 0x10/0x12/0x14 `s16` (three halfwords), 0x18/0x1C/0x20 output array (**address taken**), 0x28/0x2C/0x30 `v[]` (address taken), 0x38/0x3C/0x40 `b[]`, 0x48 `$ra` |
+| `func_800212BC` | 0x38 | 0x10/0x14 two out-pointers, 0x18 **address taken**, 0x28/0x2C/0x30/0x34 four saved words |
+| `func_8004BA34` | 0x20 | 0x10/0x14/0x18 three saved words, no arrays |
+| `func_80049A14` | 0x8 | 0x00 `$s0` save, 0x18 is an incoming argument, not a local |
+
+### `func_80011D60` with the layout applied
+
+Declaring exactly what the map shows — `s16 h[3]`, a 12-byte `out[3]`, `s32 v[3]`, `s32 b[3]` — reproduces the
+game's frame **exactly**: `addiu $sp,$sp,-0x50` and `sw $ra,0x48($sp)` both match word for word. The diff is
+still **87 of 101**.
+
+Adding explicit `u8 pad` locals to force the offsets the map shows (v3 of the draft) made it **worse — 94/101
+and a 0x70 frame**, because the pads are real locals and gcc allocates them.
+
+So the distinction the pass asked for is now measured: **layout is fixed and the residue is allocation.** The
+frame matches, every call and argument is present, and 87 words still differ — the game keeps `a0[0]` live in
+`$v1` across twenty stores and reuses one output register where ours reloads from the stack. That is a register
+allocator decision, and the slot map cannot reach it.
+
+Consequence for the large bands: the last source-side lever is spent. 41-100 and 101-200 both fail with correct
+frame, correct calls and correct slot map, on saved-register count and live-range reuse. Further transcription
+passes will reproduce the layout and still land 80-100 words out; the honest options are a toolchain-level
+answer or accepting that this band's units need per-body allocator work, which one pass cannot afford.
