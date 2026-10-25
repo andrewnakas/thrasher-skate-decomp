@@ -167,3 +167,16 @@ a separate local per value, a typed array index, a base-pointer local, a wider p
 a round-trip through a third local, and an incremented field (`self[0xB] += 4`). None move the role; several
 make it worse. Treat this class as **unreachable from source** until the allocator itself is understood —
 budget one draft, record the residue, move on.
+
+## The 29-35 word band converts on structure alone
+Eight of eleven drafts matched, most on the first attempt, with no flag, level or barrier tricks:
+frame size and struct strides first (0x6C entry stride in `8001DBDC`, 0x94/0x40 list links in `8002B708`,
+0x24 slot stride in `8002B194`), then the field width (`u16` flags, `s32` beside them), then statement order.
+Two recurring word-level tells: an asymmetric compare written the wrong way round is exactly one word
+(`key == (*(u16 *)(e + 2) & 0x1F)`), and a missing saved register shows up as a frame 8 bytes too small.
+
+## The 64-bit fixed-point class is a compiler limit, not a source shape
+`800331FC`, `8003302C` and `8003353C` all want `(s32)(((long long) x * y) >> 16)` emitted as
+`mult; mflo; mfhi; srl 16; sll 16; or`. gcc 2.8.1-psx expands the 64-bit shift into a full shift sequence
+(35/27, 34/29, 37/30 and larger). Do not spend shapes on this class until the shift is expressible another
+way; record and park.
