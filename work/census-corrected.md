@@ -710,3 +710,21 @@ same expression that produces it (or is not an argument at all), and gcc still a
 `$v0`. What the game has is `lui $a0` / `lw $a0` — the address temp *is* the argument register — which is
 the `-mno-split-addresses` shape, and that flag is measured wrong for these bodies (`8003BF7C` 78/79,
 `80056C90` 31/36). The class stays closed; do not spend another axis on it without a compiler-side lever.
+
+### Fresh-ground pass: the member-base scan, one unit, four fresh parks
+
+`work/memberbase.py` finds every body whose assembly loads a member base and then adds a scaled index into it —
+319 bodies, of which all but three already have a draft under `work/near-miss/`. The unopened remainder was
+one handwritten body (`func_80033E78`, dropped on sight) and `func_80019444`, so **the pointer-local rule's
+fresh-ground hit rate is 0 of 1 candidates that actually needed it**: the rule has already been applied to
+everything in the corpus where the pattern appears. The 41+ word queue was then continued per the pass.
+
+| body | words | outcome | shape / residue |
+|---|---|---|---|
+| `func_80019444` | 24 | **MATCH** | free-list pop: `n = D_8008AD6C; if (!n) return 0; D_8008AD6C = *(u8 **)(n + 4); memset(n, 0, 0x10); *(u8 **)(n + 4) = D_8008AD70; D_8008AD70 = n; return n;` — the reload of the global for the second store is what keeps the node in `$s0` |
+| `func_8002B060` | 32 | 9/32 | typed 0x24-byte table + subscript on the first draft gets the game's `sll/addu/sll` then `addu` with the base last; residue is the index register (`$a0` for `$v1`) and base-materialisation order |
+| `func_800257A0` | 21 | 6/21 | walker (`e += 0x8C`) is right; gcc biases the walker to element+0x74 so every access becomes a negative offset. Both the `u8 *` and the struct-pointer spelling bias identically |
+| `func_80014170` | 46 | 30/46 | third parameter must be **`s32`**: declaring the kind field `u8` inserts `andi $v0,$a2,0xFF`, the game tests `$a2` raw. The record base is a **≤8-byte symbol used as an array** (`extern u8 D_8008AD14[4]` keeps `addiu $a2,$gp,%gp_rel`); a big typed array switches it to `lui`/`addiu` |
+| `func_80034698` | 48 | 28/48 | digit loop + zero pad + in-place reverse. Declaration order `char *p = dst; u32 value = v; u16 n = 0;` is what orders the prologue (`t0 = a0`, `v1 = a1`, `a1 = 0`); the pad loop is `n++; do { *p++ = '0'; } while (n++ < width);` (test-before-increment). Residue is which register holds the pad counter (`$a1` vs `$t1`) |
+
+Fresh-ground yield this pass: **1 unit from 5 drafts (20%)**, in line with the 41+ band's ~25%.
