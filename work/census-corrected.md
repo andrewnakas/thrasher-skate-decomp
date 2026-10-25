@@ -1190,3 +1190,25 @@ by the enumerator itself. `func_80045838` (5 words, stores `$gp` into `D_8008B39
 Yield: **27%**, which is the band's historical rate — the type tells keep working, they just do not scale the
 rate. The two that decided conversions here were frame *size* (a buffer declared bigger than the memset uses)
 and the shared-tail `return`, both already in the checklist.
+
+## Throughput pass, October 25: 1 unit from 7 drafts (14%)
+
+Queue re-derived on a branch cut from `origin/main` before any drafting: 249 undrafted bodies, 244 ordinary C
+(19 in the 21-40 band, 70 in 41-100). Nothing above 100 words was touched, because the small set is not worked
+out.
+
+| body | words | outcome | what was tried / residue |
+|---|---|---|---|
+| `func_8001CDA4` | 39 | **MATCH** | flag word declared `u32` so `>> 22` is `srl` not `sra`; the extract passed inline as the last call's argument. First draft 1/39, MATCH on the one-line type fix |
+| `func_8002B210` | 40 | park 2/40 | the two-word residue is the declaration order of `s4 = -1` against `s0 = s2+0x1C`; swapping the two locals makes it 7/40, so the original order is the closer one |
+| `func_8002C818` | 40 | park 10/40 | `n = (*(u16 *) a1 & 1) ? 4 : 3` then `--n`: the ternary and an `if/else` assignment build identically, both 0xa4 against 0x9c |
+| `func_8002C77C` | 39 | park 29/39 | same dispatch as `8002C818`; `s16` casts of three `s32` parameters and nested-if vs `&&` chain both stay 0xa4 against 0x9c |
+| `func_8002A0F8` | 40 | park 35/40 | `e` walk with a 24-byte-stride inner call loop; frame and index register both still wrong after one shape |
+| `func_80022F24` | 56 | park 45/56 | 0x28-stride dispatch with a 0/7/9 `switch`; gcc builds the compare chain the game has, but the frame is 8 bytes over and the loop bound reloads differently |
+
+Skipped on sight: `func_80032E94` (stores `$ra` into `D_80032C20` — a hand-written trampoline) and
+`func_80033268` (64-bit `mult`/`mfhi` class).
+
+Yield this pass **14%**, below the 27% working rate, on a batch of seven. The twenty-five-draft target was not
+reached; four of the seven were stopped by frame-size mismatches of 4-8 bytes rather than by statement order,
+which is the closed allocation class.

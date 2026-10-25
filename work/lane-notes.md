@@ -423,3 +423,13 @@ Four of seven drafts this pass (2/40, 10/40, 29/39, 35/40) were 4-8 bytes off in
 shape already close. At 37-40 words the usable first move is to settle the frame from the prologue/epilogue
 *saved-register set* and the largest local, and to stop at one shape once the frame is wrong — the body is then
 allocation-bound, which is the closed class.
+
+## A `u32` flag word decides `srl` vs `sra`
+`func_8001CDA4` was one word off on `>> 22`: with the flag pointer declared `s32 *` gcc emits `sra`, with
+`u32 *` it emits `srl`. When a field extract that the source would call unsigned differs by exactly that word,
+change the pointee's signedness before anything else.
+
+## Small bodies are now failing on frame size, not on statements
+Four of seven drafts this pass (2/40, 10/40, 29/39, 35/40) were 4-8 bytes off in frame with the statement shape
+already close. At 37-40 words the first move is to settle the frame from the prologue's saved-register set and
+the largest local, and to stop at one shape once the frame is wrong — the body is then allocation-bound.
