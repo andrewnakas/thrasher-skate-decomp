@@ -390,3 +390,14 @@ Scanning the unopened set for a closing `addu $v0,$zero,$zero` or a single epilo
 returns produced five drafts and **zero** matches; size ordering in the same band converted 3 of 24. Shared
 tails are the norm in this code base, so the signature carries almost no information. Keep both tells in the
 pre-draft checklist, do not reorder the queue by them.
+
+## The 41-100 band of `enumerate.py` has no undrafted bodies left
+All 453 enumerator bodies at 41-100 words already carry a draft. Future volume passes must either open the
+120+ band or work parks; asking for "fifteen new 41-100 bodies" is now unsatisfiable.
+
+## The `addu`-order tell fixes the operand, not the home
+On `func_800382C0` the integer-arithmetic spelling emits the game's `addu $a0,$a0,$v0` exactly, yet the body
+still parks because gcc homes the accumulator in `$a0` and copies to `$v0` at the return. Treat the tell as a
+*necessary* fix for an `addu`-swap diff, not a sufficient one: check the destination register of the same
+instruction before spending the shape, and if that is the only remaining difference the body is in the closed
+allocation class.

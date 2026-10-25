@@ -1111,3 +1111,43 @@ as pre-draft checklist items only.
 operands are swapped and the game adds the base first, write the address as integer arithmetic
 (`(u32) base + scaled + offset`) rather than pointer arithmetic. This is the cheapest close in the corpus:
 it is a two-line edit and it converted a body parked since the -O1 sweep.
+
+## #106 triage: four of six units were already on main, two reshipped
+
+Checked each of #106's six units against `origin/main` before touching the branch:
+
+| unit | on main? | where it landed |
+|---|---|---|
+| `func_8001E9AC` | yes | `94b5da8` "Match five 47-50 word bodies from the unopened queue" (main's file is not byte-identical to #106's, so main's is the version of record) |
+| `func_8001F8BC` | yes | `94b5da8` |
+| `func_80027478` | yes | `94b5da8` |
+| `func_80027630` | yes | `94b5da8` |
+| `func_800122CC` | **no** | reshipped in **#110**, still MATCH on current main |
+| `func_8001F550` | **no** | reshipped in **#110**, still MATCH on current main |
+
+#106 is closed with a note naming each body's destination. The reship branch is `src/funcs/`-only; the old PR
+also carried `work/census-corrected.md` and `work/lane-notes.md`, which was a packaging error — records go on
+the record branch.
+
+## The `addu`-order tell, re-tested on the corpus
+
+The tell (spell the address as integer arithmetic, base first) does reproduce the operand order on the body it
+was found on, but it does **not** carry the nearest `addu`-order park across the line:
+
+- `func_800382C0` (1/12, the closest park in the corpus). Writing `total = (u32) size + ((size + 4) >> 7)`
+  emits the game's `addu $a0,$a0,$v0` — base first, as the tell predicts — but the accumulator is then homed in
+  `$a0` and gcc appends a copy (`addu $v0,$a0,$zero`) before the return; the game computes in `$v0` throughout.
+  Six spellings this pass on top of the five already recorded (accumulate form, ternary return, duplicated
+  expression, `if/else` assignment, wider/narrower accumulators) all lose to the original 1/12 draft. The
+  operand order is a source decision; the *home* of the accumulator is allocation, which is the class already
+  closed by the role matrix. Park stands at 1/12.
+- The other 19 small-residue parks (`80015D38` … `80057090`) were re-measured: **none** of them has an `addu`
+  operand swap in its diff — their residues are register roles, scheduler rotations and size deltas. The tell
+  has no second customer in the parked set.
+
+## The 41-100 band of the enumerator is empty of undrafted bodies
+
+`work/enumerate.py` lists 453 bodies, and every undrafted one is smaller than 41 words (the smallest two are
+`func_80045828` at 4 and `func_80045838` at 5). There is **no undrafted 41-100 body left to draft** — that band
+is now parks only. Volume at 41+ has to come either from the 120+ band or from re-drafting parks, which is why
+this pass's new-body count is zero rather than low.
