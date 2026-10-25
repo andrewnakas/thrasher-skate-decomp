@@ -25,6 +25,11 @@ PARKED = {
     # measured and recorded in work/residue-r.md; re-attempt only with a genuinely new lever
     "func_80034B98", "func_80058448", "func_8002BCB0", "func_80011B48",
     "func_8001C4BC", "func_8001D4DC", "func_8001C2F0", "func_8001D804",
+    # swept in work/sweep.py: 162 lever combinations over these eight moved nothing
+    # (func_800382C0 came down to 6/12 words, func_80032D88 to 16/17), so their residue is
+    # register allocation, not ordering. Do not sweep them again.
+    "func_80015684", "func_80029488", "func_800382C0", "func_80032FF4",
+    "func_80033818", "func_8002DDE0", "func_800337C4", "func_80032D88",
 }
 
 
