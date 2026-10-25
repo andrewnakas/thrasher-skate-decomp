@@ -449,15 +449,16 @@ original; it does not change observable behaviour, and both units are pure store
 
 ### Delay-slot store class, corpus-wide: it is two bodies, and both already shipped
 
-`work/delay_probe.py` re-matched **every** draft under `work/near-miss/*.c` (268 files, 164 distinct
-bodies) at the default level and at `-O1`, source held fixed, and classified each body's residue by where
-the differing words sit rather than by the presence of a `nop`:
+`work/delay_probe.py` re-matched **every** draft under `work/near-miss/*.c` (274 drafts, 135 distinct
+bodies) at the default level — each draft's own `-O1` header stripped, so the level is held fixed — and
+classified each body by where its differing words sit relative to the end of the target, not by the
+presence of a `nop`:
 
 | probe class | bodies | barrier converts |
 |---|---|---|
-| pure sunk final store — size one word short **and** every diff inside the last two words | 2 | 2, both already shipped in #81 (`80032FE0`, `80033804`) |
+| sunk final store — size one word short **and** every differing word inside the last three words | 2 (`80032FE0`, `80033804`) | 2, both already shipped in #81 |
 | store or load word sitting in a `jr`/branch delay slot | 0 | — |
-| everything else (register roles, block layout, `lui` temps, size mismatch) | 162 | 0 |
+| everything else (register roles, block layout, `lui` temps, earlier size mismatch) | 133 | 0 |
 
 So the signature is real but rare: two bodies in the whole parked corpus, and they were exactly the ones
 #81 found. The rest of the set does not have a delay-slot residue, and `volatile` on a body whose store
