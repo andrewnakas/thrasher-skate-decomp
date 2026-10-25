@@ -671,3 +671,42 @@ role-class verdict (`work/lane-notes.md`) from one-value swaps to *loads into ar
 Skipped on sight, classes already measured dead: `80055820` (1/34, `jal` slot), `80015D38` (3/20), the
 64-bit trio, `80022308`/`800223AC` (filled load-delay nop), and `80034B98` (matches but is scan-blocked on a
 protected-symbol name — it stays parked).
+
+### Cheap-list pass: all seven workable 3-6 word bodies re-worked, 1 conversion, one halved
+
+The retest left eight bodies at six words or fewer; one is scan-blocked (`80034B98`), so seven were worked,
+cheapest first, with the recently-converting shapes (narrow type, base-symbol reuse, frame/stride first):
+
+| body | before | shape tried | after | residue |
+|---|---|---|---|---|
+| `func_80042E9C` | 4/58 | `return func_80032C54(...)` in the `if` (callee declared `s32`) instead of a statement plus `return 0x27100000`; hoisted `s32 r = 0x27100000` local | **2/58** | only the field load: `lw $a1,0x8($t2)` vs `lw $v0` — the value is a branch condition, so there is no call argument to hang it on |
+| `func_80015D38` | 3/20 | bottom-tested `do { … p -= 0x10; } while (lo < p); return 0;` (the shape that has converted the most often) | 7/20 (0x54 vs 0x50) | parked `for (;;)` draft stands: gcc duplicates the pre-loop decrement and reuses it as the back edge, so the decrement never lands in the `bnez` slot |
+| `func_8002050C` | 4/25 | — | 4/25 | `addu $a3,$v0,$zero` (a copy of `-1`) and a commutative `addu` operand order; both are the canonicalisation class, and the `andi` is in the `jr` slot |
+| `func_80036F24` | 4/13 | `D_8008B144[1]` array view; explicit `(u32)` cast of the call result; `volatile` flag globals | 4-5/13 | the callee result is still stored straight from `$v0`: no spelling creates the `$v1` copy the game has before `lw $ra` |
+| `func_8003B8F8` | 4/46 | see the argument-axis table below | 4/46 | two globals loaded into `$v0` for `$a0`/`$a1` |
+| `func_8003ED28` | 5/60 | — | 5/60 | `lui` temp in `$v0` for `$v1`, and the final `sw $zero` wants `lui $at` with the return constant materialised first — allocation, not address form |
+| `func_8003BDB8` | 6/31 | `a` then `b` assignment order; declaration-initialisers | 6/31 | the game materialises *both* constants up front (`lui $v1,0x1` / `lui $v0,0xFFFF`) before the four stores; gcc sinks the second constant to its single use whatever the source order |
+| `func_8001CD7C` | 2/10 | **typed table pointer plus a subscript on the index** — `E_8001CD7C *tab = (E_8001CD7C *) D_8008AE54; tab[i].f0 = b; tab[i].f4 = a;` | **MATCH** | converted: the subscript is what splits base into `$a2` and the scaled index into `$v1`; the `u8 *e = base + i * 8` walker, the struct-pointer arithmetic `(E *) base + i`, the base local and the `s16`/`u16` index all keep them swapped |
+
+**Tally: 1 conversion (`func_8001CD7C`), 1 halved (`func_80042E9C`, 4 → 2 of 58), 5 parks retained with
+the shape named.**
+Six of the seven are allocation residue whose instruction stream is correct apart from one register name or
+one constant's position; the seventh converted on an addressing form, not on allocation — which is the one
+result worth carrying forward (see lane-notes: **subscript, not walker**, for a body that indexes a table).
+
+### The argument-register axis: two forms, no movement
+
+Where the game loads a value straight into `$a0`/`$a1` and our build puts it in `$v0`, the axis tested was to
+consume the value in the expression that produces it, so gcc is forced to place it in the argument register:
+
+| body | form A (inline argument) | form B (load feeds the first parameter directly) | before |
+|---|---|---|---|
+| `func_8003B8F8` | `func_8003682C(func_80036E1C(D_80089FE4[0], D_8008A050[0]))` → 4/46 | `func_80036E1C(*(u32 *) D_80089FE4, *(u32 *) D_8008A050)` → 4/46 | 4/46 |
+| `func_80042E9C` | field read inline in the `if` → 2/58 | `s32 f = *(s32 *)(a0+8); if (f != 0)` → 2/58 | 4/58 |
+| `func_8002BCB0` | n/a — the `lhu` value is a branch condition, never an argument | n/a | 2/17 |
+
+Verdict: **the axis does not move the register.** In all three bodies the value is already consumed in the
+same expression that produces it (or is not an argument at all), and gcc still allocates the destination
+`$v0`. What the game has is `lui $a0` / `lw $a0` — the address temp *is* the argument register — which is
+the `-mno-split-addresses` shape, and that flag is measured wrong for these bodies (`8003BF7C` 78/79,
+`80056C90` 31/36). The class stays closed; do not spend another axis on it without a compiler-side lever.
