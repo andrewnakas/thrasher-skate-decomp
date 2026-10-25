@@ -286,3 +286,19 @@ the "load feeds the first parameter of the next call" form were tried on `func_8
 `func_80042E9C` (2/58 both). Neither moves the destination register. The game's `lui $a0` / `lw $a0` is the
 whole-address-materialisation shape, which `-mno-split-addresses` reproduces only at the cost of every other
 address in the body (measured 78/79 and 31/36). Record the class and move on.
+
+## Fresh-ground tells from the 41+ queue
+- **A wide parameter leaves no mask.** `func_80014170`'s third argument tests `beqz $a2` with no `andi`; a `u8`
+  parameter emits `andi $v0,$a2,0xFF` first and shifts every following word. When the assembly branches on a
+  parameter with no mask, declare it `s32`/`u32` even if the callers only pass 0/1.
+- **A small symbol can still be an array base.** `extern u8 D_8008AD14[4];` plus
+  `(Rec *) (D_8008AD14 + n * 0x14)` keeps `addiu $a2,$gp,%gp_rel(D_8008AD14)` and the game's `sll 2 /
+  addu / sll 2` index scale. The same symbol declared as `extern Rec D_8008AD14[]` is >8 bytes, so gcc
+  switches to `lui`/`addiu` and the whole body shifts.
+- **Declaration order writes the prologue.** In `func_80034698` the first three definitions must be
+  `char *p = dst; u32 value = v; u16 n = 0;` to get `t0 = a0`, `v1 = a1`, `a1 = 0` in that order; declaring
+  the loop-variable copy first gives `v1 = a1` first and swaps `$a1`/`$t0` through the whole body.
+- **gcc biases a walker when every access is positive.** `func_800257A0` walks `e += 0x8C` but every field is
+  at a positive offset, so our build sets the walker to element+0x74 and uses negative offsets; the game keeps
+  the element base. The bias is identical for `u8 *` and struct-pointer spellings, so this is a compiler
+  decision, not a source shape.
