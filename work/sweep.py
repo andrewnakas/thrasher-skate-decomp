@@ -41,6 +41,177 @@ OUT = HERE / "sweep"
 CACHE = HERE / "sweep-results.json"
 FLAGS = ["", "-fno-schedule-insns", "-fno-schedule-insns2"]
 
+# Wide flag axis: every flag in toolchain/compiler.toml's allowed set plus the copy/layout
+# flags that change exactly the residue the source-shape axes could not reach (register copies
+# in the prologue, block order). Flags outside allowed_cflags are searched here but can only
+# ship if they are added to that allowlist, so they are reported separately.
+WIDE = [
+    "", "-O1", "-O3", "-G0", "-G4",
+    "-mno-split-addresses", "-fno-schedule-insns", "-fno-schedule-insns2",
+    "-fno-strength-reduce", "-fno-inline", "-fforce-addr", "-fforce-mem",
+    "-fno-caller-saves", "-fno-cross-jumping", "-fno-reorder-blocks",
+    "-fno-defer-pop", "-fno-delayed-branch", "-fno-expensive-optimizations",
+]
+ALLOWED = {"", "-O0", "-O1", "-O2", "-O3", "-G0", "-G4", "-G8", "-mno-split-addresses",
+           "-fno-schedule-insns", "-fno-schedule-insns2", "-fno-strength-reduce",
+           "-fno-inline", "-funsigned-char", "-fsigned-char"}
+
+# Best recorded source per unit (the shape the earlier passes measured), for the flag-only axis.
+BEST = {}
+BEST["func_80043294"] = """
+extern u8 D_800AAB94[];
+extern u8 *D_8008B38C[];
+extern u8 *D_8008B394;
+extern u8 D_800AB6D4[];
+
+void func_80043294(void) {
+    s32 i;
+    u8 **dst;
+    u8 *src;
+
+    i = 2;
+    dst = D_8008B38C;
+    src = D_800AAB94;
+    src += 0x780;
+    do {
+        *dst = src;
+        dst--;
+        src -= 0x3C0;
+        i--;
+    } while (i >= 0);
+    D_8008B394 = D_800AB6D4;
+}
+"""
+BEST["func_8002DE18"] = """
+typedef struct {
+    s32 f0;
+    s32 f4;
+    s32 f8;
+} Ent;
+
+extern u8 *D_8008B060;
+extern Ent D_8006F834[];
+
+s32 func_8002DE18(u8 *arg0) {
+    u8 *rec;
+    u8 *next;
+
+    rec = D_8008B060;
+    next = rec + 0xC;
+    D_8008B060 = next;
+    *(u8 **)rec = arg0;
+    *(s32 *)(rec + 4) = 0;
+    *(s32 *)(rec + 8) = D_8006F834[*(u8 *)(arg0 + 3)].f8;
+    return 0;
+}
+"""
+BEST["func_800382C0"] = """
+s32 func_800382C0(s32 arg0) {
+    u32 v;
+
+    v = arg0 + ((u32)(arg0 + 4) >> 7) + 0x205;
+    if ((u32)v > 0x1E000) {
+        return -1;
+    }
+    return v;
+}
+"""
+BEST["func_80032FF4"] = """
+typedef struct {
+    s32 x;
+    s32 y;
+    s32 z;
+} Vec3;
+
+void func_80032FF4(Vec3 *arg0, Vec3 *arg1) {
+    arg0->x += arg1->x;
+    arg0->y += arg1->y;
+    arg0->z += arg1->z;
+}
+"""
+BEST["func_80033818"] = """
+typedef struct {
+    s32 f0;
+    s32 f4;
+    s32 f8;
+    s32 fC;
+    s32 f10;
+    s32 f14;
+    s32 f18;
+    s32 f1C;
+} S;
+
+void func_80033818(S *arg0) {
+    s32 t;
+
+    t = arg0->f4;
+    arg0->f4 = arg0->fC;
+    arg0->fC = t;
+    t = arg0->f8;
+    arg0->f8 = arg0->f18;
+    arg0->f18 = t;
+    t = arg0->f14;
+    arg0->f14 = arg0->f1C;
+    arg0->f1C = t;
+}
+"""
+BEST["func_800337C4"] = """
+typedef struct {
+    s32 x;
+    s32 y;
+    s32 z;
+    s32 w;
+} Row;
+
+Row *func_800337C4(Row *arg0) {
+    s32 i;
+
+    for (i = 0; i < 3; i++) {
+        arg0[i].x = 0x10000;
+        arg0[i].y = 0;
+        arg0[i].z = 0;
+        arg0[i].w = 0;
+    }
+    return arg0;
+}
+"""
+BEST["func_80032D88"] = """
+extern s16 D_8007F8C8[];
+
+s32 func_80032D88(s32 arg0) {
+    s32 v;
+
+    v = arg0 >> 16;
+    if (v < 1) {
+        arg0 = 0x10000;
+    } else if (v < -1) {
+        arg0 = (s32)0xFFFF0000;
+    }
+    return D_8007F8C8[arg0 >> 5];
+}
+"""
+BEST["func_80029488"] = """
+extern s32 D_8008AFAC;
+extern u8 *D_8008AFA8;
+
+void *func_80034C20(s32);
+void func_80034D4C(void *, void *, s32);
+u8 *func_8001D5B0(u8 *, u32, s32);
+
+void func_80029488(u8 *arg0, s32 arg1, u8 *arg2) {
+    s32 n;
+    u8 *h;
+
+    if (*(s32 *)(arg2 + 0x18) & 0x800000) {
+        h = func_8001D5B0(arg0, 0x4954414D, 1);
+        n = *(s32 *)(h + 4) - 4;
+        D_8008AFAC = *(u16 *)(h + 0xA);
+        D_8008AFA8 = func_80034C20(n);
+        func_80034D4C(D_8008AFA8, h + 0xC, n);
+    }
+}
+"""
+
 # ---------------------------------------------------------------- unit registry
 
 UNITS = {}
@@ -413,12 +584,41 @@ def main(argv):
     ap.add_argument("--fresh", action="store_true")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--flags-only", action="store_true")
     a = ap.parse_args(argv)
 
     if a.list:
         for name, spec in UNITS.items():
             axes = ", ".join(f"{k}({len(v)})" for k, v in spec["axes"].items())
             print(f"{name}: {axes}  -- {spec['note']}")
+        return 0
+
+    if a.flags_only:
+        cache = load_cache()
+        rpt = {}
+        for name, body in BEST.items():
+            if a.unit and name not in a.unit:
+                continue
+            rows = []
+            for flag in WIDE:
+                tag = f"flag={flag or 'default'}"
+                val = score(name, tag, header(flag) + body, cache, a.fresh)
+                rows.append((val[0] if val[0] != "ERROR" else 10 ** 6, tag, val))
+            rows.sort()
+            rpt[name] = rows
+        if a.json:
+            print(json.dumps({n: [{"flag": t, "score": v[0]} for _, t, v in r]
+                              for n, r in rpt.items()}, indent=1))
+            return 0
+        print(f"{'unit':18s} {'score':7s} flag")
+        for n, rows in rpt.items():
+            for s, t, v in rows[:3]:
+                shown = "MATCH" if s == 0 else f"{s}w"
+                print(f"{n:18s} {shown:7s} {t}")
+        winners = [n for n, r in rpt.items() if r[0][0] == 0]
+        print(f"\nflags-only sweep: {len(rpt)} units x {len(WIDE)} flags, {len(winners)} matched")
+        for n in winners:
+            print(f"  MATCH {n}: {rpt[n][0][1]}")
         return 0
 
     names = a.unit or list(UNITS)
