@@ -339,3 +339,133 @@ game keeps it in `$v1` (same residue as `func_8001D340`).
 `0x80019000`: `80019C0C`/`80019EE4` parked; next is `80019444`, `80019410`.
 `0x80025000`: `800257A0`(21) `80025A58`(done) `80025B5C`(done); remaining >=19 instr: `80025A0C`/`80025B10` done.
 `0x8001F000` (unclaimed): 7 easy bodies including `8001F374`(14), `8001F3AC`(10), `8001FD14`(16), `8001F984`(19).
+
+### Pass headroom — 0x8001C000 and 0x8002D000 (19 matched, 5 parked)
+
+Both windows were claimed and the bot accepted them: #40 (`0x8001C000`, 05:23) and #42 (`0x8002D000`, 05:27).
+A third claim (`0x80014000`, #41) was refused work and released, and one `/claim` was refused at the 3-claim cap.
+
+| window | opened | matched | parked | bodies |
+|---|---|---|---|---|
+| `0x8001C000` | 16 | 15 | 1 | `1C008 1C02C 1C04C 1C08C 1C174 1C1B0 1C27C 1C2B8 1C3B4 1C3CC 1C3F0 1C488 1CA74 1CE40 1CFA4` |
+| `0x8002D000` | 9 | 4 | 5 | `2DAC4 2DC70 2DD38 2DD88 2DEFC` |
+
+**Parked, with residue named:**
+- `func_8001CD7C` — 4/15: `and` mask on the parameter stays in the source register; the game re-derives it
+  into a fresh `$v0` before the `or` merge (narrow in-place mask class, issue #46).
+- `func_8002DCA8` — 6/17: the game keeps a constant destination base and folds the stride into the index;
+  gcc hoists the stride add into the pointer (index-vs-pointer tie).
+- `func_8002DDE0` — 5/14: a `lui $at` temp is rematerialised for the second `%hi` use; abandoning.
+- `func_8002DE18` — 3/12: branch-only value held in `$a1` by the game, `$v0` by gcc.
+- `func_8002DD88` — 17/22 (0x50 vs 0x58 after gcc inlines the null test; the `&table[idx]` form
+  reaches 0x58 but reorders the first `sll`): the game keeps the slot in `$v0` and the call out of line
+  behind `bnez`, which the do-nothing-else body never reproduces from gcc 2.8.1.
+
+**Shape proved this pass:** an indirect call through a table slot needs the slot declared as a *function
+pointer field in a struct*, not an untyped `*(void **)` index — the untyped form adds the address arithmetic
+and loses the `jalr` delay-slot `addu` (`func_8002DD38` went 10/11 -> MATCH on that one change).
+
+Yield table: `<=17 words, low range` now 47/63 (75% this pass's slice included); `18-23 words` 9/14 (64%);
+`24-30` untouched this pass. This pass: 24 opened, 19 matched (79%).
+
+
+### Declaration-shape retest of the parked set
+
+All 115 unique parked drafts were re-run as-is and again under every allowed per-file cflag
+(`-mno-split-addresses -G0 -fno-schedule-insns -fno-schedule-insns2 -fno-strength-reduce
+-fno-inline -funsigned-char -fsigned-char -O1 -O3`), plus declaration variants (typed function-pointer
+fields, struct-typed arrays, exact-size vs oversized externs, u8/u16/s32 views, typed callee prototypes)
+on the six smallest-diff bodies.
+
+**Tally: 3 fell, 111 survive.** Delivered in PR #72: `func_8001D040`, `func_8003A4A0` (main at 477 unit files after #69/#70/#71).
+
+| body | old verdict | corrected verdict |
+|---|---|---|
+| `func_8001D040` (2/16) | `$a0` vs `$v1` lui temp | `-mno-split-addresses` -> **MATCH** |
+| `func_80034B98` (2/16) | `$a0` vs `$v0` lui temp | `-mno-split-addresses` -> **MATCH**, but scan rejects its `0x801FC000` literal (no symbol in config); draft kept at `work/near-miss/func_80034B98-match-scan-blocked.c` |
+| `func_8003A4A0` (23/54) | scheduler rotation | `-fno-schedule-insns` -> **MATCH** |
+
+The remaining 111 are register-role swaps, delay-slot fills, `lui` hoists and loop-strength rotations
+that survive every allowed flag and declaration shape. Those classes are closed; PR #56's toolchain fix
+is not implicated in any of them.
+
+### Window pass — 0x80032000 (#43), 0x8002C000 (#44), 0x80011000 (#45)
+
+21 bodies opened, **11 matched**, 10 parked (all 11 first-draft or one shape; all parked at the
+three-shape cap).
+
+| window | matched | parked |
+|---|---|---|
+| `0x80032000` | `32AF4 32A9C` | `32FE0` (delay-slot store), `32C28` (64-bit `mult`/`mflo`+`mfhi` shape, 10/11), `32FF4` (game loads all six words before adding, 12/13), `32D88` (`slti`/`bnez` vs gcc `blez` clamp, 17/17), `32400` (prologue s0/s1 order + `mult` body, 26/27) |
+| `0x8002C000` | `2C3A0 2CAB0 2CAD0 2C454 2CF58 2CA48` | `2C490` (branch layout for the `-1` early return, 13/21), `2C148` (single-exit vs two-exit, 23/27), `2C5FC` (loop strength/stride, 33/35) |
+| `0x80011000` | `11FFC 11EF4 11F24` | `11B48` (pure `$v0`/`$v1` mirror, 12/17), `11F84` (loop store stride, 28/30) |
+
+Shapes that paid:
+- `-mno-split-addresses` also settles a **call-argument** global load: `lui $a0; lhu $a0` vs
+  gcc's `lui $v0; lhu $a0` (`func_80032AF4`, `func_80032A9C`).
+- A function with two early outcomes needs the **single-return variable** form: assign `r` in both
+  branches and `return r`, not two `return` statements (`func_8002C454`).
+- Other files' reloads: spelling the dereference out per statement (no cached pointer local) keeps
+  the game's repeated `lw` of the global (`func_80011F24`; caching collapsed 3 loads into 1, size 0x50 vs 0x60).
+- Empty bodies are `void f(void) {}` and match `jr $ra; nop` (`func_80011FFC`).
+
+Yield this pass: 11 / 21 opened (52%), 8 on the first draft. Delivered in PR #74.
+
+### Instruction-count sweep (all windows, <=15 words first)
+
+List: 595 unmatched bodies. Opened the 15 smallest remaining (2-15 words) plus retries.
+**20 matched**, 1 parked, 3 settled on sight.
+
+Matched: `20040 2348C 23EC4 2E8B0 2E8B8 20C28 23BA8 26E78 13ECC 276EC 27B44 2E8C0 2F4A0 13338 20048 22118 305F4 24720 27B64 2AAA8`.
+
+Parked: `132FC` (15 words) — game branches on the third word (`beqz`/`addiu v0,1`), gcc folds to
+`sltu v0,zero,v0`; three shapes tried (chained `&&`, `return x != 0`, if-form), all 6/15.
+
+Settled on sight: `45828`/`45838` are the compiler's own `$gp` save/restore pair (no C source shape;
+they write `$gp` to `D_8008B398` and return `$sp`), `33E78` is marked Handwritten.
+
+**Retry verdict change:** `32C28` is not a source-shape miss — the game's 3 `nop`s between `mult` and
+`mflo`/`mfhi` come from the assembler's mul expansion, which the pinned maspsx no longer emits
+(size 0x20 vs 0x2c under every flag). That is a toolchain class, not C. `32FF4`, `32D88`, `11B48`
+survive every per-file cflag too; keep them parked.
+
+Yield this pass: 20 / 24 opened (83%), 17 on the first draft. Delivered in PR #75.
+
+### 16-30 word band (global instruction-count sweep)
+
+Opened 22 bodies in the 16-30 word band, smallest first. **3 new units** (`13CE8`, `26DAC`, `1DC98`);
+two more matched locally but could not ship — `1D040` had already landed upstream in #74 by the cut, and
+`34B98` needs a forbidden hard-coded RAM constant (see its row). `33384` is Handwritten and was skipped on sight.
+Everything else parked at the three-shape cap — the band's residues are almost all allocator ties.
+
+Matched:
+- `13CE8`, `26DAC` — first draft.
+- `1DC98` — first draft (typed struct pointer, `for (i = n; i > 0; i--)` with the callback read as a
+  function pointer at offset 4).
+- `1D040` — duplicate: `-mno-split-addresses` + unsigned `n < 1` (`sltiu` vs `slti`) matches it, but main
+  already carries it from #74.
+
+Parked (residue in one line each):
+| body | residue |
+|---|---|
+| `34824` | 3 extra words in the epilogue (0x5c vs 0x50) |
+| `1D4DC` | 4 words off, struct-store order |
+| `33714` | 5 words off, early-return layout |
+| `34004` | 0x60 vs 0x5c, copy loop takes the `n` test differently |
+| `34C20` | 22/23, rounding fold (`pos - (rem - 4)` reassociated) |
+| `1D804` | 10/23 — dst pointer lands in `$v1` where the game puts it in `$v0` in the `addu` |
+| `334D8` | 0x5c vs 0x64, the spilled `a0` shape is not reproduced by three-call source |
+| `1DCF8` | 11/24 — shared default-pointer tail: goto form cut 14→11 but gcc duplicates `lui`/`addiu` |
+| `34BD8` | 4/15 — game keeps `rem` in `$v0` and does `subu`; gcc reassociates to `pos + 4 - rem` |
+| `337C4` | 0x3c vs 0x40 — gcc merges the zero stores of the three 4-word blocks |
+| `36F24` | 5/13 — call result must move to `$v1` before the return-value `$v0` is set |
+| `33818` | 12/13 — pure allocation: game uses `$t0-$t5`, gcc `$v0-$a3`, identical instructions |
+| `2BCB0` | 2/17 — the `u16` count load lands in `$a1` (argument register), gcc gives `$v0` |
+| `32CF4` | 16/18 — sequence identical including the delay slot; the whole register set is shifted |
+| `2DE18` | 17/18 — missing the `addu` copy of the bump pointer (`a1 = v0`) |
+| `1D340` | 18/16, linear search loop unroll/exit shape |
+| `26E88` | 19/16, reverse 3-word gather |
+| `34B98` | matched on first draft, then **parked**: it materialises the raw RAM constant `0x801FC000` (`lui $v0,0x801F; ori`), which `scan.py` forbids and no `config/` symbol covers; declaring `D_801FC000[]` changes the code to `lui/addiu` and breaks the match |
+
+Yield this pass: 3 / 22 opened (14%) — the band converts at roughly a quarter of the ≤15 rate, and every
+park is an allocator or delay-slot tie rather than a missing structure.
