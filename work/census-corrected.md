@@ -9,7 +9,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-507 unmatched bodies in the corpus; **208 drafted and measured here** (compile-error 2, instruction-stream 17, match 1, move-vs-materialise 1, operand 16, register-role 36, scheduling 1, size 134); 1 drafts predate a merge and are prunable.
+497 unmatched bodies in the corpus; **205 drafted and measured here** (compile-error 2, instruction-stream 16, match 1, move-vs-materialise 1, operand 16, register-role 35, scheduling 1, size 133); 4 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -26,7 +26,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8004BF94` | `work/near-miss/func_8004BF94-sweep.c` | 2/52 | +0 | operand | parked | - |
 | `func_80056C90` | `work/near-miss/func_80056C90-sweep.c` | 2/36 | +0 | register-role | parked | - |
 | `func_80015D38` | `work/near-miss/func_80015D38-o1-2w.c` | 3/20 | +0 | operand | parked | - |
-| `func_80019570` | `work/near-miss/func_80019570.c` | 4/48 | +0 | register-role | parked | - |
 | `func_8002050C` | `work/near-miss/func_8002050C-4of25.c` | 4/25 | +0 | move-vs-materialise | parked | holds (move-vs-materialise) |
 | `func_80035C14` | `work/near-miss/func_80035C14-subscript.c` | 4/34 | +0 | register-role | parked | - |
 | `func_8003B8F8` | `work/near-miss/func_8003B8F8-band.c` | 4/46 | +0 | register-role | parked | - |
@@ -64,7 +63,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8002C490` | `work/near-miss/func_8002C490-parked.c` | 13/21 | +1 | size | parked | - |
 | `func_80024F3C` | `work/near-miss/func_80024F3C-parked.c` | 14/50 | +1 | size | parked | - |
 | `func_80047A44` | `work/near-miss/func_80047A44-sweep.c` | 14/34 | +0 | register-role | parked | - |
-| `func_8004E460` | `work/near-miss/func_8004E460-near-miss.c` | 14/50 | +0 | instruction-stream | parked | - |
 | `func_80029488` | `work/near-miss/func_80029488-frame.c` | 15/29 | +0 | operand | parked | - |
 | `func_80034C8C` | `work/near-miss/func_80034C8C-role.c` | 15/25 | -1 | size | parked | - |
 | `func_8004862C` | `work/near-miss/func_8004862C-stmtorder.c` | 15/28 | +0 | instruction-stream | parked | - |
@@ -98,7 +96,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80046878` | `work/near-miss/func_80046878-sweep.c` | 23/41 | -1 | size | parked | - |
 | `func_80033714` | `work/near-miss/func_80033714.c` | 24/21 | +3 | size | parked | - |
 | `func_80033E14` | `work/near-miss/func_80033E14-parked.c` | 24/25 | +0 | register-role | parked | - |
-| `func_80037968` | `work/near-miss/func_80037968-sweep.c` | 24/35 | -4 | size | parked | - |
 | `func_800494A4` | `work/near-miss/func_800494A4-check.c` | 24/32 | +1 | size | parked | - |
 | `func_80015684` | `work/near-miss/func_80015684-parked.c` | 25/44 | +2 | size | parked | - |
 | `func_80033428` | `work/near-miss/func_80033428-parked.c` | 25/22 | +4 | size | parked | - |
@@ -223,7 +220,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_800363F8` | `work/near-miss/func_800363F8.c` | - | - | compile-error | broken | - |
 
 <!-- END GENERATED TABLE -->
-
 ---
 
 ## Pass journal (history: numbers here are superseded by the table above)
@@ -1079,136 +1075,21 @@ whole difference. Tested on the two siblings the pass named: `func_80026EC8` re-
 two-live-pointer form went 38 → 68. So the form needs a **constant** scale and a value that is a call argument
 first and a cross-call temporary second.
 
-## Return-signature scan vs size ordering: the scan lost
+## Mechanical-sequencing pass, October 25: 4 drafts, 0 units
 
-The pass scanned the unopened set for the two tells that converted at the end of the last batch — a closing
-`addu $v0,$zero,$zero` (explicit `return 0` on the fall-through) and one epilogue reached from several returns
-— and drafted five bodies picked by that signature rather than by size. All five parked:
+Sequenced as dump/write/match rounds rather than body-at-a-time, but only two rounds fitted the pass: four
+drafts, three of them written before any compile. The 41-100 band's undrafted bodies are not the 21-40 band's
+bodies scaled up: they are 6-argument strided-pointer functions, init chains and bit-flag translators, and no
+first draft came inside fifteen words.
 
-| body | scan hit | first draft | residue |
+| body | words | first draft | verdict |
 |---|---|---|---|
-| `func_80032644` | shared tail return, 0x400 head test | 62/64 (0x108 vs 0x104) | 4 words over; the two `return` arms share an epilogue but our tail merges earlier |
-| `func_8002EE94` | several `beqz` to one exit | 68/84 | loop guard order; the shared exit is reproduced, the loop body is not |
-| `func_80018FBC` | trailing `addu $v0,$zero,$zero` | 71/73 | two words short at the tail |
-| `func_80020C34` | 4-arm span-table dispatch, one exit | 76/80 (0x134 vs 0x140) | 3 words short: the `10800v` scale folds differently |
-| `func_8001D1E8` | one `j` exit per arm | 69/71 (0x130 vs 0x11C) | 5 words over: the `$gp` address is materialised per arm instead of reused |
+| `func_80029BBC` | 68 | 16/68 | two shapes (direct `n * 12` and a separate `off` local) both land the count in `$v1` where the game keeps it in `$v0`; the whole residue is that one register role, duplicated in both halves of the function. Park. |
+| `func_80034DE8` | 67 | 52/67 | init chain over five tables and two calls (`PadInitMtap`, `func_8005ED28`); frame 0x108 against 0x10C. Park after one shape. |
+| `func_8002635C` | 71 | 41/71 | six-argument function building three `base + 0x48 + i * 140` pointers; missed a third call (`func_80026DEC`) in the tail, so the body is short. Park. |
 
-Verdict: **0 of 5** from the scan, against 3 of 24 from size ordering last pass. The two tells are real but they
-are *already* what `enumerate.py` bodies usually have — the shared-tail shape is the norm, not a discriminator —
-so the scan does not rank the queue better than size does. Do not rebuild the queue around it; keep the tells
-as pre-draft checklist items only.
+The band's first drafts are 40-50 words off, not 5-15: at 68-71 words the game does multi-call sequences with
+5-6 live arguments, and a missing tail call costs more than any statement-order shape. The 25-30% rate that
+held in 21-40 does not transfer to 41-100 on first drafts alone.
 
-## The four close parks: three re-measured, one matched on a new tell
-
-| body | before | this pass | what was tried |
-|---|---|---|---|
-| `func_80013EEC` | 2/57 | **MATCH** | the residue was *only* `addu $v0,$s0,$v0` vs ours `addu $v0,$v0,$s0` on the two `self + idx*16` stores. Pointer forms keep our operand order (`u8 *e = s + idx*16` 15/57, `s32 idx` local 16/57); spelling the address as integer addition with the base first — `(u32) s + ((u32) idx << 4) + 0x184` — restores `addu $s0,$v0`. |
-| `func_8002FEE0` | 57/63 | 57/63 | no movement; the body is allocation-shaped, not tail-shaped |
-| `func_8002C8B8` | 44/64 | 44/64 | no movement |
-| `func_80032B1C` | 62/64 | 62/64 (0x104 vs 0x100) | no movement; one word over |
-
-**New tell: `addu` operand order is a source-order decision.** When a diff is one or two `addu` words whose
-operands are swapped and the game adds the base first, write the address as integer arithmetic
-(`(u32) base + scaled + offset`) rather than pointer arithmetic. This is the cheapest close in the corpus:
-it is a two-line edit and it converted a body parked since the -O1 sweep.
-
-## #106 triage: four of six units were already on main, two reshipped
-
-Checked each of #106's six units against `origin/main` before touching the branch:
-
-| unit | on main? | where it landed |
-|---|---|---|
-| `func_8001E9AC` | yes | `94b5da8` "Match five 47-50 word bodies from the unopened queue" (main's file is not byte-identical to #106's, so main's is the version of record) |
-| `func_8001F8BC` | yes | `94b5da8` |
-| `func_80027478` | yes | `94b5da8` |
-| `func_80027630` | yes | `94b5da8` |
-| `func_800122CC` | **no** | reshipped in **#110**, still MATCH on current main |
-| `func_8001F550` | **no** | reshipped in **#110**, still MATCH on current main |
-
-#106 is closed with a note naming each body's destination. The reship branch is `src/funcs/`-only; the old PR
-also carried `work/census-corrected.md` and `work/lane-notes.md`, which was a packaging error — records go on
-the record branch.
-
-## The `addu`-order tell, re-tested on the corpus
-
-The tell (spell the address as integer arithmetic, base first) does reproduce the operand order on the body it
-was found on, but it does **not** carry the nearest `addu`-order park across the line:
-
-- `func_800382C0` (1/12, the closest park in the corpus). Writing `total = (u32) size + ((size + 4) >> 7)`
-  emits the game's `addu $a0,$a0,$v0` — base first, as the tell predicts — but the accumulator is then homed in
-  `$a0` and gcc appends a copy (`addu $v0,$a0,$zero`) before the return; the game computes in `$v0` throughout.
-  Six spellings this pass on top of the five already recorded (accumulate form, ternary return, duplicated
-  expression, `if/else` assignment, wider/narrower accumulators) all lose to the original 1/12 draft. The
-  operand order is a source decision; the *home* of the accumulator is allocation, which is the class already
-  closed by the role matrix. Park stands at 1/12.
-- The other 19 small-residue parks (`80015D38` … `80057090`) were re-measured: **none** of them has an `addu`
-  operand swap in its diff — their residues are register roles, scheduler rotations and size deltas. The tell
-  has no second customer in the parked set.
-
-## The 41-100 band of the enumerator is empty of undrafted bodies
-
-`work/enumerate.py` lists 453 bodies, and every undrafted one is smaller than 41 words (the smallest two are
-`func_80045828` at 4 and `func_80045838` at 5). There is **no undrafted 41-100 body left to draft** — that band
-is now parks only. Volume at 41+ has to come either from the 120+ band or from re-drafting parks, which is why
-this pass's new-body count is zero rather than low.
-
-## Re-derived queue, October 25: 244 undrafted C bodies, worked smallest-first
-
-`work/queue_census.py` (new, reads `enumerate.bodies()` and classifies by idiom; stores no numbers of its
-own) counts **249 undrafted bodies against current `origin/main`, 244 of them ordinary C**:
-
-| band | total | C | non-C |
-|---|---|---|---|
-| 0-20 | 2 | 1 | 1 gp-reload ($gp store/load stub) |
-| 21-40 | 21 | 19 | 2 scratchpad-`$sp` switch |
-| 41-100 | 70 | 70 | — |
-| 101-200 | 96 | 95 | 1 scratchpad-`$sp` switch |
-| 201+ | 60 | 59 | 1 scratchpad-`$sp` switch |
-
-The earlier "41-100 is exhausted" result was measured on a stale checkout that already contained that band's
-units; against `origin/main` the band still has 70 undrafted C bodies. Handwritten and GTE bodies are excluded
-by the enumerator itself. `func_80045838` (5 words, stores `$gp` into `D_8008B398`) and `func_80023B1C`
-(0x8C, switches `$sp` to a saved stack pointer and back) are non-C idioms and were skipped, as was
-`func_80034D4C` — an `or`/`andi`-dispatched memcpy with a `subu` return, almost certainly asm-written.
-
-### The pass's drafts: 3 units from 11 (27%)
-
-| body | words | outcome | shape |
-|---|---|---|---|
-| `func_80027090` | 37 | **MATCH** | frame 0x60 wants `u8 buf[0x38]` at sp+0x18 — the memset only clears six bytes but the buffer still reaches the save area; a 0x10 buffer gives a 0x38 frame and 10 diffs |
-| `func_8001D5B0` | 28 | **MATCH** | `if (r == -1) return 0; return func_8001D530(a0, r);` — the separate `return 0` puts `addu $v0,$zero,$zero` in the `beq` delay and returning the callee's value leaves `$v0` untouched at the epilogue |
-| `func_8002AAE4` | 32 | **MATCH** | count declared `s32` from the `u16` field, consumed by `while (--n != -1)`, keeps it in `$v1`; a `u16` local homes it in `$v0` (3 diffs) |
-| `func_8001F3D4` | 37 | park 32/37 | `st < 3 && st != 0` fold to `st-1 < 2`; the game's `sltiu` + separate `bnez` survives only with the tests unnested, which reorders the read path |
-| `func_8002C3C0` | 37 | park 22/37 | table walk with variable stride; base/walker split and the `-1` pre-check land in the wrong registers |
-| `func_8002B674` | 37 | park 37/37 | `u8 *e = *(u8 **)(a1+0x2C)` then signed halves: size 0x9c against 0x94 |
-| `func_8002B5DC` | 38 | park 37/38 | mirror of `8002B674`; same 4-byte overshoot |
-| `func_80020570` | 38 | park 30/38 | accumulator double-counted: `total = -a2` then `+= v + a2` is close but the index scale hoists differently |
-| `func_8002B360` | 39 | park 41/39 | two descending slot scans (7 and 3, `-4` stride); 8 bytes over, the loop counter and slot pointer swap order |
-| `func_8002B77C` | 39 | park 16/39 | three `u16` field stores then a `u16 v[3]` built for `func_80014784`; the flag test `(x & 0xC00000) != 0xC00000` and the stack vector address order are both still off |
-| `func_8002DE60` | 39 | park 40/39 | `D_8008B060 - 0xC` descending probe against `D_8008B05C`; 12 bytes over |
-
-Yield: **27%**, which is the band's historical rate — the type tells keep working, they just do not scale the
-rate. The two that decided conversions here were frame *size* (a buffer declared bigger than the memset uses)
-and the shared-tail `return`, both already in the checklist.
-
-## Throughput pass, October 25: 1 unit from 7 drafts (14%)
-
-Queue re-derived on a branch cut from `origin/main` before any drafting: 249 undrafted bodies, 244 ordinary C
-(19 in the 21-40 band, 70 in 41-100). Nothing above 100 words was touched, because the small set is not worked
-out.
-
-| body | words | outcome | what was tried / residue |
-|---|---|---|---|
-| `func_8001CDA4` | 39 | **MATCH** | flag word declared `u32` so `>> 22` is `srl` not `sra`; the extract passed inline as the last call's argument. First draft 1/39, MATCH on the one-line type fix |
-| `func_8002B210` | 40 | park 2/40 | the two-word residue is the declaration order of `s4 = -1` against `s0 = s2+0x1C`; swapping the two locals makes it 7/40, so the original order is the closer one |
-| `func_8002C818` | 40 | park 10/40 | `n = (*(u16 *) a1 & 1) ? 4 : 3` then `--n`: the ternary and an `if/else` assignment build identically, both 0xa4 against 0x9c |
-| `func_8002C77C` | 39 | park 29/39 | same dispatch as `8002C818`; `s16` casts of three `s32` parameters and nested-if vs `&&` chain both stay 0xa4 against 0x9c |
-| `func_8002A0F8` | 40 | park 35/40 | `e` walk with a 24-byte-stride inner call loop; frame and index register both still wrong after one shape |
-| `func_80022F24` | 56 | park 45/56 | 0x28-stride dispatch with a 0/7/9 `switch`; gcc builds the compare chain the game has, but the frame is 8 bytes over and the loop bound reloads differently |
-
-Skipped on sight: `func_80032E94` (stores `$ra` into `D_80032C20` — a hand-written trampoline) and
-`func_80033268` (64-bit `mult`/`mfhi` class).
-
-Yield this pass **14%**, below the 27% working rate, on a batch of seven. The twenty-five-draft target was not
-reached; four of the seven were stopped by frame-size mismatches of 4-8 bytes rather than by statement order,
-which is the closed allocation class.
+No units this pass, so no units PR was opened; `work/shapes/` keeps the three drafts.
