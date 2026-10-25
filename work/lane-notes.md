@@ -287,6 +287,27 @@ the "load feeds the first parameter of the next call" form were tried on `func_8
 whole-address-materialisation shape, which `-mno-split-addresses` reproduces only at the cost of every other
 address in the body (measured 78/79 and 31/36). Record the class and move on.
 
+## Subscript, not walker — the refined rule
+The rule converts, but only in two forms, and both were measured this pass:
+
+- **Single-shot access with a struct element.** `func_8001CD7C` (`tab[i].f0 = b`) and `func_80035C14`
+  (`D_800A6294[a1].f4 = …`, 10 → 4 of 34) both matched or halved the moment the walker became a subscript
+  on a typed table. The scaled index then lands in a temp and the base is added *last* (`addu $v0,$v0,$v1`),
+  which is what the game has.
+- **Take the array member into a local pointer first.** `func_80056FF4` (12 → 5 of 39) needed
+  `Rec *recs = t->rec; recs[idx]` — the local forces `addiu $v1,$a1,0x4D4` as its own value *before* the
+  index is scaled, where `t->rec[idx]` lets gcc fold the member offset into the final add.
+
+It does **not** convert on loop bodies. `func_8002D904` (7 → 31), `func_8001D804` (11 → 21) and
+`func_8001D3B4` (11 → 27) all got worse: indexing a walked table rewrites the loop and loses the
+increment/compare shape the game has. Read the assembly first — if the scaled index is *inside* the loop and
+the walker register is incremented per iteration, keep the walker; if the scaled index is computed once for
+a single store, use the subscript.
+
+One more trap, measured: rewriting a symbol-relative access as explicit offsets
+(`*(u8 **)(D_800A4F00 + 0x58)`) makes gcc invent a new literal (`lui $v1,D_800A4F5C`), which is the
+"fresh literal" anti-pattern from the 33-40 band. Keep the struct local for adjacent field access.
+
 ## Fresh-ground tells from the 41+ queue
 - **A wide parameter leaves no mask.** `func_80014170`'s third argument tests `beqz $a2` with no `andi`; a `u8`
   parameter emits `andi $v0,$a2,0xFF` first and shifts every following word. When the assembly branches on a
