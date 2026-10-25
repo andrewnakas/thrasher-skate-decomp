@@ -281,7 +281,8 @@ def main():
         block = render(table, len(unmatched), hist, len(stale))
         text = CENSUS.read_text()
         if BEGIN in text and END in text:
-            text = text[:text.index(BEGIN)] + block + text[text.index(END) + len(END):]
+            tail = text[text.index(END) + len(END):].lstrip("\n")
+            text = text[:text.index(BEGIN)] + block.rstrip("\n") + "\n\n" + tail
         else:
             head, rest = text.split("\n", 1)
             text = (head + "\n\n" + block.strip() +
