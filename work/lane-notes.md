@@ -448,3 +448,15 @@ Rules that follow from it:
   prune, and pruning is part of shipping a unit.
 - The cache in `work/verify-cache.json` is keyed by draft content and the toolchain fingerprint; bump
   `verify.VERSION` when the classifier changes or you will read old classes.
+
+## The close list is now allocator-bound, not shape-bound
+Six bodies within two words were re-attempted with shapes their original passes did not have —
+pointer-first byte walk (`(E *) (base + i * 0x40)`), `&base[i]`, early returns instead of nesting,
+`cmd = *p++`, the division spelling of a constant shift, an `s32` field read through a `(u16)` cast,
+`-mno-split-addresses`, and `-fno-schedule-insns{,2}` on the scheduler case. None moved a word:
+`800382C0` (1/12, commutative `addu` operand order), `8001F4E8` (2/26), `8001DB74` (2/26),
+`8002BCB0` (2/17), `8002C9B8` (2/36), `8004BF94` (2/52), `80055820` (1/34, a filled load-delay nop).
+A fresh 46-word body, `8001D620`, drafted from the table's queue, parked at **16/46 with the frame one
+word short** for the same filled-nop reason: the game leaves a `nop` after `lw 0xC($s0)` and our build
+schedules the dependent `sltu` into it. Read a one-word deficit on an otherwise word-perfect body as
+that class first, not as a missing statement.
