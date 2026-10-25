@@ -398,3 +398,29 @@ the wrong meaning (`func_80020D74` 11/39 for `a1 / 256` against 22/39 for the ga
 adding an equivalence axis, state the identity and check it against the assembler: `x << N` = `x * 2**N`,
 `x / 2**N` = `x >> N` (unsigned), `x % 2**N` = `x & (2**N - 1)`. Anything else is a different expression wearing
 the same words.
+
+## `shift2div` is not an identity — read the shift direction before adopting a baseline
+The equivalence sweep's `shift2div` cell rewrote `x << N` as `x / 2**N`, which changes the expression, so
+every cell it reported measured a different program. The withdrawal commit keeps only true identities
+(`shift2mul` on a constant power of two, `mod2mask` on a power-of-two mask, `add2mul`, `mul2add`). Read the
+direction first: `x >> N` and `x / 2**N` agree only for unsigned `x`, and a body that shifts a pointer
+scale *left* is never a division candidate.
+
+## Measured cells are not baselines until they reproduce from the file on disk
+Even the one valid sweep cell (`func_80048598`, reported 37 → 23 of 37 by `shift2mul`) does not reproduce:
+the draft the sweep left behind re-measures 34/37 at a frame four words short. Before adopting a number as
+a baseline, re-run `match.py` against the stored draft and record the size it reports. Two baselines that
+do reproduce came out of re-testing the drafts themselves: `func_80048598` **28/37** (the cast-then-copy
+order, frame exact) and `func_800484B4` **25/57** (subscript per use instead of a pointer walker, frame
+exact). Both are in `work/near-miss/*-best.c`.
+
+## The division axis is closed, not pending
+Across all 174 parked drafts the division form converted nothing, and it was never a valid identity in
+these bodies. Where a body does need a signed-division sequence, the lever is the operand's declared
+signedness, not the spelling — and `80048598`'s remaining residue is a register role, not arithmetic.
+
+## The one body that matches and cannot ship: issue #101
+`func_80034B98` matches byte-for-byte, but `scan.py` rejects the `0x801FC000` it stores — splat has no
+symbol there, and `config/symbol_addrs.us.txt` is a protected path this lane must not edit. Filed as
+https://github.com/andrewnakas/thrasher-skate-decomp/issues/101 with the match evidence and the exact
+one-line fix (`D_801FC000 = 0x801FC000;`). Do not re-draft the body: it needs the symbol, not a shape.

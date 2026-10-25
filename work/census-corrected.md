@@ -896,6 +896,10 @@ not as a perfect score.
 `scan.py` for the literal `0x801FC000`, which has no symbol in `config/` (protected). It stays blocked until a
 maintainer adds `D_801FC000`; this is the only body in the corpus whose verdict is "matches, cannot ship".
 
+Filed as https://github.com/andrewnakas/thrasher-skate-decomp/issues/101 with the match evidence, the
+literal and the exact one-line `config/symbol_addrs.us.txt` entry; the verdict stays *matching, blocked on a
+protected path* until that lands.
+
 **Correction: the `shift2div` cells above are not equivalences.** `x << N` is `x * 2**N`; the rewrite produced
 `x / 2**N`, which is `x >> N`. Those four rows therefore measured the codegen of a *different expression*, not of
 an equivalent spelling. The clearest case is `func_80020D74`: the game emits `sll $s0,$s0,8` (`a1 << 8`), the
@@ -904,3 +908,43 @@ the one whose *meaning* is wrong. Withdraw the `shift2div` cells: `func_80020D74
 `func_800484B4` to 37/57 and `func_800519C4` to 39/73, and only `func_80048598` 37 → 23 stands, because
 `shift2mul` (`x << N` → `x * (1 << N)`) is an identity. `work/scale_sweep.py` no longer emits `shift2div`;
 `div2shift` (`x / K` → `x >> N`) stays, since that one is an identity for the unsigned case it is used on.
+
+### The four `shift2div` baselines: two bodies moved, none closed
+
+The pass adopted the sweep's four "wins" as new baselines. Re-measuring each body from its stored draft
+first shows that three of the four cells were artefacts of the `shift2div` rewrite (which turned
+`x << N` into `x / 2**N` and was withdrawn), and the fourth does not reproduce:
+
+| body | sweep's cell | re-measured baseline | this pass |
+|---|---|---|---|
+| `func_80048598` | 37/37 → 23/37 (`shift2mul`) | **37/37 at 0x90** (four words short); the sweep's own draft re-measures **34/37 at 0x8c** | **28/37, frame exact** — `work/near-miss/func_80048598-best.c` |
+| `func_800484B4` | 37/57 → 24/57 (`shift2div`) | **37/57 at 0xd4** (four words short) | **25/57, frame exact** — `work/near-miss/func_800484B4-best.c` |
+| `func_800519C4` | 39/73 → 28/73 (`shift2div`) | **39/72, frame exact** | still 39/72; three shapes moved nothing |
+| `func_80020D74` | 22/39 → 11/39 (`shift2div`) | **22/39 at 0x98** (two words short) | base stands; the 11/39 cell belonged to the invalid rewrite |
+
+So **all four sweep baselines were unreliable** — the pass's premise dissolved on re-measurement — but
+re-testing the drafts themselves produced two genuine improvements, both now keeping the frame exact.
+
+**Signedness, as the pass asked it to be settled first.** A division rewrite can only be an identity on
+unsigned operands, and the arithmetic in these bodies is signed: `func_80048598` divides with `sra`, and
+the other three shift a pointer scale *left*. No division form is adoptable without changing behaviour,
+and no sign "correction" was added to compensate.
+
+**`func_80048598` (28/37).** The shape that moved it off 37/37: cast the parameter into an `s16` *first*,
+then copy the parameter into an `s32` — the game opens with `addu $t2,$a0,$zero` and takes its `sll`/`sra`
+pair from `$t2`. Ours now copies early too, but to `$v1`, and casts from `$a0`; the value is right and
+only the register differs, which is the register-role class the role matrix measured dead. `-G0` (37/37
+at 0x90) and the subscript form (37/37 at 0x8c) are both worse.
+
+**`func_800484B4` (25/57).** Subscripting `D_800AE794` at each use instead of carrying a `u16 *p` walker:
+37 → 25 diffs and the frame comes right. The remaining residue is the table address build — the game
+holds `addiu $t1,$v0,0x1FE` in a register across the loop where ours emits `sll`/`addu` per iteration.
+Declaring the pointer before the scale/mask computations costs the whole body (57/57); after them leaves
+it at 37/57.
+
+**`func_800519C4` (39/72).** Residue is a callee-saved permutation: the game gives a1→`$s2` and a2→`$s1`,
+ours the reverse. Locals for the two middle parameters (39/72) and computing `hi` before `n` (44/72)
+moved nothing useful.
+
+Verdict for the division axis: **zero conversions across the corpus, and the four bodies now carry
+re-measured baselines with two of them materially improved.**
