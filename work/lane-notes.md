@@ -159,3 +159,11 @@ should start at the 20-word floor and re-run that script because it excludes any
 - **Do not let gcc see the third argument twice**: `func_8002E848` needs `f(buf, (s16) c, c)` with the
   parameter declared `s32`. Declaring it `s16` and passing it twice makes gcc materialise a copy (`addu`)
   and the call no longer matches.
+
+## The register-role class survived four role-forcing shapes per body
+For `8001F4E8` (2/26), `8001DB74` (2/26), `8002FE80` (2/24) and `8002050C` (4/25) the instruction sequence
+and every branch target already match; only the register holding one value differs. Shapes tried per body:
+a separate local per value, a typed array index, a base-pointer local, a wider parameter with a cast on use,
+a round-trip through a third local, and an incremented field (`self[0xB] += 4`). None move the role; several
+make it worse. Treat this class as **unreachable from source** until the allocator itself is understood —
+budget one draft, record the residue, move on.

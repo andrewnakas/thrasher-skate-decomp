@@ -517,3 +517,33 @@ Parks (draft under `work/near-miss/`, residue named):
 PR dispositions this pass: **#77** is superseded — `func_80013CE8` and `func_80026DAC` landed through #82,
 `func_8001DC98` is re-shipped here, and its census hunk is long obsolete. **#80** is census-only and
 superseded by this file. **#83** (probe-count correction) is folded into this commit, so it can be closed.
+
+### 20-30 word band pass: 5 units, and the role-forcing matrix
+
+The unopened queue now starts at **27** (`work/enum_fresh.py`, 277 bodies after this pass's units), so this
+pass covered the 27-29 word floor.
+
+| unit | words | shape |
+|---|---|---|
+| `func_8002582C` | 27 | `self+0xFF8 = 6` in the guard's delay slot, then a `u32` counter loop writing `s16` slots at stride 0x8C — the counter **must** be unsigned or the `beqz`/`sltu` pair becomes `blez`/`slt` |
+| `func_8002DCCC` | 27 | dispatch table `D_8006F834[self[3]]` with 12-byte entries; re-reading `self[3]` at each use (instead of caching it) is what keeps the reloads the game has |
+| `func_800194A4` | 29 | unlink-and-push-front; the `while (p != 0) { nx = p->next; if (nx == self) break; p = nx; }` form with an early `if (self == head)` return |
+| `func_8002572C` | 29 | same loop skeleton as `8002582C` but two word stores (`0xB333`, `0x10000`) at +0x40/+0x44 |
+| `func_8001CFCC` | 29 | five-argument call with a zero stack argument, then two tagged lookups; the second lookup must reload `D_8008AE80` rather than reuse the local |
+
+Role-forcing matrix on the parks (each body ≤ 4 shapes, source otherwise held at its best draft):
+
+| body | best | shapes tried | outcome |
+|---|---|---|---|
+| `8002050C` | **4/25** | literal `-1` in both tests; `s32 end = -1` variable; `--i` in the guard; `return (u8) i` | `end` variable moves the compare into `$a3` (17/25); the rest hold at 4 |
+| `8001F4E8` | **2/26** | separate `cur`/`nxt` locals; post-increment `self[0xB] += 4`; `tmp` round-trip through a third local | all 2/26 — the command word stays in `$v1` where the game uses `$a1` |
+| `8001DB74` | **2/26** | `off = i * 68` local; typed array index; `base` local; `i * 17 * 4` | 2/26 for three of them, 12/26 for the `base` local — `addu` result stays in `$v0` |
+| `8002FE80` | 2/24 | `s32 *p = (s32 *) buf; *out = p;`; `s32 buf[42]` | 2/24 — `&buf` stays in `$v0`, the game uses `$a1` |
+| `8002BF9C` | 9/24 | `while` + return; `for(;;)` after the guard | the `for(;;)` form inverts the guard (20/24); the `while` form rotates to a bottom test |
+| `80034C8C` | 15/25 | best draft re-tested | unchanged (sum lands in `$a0`, game uses `$a2`) |
+
+New parks this pass: `8002BCF4` **16/28** (the `-1` sentinel is materialised in the prologue by the game and
+after the loads by us), `8001D3B4` **11/29** (value pointer must be `p + 1` — that part matched; the rest is
+load order and an insert-path `addiu` placement), `8002F4C0` 23/27 (`sw $ra` sinks below the guard),
+`8001D540` 27/28, `800331FC` 35/27 (64-bit `>> 16` codegen: gcc emits a full shift sequence instead of the
+game's `mfhi/mflo` recombination).
