@@ -1,5 +1,63 @@
 # Lane census (0x80035000-0x80058633), corrected nop rule
 
+
+### Extern audit at the `-G8` threshold: 36 rows, no conversions
+
+`work/extern_audit.py` walks every draft, reads the game's relocation for each `D_` symbol and compares
+it with the draft's declared size. First run reported 48 mismatches; fixing the audit itself removed a
+third of them -- `declared_bytes` counted `T *sym[N]` as 4 bytes instead of `4 * N`, so every pointer
+array looked gp-relative. Corrected tally: **36 mismatches across 18 draft files, 7 unique bodies**.
+Only two were live (not stale duplicates): `func_80043294` (`u8 *D_8008B38C` = 4 bytes, game builds the
+address with `lui`/`addiu`, so it must be >8) and `func_800387C8` (`D_8008B3AC[8]`/`B3B0[8]` sit exactly
+on the threshold and become `%gp_rel`). Declaring `u8 D_8008B38C[0xC]` moved `func_80043294` from
+**16/17 to 6/17**; the remaining six words are the address temp in `$v0` vs `$v1` and the final store
+landing in the `jr` delay slot. `func_800387C8` got *worse* (31 -> 32): its `lui`/`lw` pairs are gcc
+CSE-ing the address into a callee-saved register, not a size question. **No free conversions.**
+
+### 41-100 word band, batched: 6 units from 17 drafts (35%)
+
+Drafts were written in groups of three to five into `work/shapes/` and matched in one loop afterwards
+instead of one body at a time. Six matched, most on the first attempt:
+
+| unit | words | shape |
+|---|---|---|
+| `func_80027478` | 48 | `u8 buf[0x30]; s16 tri[3];` declared in that order (stack slots 0x18 and 0x48), the three `tri` stores written 2,1,0 because the game stores `0x4C,0x4A,0x48` |
+| `func_8001F8BC` | 48 | six `s32` copies `a1+0x18..0x2C -> a0+0x44..0x58`, then `func_8001E9AC(a0, 0)`, then two `andi 0x400/0x800` flag tests |
+| `func_80027630` | 47 | the three `lh` of `D_8008AF86/8A/8E` only appear when each value is first held in an `s32` local; storing `s16` straight from the symbol gives `lhu` |
+| `func_8001E9AC` | 51 | 0x4C-entry table `D_8006F2C0` indexed by `*(u16 *)(p+2)`, `n = *(u16 *)(r+0x18)` as an `s32` so the guard is `blez`/`bgtz`, `do { } while (--n > 0)` |
+| `func_800122CC` | 55 | the switch test is unsigned: `p->f0` must be `u32` for `sltiu`; everything else was already right at 55/55 on the first draft (1 word on `slti` vs `sltiu`) |
+| `func_8001F550` | 56 | `-1` hoisted into one local compared against two `lh` fields; `func_8001E9AC(dst, *(u16 *)src)` then `*(u16 *)dst |= *(u16 *)src & 0xF000` |
+
+Eleven parked, eight of them first drafts over 20 words off (`80019570` 4/48 and `80043294` 6/17 are the
+closest). The batched sequence did not lift the rate -- 35% against the band's 45-50% -- but it did fit
+three times as many bodies into the same reading budget, which is the thing the last two passes were short of.
+
+
+### The two nearest parks re-tested: no movement
+
+Two shapes each, neither converted. `func_80019570` (**4/48**) is a four-word tail rotation: the game
+materialises `addu $v0,$zero,$zero` before the `$a0` setup of the last call, ours after the `jal`. Moving
+`return 0` to the end of the chain and adding a redundant trailing `return 0` both gave 12/48, so this is
+scheduler residue. `func_80043294` (**6/17**) loses two words to the address temp (`lui $v0` + `addiu
+$v1,$v0` against the game's `lui $v1` + `addiu $v1,$v1`) and to the final store taking `$v1` where the game
+uses `$at`; reordering the pointer init and the negated-subscript rewrite both fell to 12/17.
+
+### 41-100 word band, 24 drafts in six groups: 3 units (12.5%)
+
+| unit | words | shape |
+|---|---|---|
+| `func_80027798` | 65 | `s32` return plus an explicit `return 0` is what emits the closing `addu $v0,$zero,$zero`; without it the epilogue is a word short |
+| `func_80027124` | 58 | shared tail return (`if (e != 0) { ... } return e;`) makes the early exit reuse `$s1` instead of building a zero |
+| `func_80025898` | 60 | `u8 buf[0xA0]; u8 m1[0x30]; u8 m2[0x30]` in that order fixes the 0x10/0xB0/0xE0 layout; then `buf + i*0xC` against `self + 0x90 + (i-1)*0x8C + 0x44` |
+
+Twenty-one parked; the four closest are `80013EEC` 2/57, `8002FEE0` 57/63, `8002C8B8` 44/64 and
+`80032B1C` 62/64. Reaching for struct declarations before reading the frame layout cost `8002D0B0`,
+`func_8001D88C` and `func_8002DF04` their first drafts.
+
+`func_80026DAC` compiled to a MATCH and had to be discarded: the unit is already on main, and the draft was
+identical apart from a parameter name. `verify.py` reports such bodies as `stale (already merged)`; check
+`src/funcs/` before drafting a callee taken from another body's call list.
+
 <!-- BEGIN GENERATED TABLE -->
 
 ## Table of record (generated — do not hand-edit)
@@ -9,7 +67,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-511 unmatched bodies in the corpus; **183 drafted and measured here** (compile-error 2, instruction-stream 16, match 1, move-vs-materialise 1, operand 13, register-role 34, scheduling 1, size 115); 0 drafts predate a merge and are prunable.
+482 unmatched bodies in the corpus; **199 drafted and measured here** (compile-error 2, instruction-stream 15, match 1, move-vs-materialise 1, operand 15, register-role 33, scheduling 1, size 131); 10 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -17,7 +75,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_800382C0` | `work/near-miss/func_800382C0-split.c` | 1/12 | +0 | register-role | parked | - |
 | `func_80055820` | `work/near-miss/func_80055820-draft.c` | 1/34 | +0 | scheduling | parked | - |
 | `func_8001DB74` | `work/near-miss/func_8001DB74-role.c` | 2/26 | +0 | register-role | parked | holds (register-role) |
-| `func_8001F4E8` | `work/near-miss/func_8001F4E8-2of26.c` | 2/26 | +0 | register-role | parked | holds (register-role) |
 | `func_8002BCB0` | `work/near-miss/func_8002BCB0-parked.c` | 2/17 | +0 | register-role | parked | - |
 | `func_8002C9B8` | `work/near-miss/func_8002C9B8-2of36.c` | 2/36 | +0 | register-role | parked | - |
 | `func_8002FE80` | `work/near-miss/func_8002FE80-role.c` | 2/24 | +0 | register-role | parked | holds (register-role) |
@@ -34,6 +91,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80057090` | `work/near-miss/func_80057090-near-miss.c` | 5/92 | +0 | instruction-stream | parked | - |
 | `func_800257A0` | `work/near-miss/func_800257A0-fresh.c` | 6/21 | +0 | instruction-stream | parked | - |
 | `func_8003BDB8` | `work/near-miss/func_8003BDB8-sweep.c` | 6/31 | +0 | register-role | parked | - |
+| `func_80043294` | `work/near-miss/func_80043294-g8.c` | 6/17 | +0 | register-role | parked | - |
 | `func_8002D904` | `work/near-miss/func_8002D904-7of46.c` | 7/46 | +0 | operand | parked | - |
 | `func_800535EC` | `work/near-miss/func_800535EC-band.c` | 7/67 | +0 | register-role | parked | - |
 | `func_8003AC04` | `work/near-miss/func_8003AC04-near-miss.c` | 8/30 | +0 | instruction-stream | parked | - |
@@ -47,13 +105,11 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8003B3CC` | `work/near-miss/func_8003B3CC-sweep.c` | 10/19 | +0 | instruction-stream | parked | - |
 | `func_8001D3B4` | `work/near-miss/func_8001D3B4-11of29.c` | 11/29 | +0 | instruction-stream | parked | - |
 | `func_8001D804` | `work/near-miss/func_8001D804-parked.c` | 11/23 | +0 | instruction-stream | parked | - |
-| `func_8001DCF8` | `work/near-miss/func_8001DCF8-parked.c` | 11/24 | +1 | size | parked | - |
-| `func_8001FCB0` | `work/near-miss/func_8001FCB0-parked.c` | 11/25 | +0 | instruction-stream | parked | - |
 | `func_80034758` | `work/near-miss/func_80034758-11of41.c` | 11/41 | +0 | register-role | parked | - |
-| `func_800379F4` | `work/near-miss/func_800379F4-near-miss.c` | 11/26 | +0 | register-role | parked | - |
 | `func_8004A130` | `work/near-miss/func_8004A130-parked.c` | 11/80 | +0 | operand | parked | - |
 | `func_8004CCA0` | `work/near-miss/func_8004CCA0-sweep.c` | 11/34 | +0 | register-role | parked | - |
 | `func_80011B48` | `work/near-miss/func_80011B48-parked.c` | 12/17 | +0 | register-role | parked | - |
+| `func_80032644` | `work/near-miss/func_80032644.c` | 12/63 | +0 | operand | parked | - |
 | `func_80032FF4` | `work/near-miss/func_80032FF4-parked.c` | 12/13 | +0 | register-role | parked | - |
 | `func_80033818` | `work/near-miss/func_80033818-parked.c` | 12/13 | +0 | register-role | parked | - |
 | `func_8003C220` | `work/near-miss/func_8003C220-near-miss.c` | 12/28 | +0 | register-role | parked | - |
@@ -61,7 +117,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8002C490` | `work/near-miss/func_8002C490-parked.c` | 13/21 | +1 | size | parked | - |
 | `func_80024F3C` | `work/near-miss/func_80024F3C-parked.c` | 14/50 | +1 | size | parked | - |
 | `func_80047A44` | `work/near-miss/func_80047A44-sweep.c` | 14/34 | +0 | register-role | parked | - |
-| `func_8004E460` | `work/near-miss/func_8004E460-near-miss.c` | 14/50 | +0 | instruction-stream | parked | - |
 | `func_80029488` | `work/near-miss/func_80029488-frame.c` | 15/29 | +0 | operand | parked | - |
 | `func_80034C8C` | `work/near-miss/func_80034C8C-role.c` | 15/25 | -1 | size | parked | - |
 | `func_8004862C` | `work/near-miss/func_8004862C-stmtorder.c` | 15/28 | +0 | instruction-stream | parked | - |
@@ -70,22 +125,20 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8002BCF4` | `work/near-miss/func_8002BCF4-16of28.c` | 16/28 | +0 | instruction-stream | parked | - |
 | `func_80032CF4` | `work/near-miss/func_80032CF4-parked.c` | 16/18 | +0 | register-role | parked | - |
 | `func_800337C4` | `work/near-miss/func_800337C4-parked.c` | 16/16 | -1 | size | parked | - |
-| `func_80043294` | `work/near-miss/func_80043294-sweep.c` | 16/17 | -3 | size | parked | - |
 | `func_8002DD88` | `work/near-miss/func_8002DD88-parked.c` | 17/22 | -1 | size | parked | - |
 | `func_8002DDE0` | `work/near-miss/func_8002DDE0-parked.c` | 17/14 | +4 | size | parked | - |
 | `func_8002DE18` | `work/near-miss/func_8002DE18-parked.c` | 17/18 | -1 | size | parked | - |
 | `func_80032D88` | `work/near-miss/func_80032D88-parked.c` | 17/17 | -2 | size | parked | - |
 | `func_80034004` | `work/near-miss/func_80034004-parked.c` | 17/23 | +1 | size | parked | - |
 | `func_80035810` | `work/near-miss/func_80035810-sweep.c` | 17/20 | +2 | size | parked | - |
-| `func_8001D340` | `work/near-miss/func_8001D340-parked.c` | 18/16 | +2 | size | parked | - |
 | `func_80032D3C` | `work/near-miss/func_80032D3C-sched.c` | 18/19 | -1 | size | parked | - |
 | `func_80056F4C` | `work/near-miss/func_80056F4C-sweep.c` | 18/42 | -2 | size | parked | - |
 | `func_80026E88` | `work/near-miss/func_80026E88-parked.c` | 19/16 | +3 | size | parked | - |
 | `func_80035BC0` | `work/near-miss/func_80035BC0-check.c` | 20/21 | -2 | size | parked | - |
 | `func_800432D8` | `work/near-miss/func_800432D8-near-miss.c` | 20/24 | -1 | size | parked | - |
-| `func_8004EECC` | `work/near-miss/func_8004EECC-sweep.c` | 20/33 | +0 | instruction-stream | parked | - |
 | `func_8001D4DC` | `work/near-miss/func_8001D4DC-parked.c` | 21/21 | -3 | size | parked | - |
 | `func_8002BFFC` | `work/near-miss/func_8002BFFC-parked.c` | 21/47 | +1 | size | parked | - |
+| `func_80030518` | `work/near-miss/func_80030518.c` | 21/55 | -1 | size | parked | - |
 | `func_8003834C` | `work/near-miss/func_8003834C-sweep.c` | 21/39 | +0 | operand | parked | - |
 | `func_8004F1E0` | `work/near-miss/func_8004F1E0-near-miss.c` | 21/28 | +0 | register-role | parked | - |
 | `func_80020D74` | `work/near-miss/func_80020D74-sched-park.c` | 22/39 | -1 | size | parked | - |
@@ -94,8 +147,8 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8003BA14` | `work/near-miss/func_8003BA14-sweep.c` | 22/61 | +0 | operand | parked | - |
 | `func_8002C148` | `work/near-miss/func_8002C148-parked.c` | 23/27 | +2 | size | parked | - |
 | `func_80046878` | `work/near-miss/func_80046878-sweep.c` | 23/41 | -1 | size | parked | - |
+| `func_80033714` | `work/near-miss/func_80033714.c` | 24/21 | +3 | size | parked | - |
 | `func_80033E14` | `work/near-miss/func_80033E14-parked.c` | 24/25 | +0 | register-role | parked | - |
-| `func_80037968` | `work/near-miss/func_80037968-sweep.c` | 24/35 | -4 | size | parked | - |
 | `func_800494A4` | `work/near-miss/func_800494A4-check.c` | 24/32 | +1 | size | parked | - |
 | `func_80015684` | `work/near-miss/func_80015684-parked.c` | 25/44 | +2 | size | parked | - |
 | `func_80033428` | `work/near-miss/func_80033428-parked.c` | 25/22 | +4 | size | parked | - |
@@ -108,7 +161,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80032400` | `work/near-miss/func_80032400-parked.c` | 26/27 | -1 | size | parked | - |
 | `func_800333C8` | `work/near-miss/func_800333C8-parked.c` | 26/23 | +3 | size | parked | - |
 | `func_800331FC` | `work/near-miss/func_800331FC-o1-27of27.c` | 27/27 | +1 | size | parked | holds (fixed-point) |
-| `func_80033714` | `work/near-miss/func_80033714-parked.c` | 27/21 | +6 | size | parked | - |
 | `func_80011F84` | `work/near-miss/func_80011F84-parked.c` | 28/30 | +2 | size | parked | - |
 | `func_8002B194` | `work/near-miss/func_8002B194-28of31.c` | 28/31 | -3 | size | parked | - |
 | `func_80034698` | `work/near-miss/func_80034698-fresh.c` | 28/48 | +1 | size | parked | - |
@@ -138,9 +190,11 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8002CF94` | `work/near-miss/func_8002CF94-parked.c` | 34/41 | +2 | size | parked | - |
 | `func_8003302C` | `work/near-miss/func_8003302C-64bit.c` | 34/29 | +5 | size | parked | holds (fixed-point) |
 | `func_8004734C` | `work/near-miss/func_8004734C-sweep.c` | 34/50 | -2 | size | parked | - |
+| `func_8002DFF8` | `work/near-miss/func_8002DFF8.c` | 35/55 | -1 | size | parked | - |
 | `func_80058448` | `work/near-miss/func_80058448-band.c` | 35/43 | +0 | register-role | parked | - |
 | `func_8004669C` | `work/near-miss/func_8004669C-sweep.c` | 37/104 | +0 | operand | parked | - |
 | `func_8002AB64` | `work/near-miss/func_8002AB64-parked.c` | 38/44 | -1 | size | parked | - |
+| `func_8002C1B4` | `work/near-miss/func_8002C1B4.c` | 38/52 | +2 | size | parked | - |
 | `func_800474B4` | `work/near-miss/func_800474B4-sweep.c` | 38/49 | -2 | size | parked | - |
 | `func_80047578` | `work/near-miss/func_80047578-sweep.c` | 38/49 | -1 | size | parked | - |
 | `func_80052380` | `work/near-miss/func_80052380-near-miss.c` | 38/102 | +0 | instruction-stream | parked | - |
@@ -152,37 +206,57 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_800223AC` | `work/near-miss/func_800223AC-42of42.c` | 42/42 | -4 | size | parked | holds (filled-nop) |
 | `func_80025004` | `work/near-miss/func_80025004-parked.c` | 42/44 | +4 | size | parked | - |
 | `func_8002A044` | `work/near-miss/func_8002A044-41of45.c` | 42/45 | +4 | size | parked | - |
+| `func_80034A78` | `work/near-miss/func_80034A78.c` | 42/60 | +0 | instruction-stream | parked | - |
 | `func_80047014` | `work/near-miss/func_80047014-sweep.c` | 42/62 | -4 | size | parked | - |
 | `func_8002AD6C` | `work/near-miss/func_8002AD6C-parked.c` | 43/48 | +0 | register-role | parked | - |
 | `func_8002B2B0` | `work/near-miss/func_8002B2B0-parked.c` | 43/44 | -2 | size | parked | - |
 | `func_8002EC14` | `work/near-miss/func_8002EC14-parked.c` | 43/41 | +2 | size | parked | - |
+| `func_8002C8B8` | `work/near-miss/func_8002C8B8.c` | 44/64 | +0 | operand | parked | - |
 | `func_8004836C` | `work/near-miss/func_8004836C-near-miss.c` | 44/57 | -5 | size | parked | - |
 | `func_80019F10` | `work/near-miss/func_80019F10-parked.c` | 45/47 | -5 | size | parked | - |
+| `func_8001A108` | `work/near-miss/func_8001A108.c` | 45/57 | +0 | instruction-stream | parked | - |
+| `func_8002C688` | `work/near-miss/func_8002C688.c` | 46/61 | +7 | size | parked | - |
+| `func_800201AC` | `work/near-miss/func_800201AC.c` | 47/56 | -2 | size | parked | - |
 | `func_80038970` | `work/near-miss/func_80038970-sweep.c` | 47/68 | +0 | instruction-stream | parked | - |
-| `func_80019670` | `work/near-miss/func_80019670-role-park.c` | 48/55 | +0 | operand | parked | - |
 | `func_8004A094` | `work/near-miss/func_8004A094-near-miss.c` | 48/39 | +11 | size | parked | - |
 | `func_80038864` | `work/near-miss/func_80038864-sweep.c` | 49/67 | +0 | instruction-stream | parked | - |
 | `func_8004912C` | `work/near-miss/func_8004912C-sweep.c` | 49/65 | -1 | size | parked | - |
 | `func_8001C0AC` | `work/near-miss/func_8001C0AC-parked.c` | 50/50 | -3 | size | parked | - |
+| `func_8001F9D0` | `work/near-miss/func_8001F9D0.c` | 50/59 | +2 | size | parked | - |
+| `func_80022148` | `work/near-miss/func_80022148.c` | 51/53 | -1 | size | parked | - |
 | `func_8004E7EC` | `work/near-miss/func_8004E7EC-clamp-park.c` | 51/81 | +0 | instruction-stream | parked | - |
 | `func_800358A8` | `work/near-miss/func_800358A8-near-miss.c` | 52/61 | -3 | size | parked | - |
+| `func_8001BD0C` | `work/near-miss/func_8001BD0C.c` | 53/56 | -5 | size | parked | - |
 | `func_80036F64` | `work/near-miss/func_80036F64-sweep.c` | 53/67 | -1 | size | parked | - |
 | `func_80047268` | `work/near-miss/func_80047268-sweep.c` | 53/57 | -2 | size | parked | - |
 | `func_8004E6CC` | `work/near-miss/func_8004E6CC-band.c` | 53/72 | -2 | size | parked | - |
 | `func_8002A9E0` | `work/near-miss/func_8002A9E0-parked.c` | 54/50 | +4 | size | parked | - |
+| `func_8002DF04` | `work/near-miss/func_8002DF04.c` | 54/61 | +1 | size | parked | - |
+| `func_8002221C` | `work/near-miss/func_8002221C.c` | 56/59 | -5 | size | parked | - |
 | `func_80042338` | `work/near-miss/func_80042338-sweep.c` | 56/64 | -1 | size | parked | - |
 | `func_80046EFC` | `work/near-miss/func_80046EFC-sweep.c` | 56/70 | +0 | operand | parked | - |
+| `func_8002FEE0` | `work/near-miss/func_8002FEE0.c` | 57/63 | +0 | operand | parked | - |
 | `func_80053A4C` | `work/near-miss/func_80053A4C-sweep.c` | 57/58 | +4 | size | parked | - |
+| `func_80029CCC` | `work/near-miss/func_80029CCC.c` | 58/56 | +2 | size | parked | - |
+| `func_80015D88` | `work/near-miss/func_80015D88.c` | 59/65 | -2 | size | parked | - |
+| `func_8001D88C` | `work/near-miss/func_8001D88C.c` | 60/58 | +5 | size | parked | - |
 | `func_80026EC8` | `work/near-miss/func_80026EC8-near-miss.c` | 60/61 | +2 | size | parked | - |
+| `func_8002F730` | `work/near-miss/func_8002F730.c` | 60/56 | +4 | size | parked | - |
 | `func_8004DBF0` | `work/near-miss/func_8004DBF0-parked.c` | 60/82 | -7 | size | parked | - |
+| `func_8002D0B0` | `work/near-miss/func_8002D0B0.c` | 61/58 | +11 | size | parked | - |
 | `func_8003A1B8` | `work/near-miss/func_8003A1B8-sweep.c` | 61/71 | +3 | size | parked | - |
 | `func_800511C0` | `work/near-miss/func_800511C0-parked.c` | 61/101 | +0 | operand | parked | - |
+| `func_80032B1C` | `work/near-miss/func_80032B1C.c` | 62/64 | +1 | size | parked | - |
 | `func_80057B94` | `work/near-miss/func_80057B94-sweep.c` | 62/68 | +1 | size | parked | - |
 | `func_8003B478` | `work/near-miss/func_8003B478-sweep.c` | 65/71 | -2 | size | parked | - |
+| `func_8002EE94` | `work/near-miss/func_8002EE94.c` | 66/78 | -3 | size | parked | - |
 | `func_8003BE34` | `work/near-miss/func_8003BE34-sweep.c` | 66/82 | +2 | size | parked | - |
 | `func_8004AF80` | `work/near-miss/func_8004AF80-sweep.c` | 66/66 | -3 | size | parked | - |
 | `func_80035D2C` | `work/near-miss/func_80035D2C-sweep.c` | 67/69 | -2 | size | parked | - |
+| `func_80018FBC` | `work/near-miss/func_80018FBC.c` | 68/73 | +2 | size | parked | - |
 | `func_8003AF4C` | `work/near-miss/func_8003AF4C-sweep.c` | 68/71 | -2 | size | parked | - |
+| `func_8001C540` | `work/near-miss/func_8001C540.c` | 70/59 | +11 | size | parked | - |
+| `func_80029320` | `work/near-miss/func_80029320.c` | 71/64 | +7 | size | parked | - |
 | `func_8004E528` | `work/near-miss/func_8004E528-sched-park.c` | 82/105 | -1 | size | parked | - |
 | `func_800568C0` | `work/near-miss/func_800568C0-sweep.c` | 90/95 | -11 | size | parked | - |
 | `func_80051844` | `work/near-miss/func_80051844-near-miss.c` | 92/96 | -5 | size | parked | - |
@@ -1268,3 +1342,27 @@ moved nothing useful.
 
 Verdict for the division axis: **zero conversions across the corpus, and the four bodies now carry
 re-measured baselines with two of them materially improved.**
+
+## The register-role class: 34 bodies, two converted by a home fix each
+
+`verify.py` on current `main` puts 34 of the 202 drafted bodies in the `register-role` class, and **twelve of
+them are two words out** with the instruction stream otherwise identical. That is where this pass worked.
+
+| body | before | after | what moved it |
+|---|---|---|---|
+| `func_8002B210` | 2/40 | **MATCH** | `s32 end = -1;` as its own local, declared before the pointer, compared in the loop instead of a literal `-1` |
+| `func_8002B77C` | 16/39 | **MATCH** | explicit `src = d;` / `self = p;` copies in the game's saved-register order |
+| `func_8002C3C0` | 22/37 | 23/37 | the sentinel local, no gain — the residue there is the loop's `addu` operand order, not a constant |
+| `func_8002C818` | 10/40 | **9/40** | `s32 end = -1;` plus an integer `(n << 2) + (u32) a1` address; left two clusters: the game keeps `-1` in `$v0` and copies it to `$s2` in the compare's delay, ours assigns `$s2` directly |
+| `func_8002D904` | 7/46 | 46/46 | `u8 *p = self;` reused as the loop base — **worse**, confirm it stays parked on the pointer-vs-counter `$s1`/`$s2` swap |
+| `func_8001F3D4` | 17/37 | 34-37/37 | shared-tail shapes (`goto`, `||`-fold, inverted `c == 0x80` arm) all worse; the game's single tail block reached from two entries is not reachable from a plain nested `if` and the flat forms cost the whole body |
+| `func_800382C0` | 1/12 | 1/12 | `addu` operand order survives `t += a0`, `t = a0 + t` and the inline single-expression form (the last costs the body) |
+| `func_8002BCB0` | 2/17 | 2/17 | `u16`/`s32`/split-declaration locals do not move the load out of `$v0`; the game homes it in `$a1` |
+| `func_8001DB74` | 2/26 | 2/26 | integer-arithmetic base spelling does not flip the `addu` |
+| `func_8002FE80` | 2/24 | 2/24 | a named buffer pointer does not move the `addiu` from `$v0` to `$a1` |
+| `func_80056C90` | 2/36 | 31/36 | `-mno-split-addresses` on the file costs it; the `$t0`/`$v1` high-half home stands |
+
+Read the two matches as proof that the class is **partly** source-shaped: when the whole residue is one
+constant's materialisation point or one saved-register pair, a single line converts it. When the residue is a
+value gcc insists on homing in `$v0` where the game used `$a1`, no spelling tested moves it — that half of the
+class stays allocator-bound and should not be re-attacked with more shapes.

@@ -575,3 +575,61 @@ again a *declaration* read off the assembly:
 Parks in the same batch were structural, not type-level: `8002A9E0` 54/50 (an extra callee-saved pointer
 gcc derives for the last field), `8002A198` 30/51 (recursive dispose, 4 words short), `8002AD6C` 43/48
 (three-level loop over a table of records).
+
+## Draft in batches, match in batches
+Writing three to five drafts into `work/shapes/` before running any of them through `match.py` fits about
+three times as many bodies into the same reading budget. The match rate does not improve (35% over 17
+drafts against 45-50% body-at-a-time), so the win is volume, not insight: treat 40% as the planning number
+and never let one body's residue stop the next draft.
+
+## Pointer-array externs are 4*n bytes, and that decides the -G8 side
+`extern T *sym[3]` is 12 bytes, not 4: an address build with `lui`/`addiu` for such a symbol is correct.
+The audit's first version got this wrong and reported eleven false ENLARGE rows. What is *not* false is
+`extern u8 *sym;` -- 4 bytes, so the game's `lui`/`addiu` of that address needs the declaration widened to
+an array (`extern u8 sym[0xC]; *(u8 **)sym`) and that moved `func_80043294` from 16/17 to 6/17. Declaring
+exactly 8 bytes is still the small side: 8 is `<= 8`, so `sym[8]` lands in `%gp_rel` and `sym[0xC]` is the
+first size that gives absolute addressing.
+
+## A narrow load is `lhu` unless an s32 local sees the value
+Storing an `s16` global straight into an `s16` array emits `lhu` (the sign bits cannot affect the stored
+halfword); the game's `lh` only appears when the value passes through an `s32` local before the store.
+That one declaration change turned `func_80027630` from 3/47 into a match. Same family as the `andi 0xFF`
+rule: read what the original does with the value, not just its width.
+
+## A missing closing word is usually the return type
+A body exactly one word short whose last real instruction is `addu $v0,$zero,$zero` before the epilogue is a
+`s32` function with an explicit `return 0` on the fall-through path; `func_80027798` matched on that alone.
+The sibling case is a shared exit: `if (e != 0) { ... } return e;` lets the early-exit branch reuse the loaded
+pointer register instead of materialising a zero (`func_80027124`, 9/58 to match).
+
+## Check `src/funcs/` before drafting a callee
+A family list built from call sites includes already-merged bodies: `func_80026DAC` matched on the first draft
+and had to be thrown away because the file already existed. The enumerator excludes merged bodies; a
+hand-picked family member does not.
+
+## Two saved-register tells, both proven from two-word parks
+The remaining 34 `register-role` bodies are mostly **two words** out, and two of them converted on a single
+source decision each rather than on any new structure. Both are about which register a value is *born* in.
+
+**A loop bound that is compared more than once wants a named sentinel local.** `func_8002B210` sat at 2/40
+with the only difference being `addiu $s4,$zero,-0x1` emitted before the pointer `addiu $s0,$s2,0x1C` in the
+game and after it in ours. Writing `s32 end = -1;` as its own initialised local, declared before the pointer,
+and comparing `n != end` in the loop instead of `n != -1` materialised the constant once, early, and kept it
+in the callee-saved register the game uses. A literal `-1` in the condition is re-derived at the compare;
+a local is materialised where it is defined. Same shape converted `func_8002C3C0` from 22 to 23 of 37 —
+no gain — so read it as a *home* fix, not a general 41-100 lever.
+
+**Saved-register roles follow the order of explicit parameter copies, not the parameter list.**
+`func_8002B77C` was 16/39 with a pure `$s0`/`$s1` swap: the game holds `a0` in `$s1` and `a1` in `$s0`, ours
+the reverse, and every one of the sixteen differing words was that swap. Declaring two explicit local copies
+in the game's register order —
+
+    u8 *src = d;    /* a1, lands in $s0 */
+    u8 *self = p;   /* a0, lands in $s1 */
+
+— matched on the first try (two independent spellings both matched). gcc assigns the callee-saved registers
+in the order the copies are defined, so when a body's whole residue is a swapped saved pair, copy the
+parameter that belongs in the lower register first instead of reordering declarations or renaming.
+
+Neither tell needs a new shape family: they are one line each on top of an already-correct instruction
+stream, which is what the `register-role` class is.
