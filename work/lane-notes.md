@@ -252,3 +252,37 @@ exactly that, and no spelling tested — inlining the argument, comma-declaring 
 of a local, passing an oversized extern through `*(u32 *)` — moves a load out of `$v0`. Treat "the game's
 load target is an argument or callee-saved register and ours is `$v0`" as the closed role class and budget
 one draft.
+
+## Subscript, not walker, when a body *indexes* a table
+`func_8001CD7C` (2 of 10, parked for four passes) matched the moment the base became a typed table pointer
+and the store used a subscript: `E *tab = (E *) base; tab[i].f0 = b; tab[i].f4 = a;` gives the game's
+`lw $a2,base` / `sll $v1,$v0,3` split. Every walker spelling — `u8 *e = base + i * 8`, `(E *) base + i`,
+a `base` local, a `s16`/`u16` index — keeps `$a2` and `$v1` swapped, which is why the body read as an
+unfixable saved-pair swap. The 33-40 band's rule ("index off the parameter, not through a walker") is the
+same finding from the other side: a body that *walks* wants a walker, a body that *indexes* wants a
+subscript, and the register split follows the form.
+
+## The parked corpus' cheap tail is allocation, measured body by body
+Six bodies at six words or fewer were each given the shapes that have been converting, and none moved
+below its residue (the seventh, `func_8001CD7C`, converted on the subscript form above): `80042E9C` halved from 4 to 2 of 58 on a real fix worth keeping (a callee declared `s32`
+and called in `return` position, not as a statement followed by `return 0x27100000` — the constant has to be
+live across the `if`, which is what puts `lui $v0,0x2710` in the `beqz` delay slot), but the last two words
+are a load into `$v0` that the game keeps in `$a1`. Treat "N of M with N ≤ 6" on a parked body as this class
+and budget one draft: the cheap list is finished.
+
+Two reusable tells from the pass:
+- **A return constant in a branch delay slot means the value is live across the branch.** If `lui $v0,0xNNNN`
+  sits in a `beqz`/`bnez` slot and the epilogue does not reload it, the source computed the return value
+  *before* the `if` — usually because the `if` body is `return f(...)`, so the other path's constant has to
+  survive the call. Writing the `if` body as a statement plus a trailing `return` puts the constant at the
+  end instead and costs 2 words.
+- **`lui $vN` twice up front beats an assignment order.** `func_8003BDB8` materialises two constants before
+  four stores; gcc sinks the second to its single use no matter which assignment comes first, so a body whose
+  only difference is a constant's position is not a statement-order problem.
+
+## The argument-register axis is closed with two forms
+For bodies where the game loads into `$a0`/`$a1` and our build uses `$v0`, both the inline-argument form and
+the "load feeds the first parameter of the next call" form were tried on `func_8003B8F8` (4/46 both) and
+`func_80042E9C` (2/58 both). Neither moves the destination register. The game's `lui $a0` / `lw $a0` is the
+whole-address-materialisation shape, which `-mno-split-addresses` reproduces only at the cost of every other
+address in the body (measured 78/79 and 31/36). Record the class and move on.
