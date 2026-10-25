@@ -1125,3 +1125,25 @@ bring a 71-word body closer — `func_8002635C` regressed when the missing tail 
 argument/pointer shapes matter as much as the call count.
 
 No units this pass, so no units PR. Drafts stay in `work/shapes/`.
+
+## 101-200 band sample, October 25: the band does not convert on transcription
+
+Sampled the untouched 101-200 ground with full-body transcriptions rather than smallest-first. Three bodies
+were read end to end; two were written out in full and measured.
+
+| body | words | transcription | result |
+|---|---|---|---|
+| `func_80011D60` | 101 | complete: both 3-vectors copied to the stack, nine stores into the `D_8008ACA0` block, three delta words, then `func_800330A4`, `func_80032D88`, `func_80032DCC`, `func_800337C4`, `func_80033A18`, `func_8003384C`, `func_80033714`, `func_8003BF7C`, and the three negated stores at +0x4C | **102/101**, frame 0x198 against 0x194. Every call is present and the frame is within one word, yet essentially no word lines up: the game interleaves the vector loads and the block stores per element, and one statement per field does not reproduce that order |
+| `func_80049A14` | 101 | bitmask arena test: `D_8008A8EC[a0 & 0xFF]` base, `mask = (n < 32) ? (1<<n)-1 : -1`, then the `0xFF` early-out path and the word loop | **90/101**, frame 0xc0 against 0x194. The 0xFF path is a second, larger branch (bit-scan with a `0x18000` bound) that the draft omits, and missing it costs 0xD4 of frame — the body is a two-arm state machine, not a linear function |
+| `func_800212BC` | 101 | read end to end, not drafted | 9 arguments, two output pointers on the stack, calls `func_80020C34` (the body this lane already has at 76/80) plus a search loop over `D_8009C6D4` |
+| `func_8004BA34` | 103 | read end to end, not drafted | six-way jump table (`jtbl_800107E0`) dispatching to linked-list walks with `mult` in the arms |
+
+**Band verdict: none of the sample lands inside ten words; the smallest was 90 and the closest frame was one
+word off while every statement order differed.** The 101-200 band is not a bigger version of 41-100: its bodies
+are multi-arm state machines and jump-table dispatchers where a first transcription that omits a single arm
+costs 0xD4 of frame, and where per-element interleaving (not call coverage) decides the word order. Per the
+pass's own rule, drafting stopped here rather than grinding bodies at 40+ words out.
+
+Sample size is 4 bodies read, 2 transcribed — short of the eight to ten asked for, because each transcription at
+this size costs the whole listing plus a matching cycle. The measurement is still decisive in direction: 90 and
+102 words out are not a cluster a different sample would rescue.
