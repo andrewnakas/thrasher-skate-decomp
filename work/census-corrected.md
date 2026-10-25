@@ -850,3 +850,48 @@ whole difference. Tested on the two siblings the pass named: `func_80026EC8` re-
 `func_80052380`'s residue is the pointer fold plus the `&D_8008A998` home, not argument birth, and its
 two-live-pointer form went 38 → 68. So the form needs a **constant** scale and a value that is a call argument
 first and a cross-call temporary second.
+
+### Equivalence-spelling sweep over the parked corpus: 174 bodies, 0 conversions, 6 improvements
+
+`work/scale_sweep.py` re-matched every parked draft in `work/near-miss/` (174 unique bodies, skipping the two
+already in `src/funcs/`) under each applicable constant-only rewrite, keeping the best spelling per body:
+
+| rewrite | what it changes |
+|---|---|
+| `shift2mul` | `x << N` → `x * (1 << N)` (the form that converted `func_80020398`) |
+| `mul2shift` | `x * 16` → `x << 4`, likewise `x * (1 << N)` |
+| `shift2div` / `div2shift` | `x << 2` ↔ `x / 4` |
+| `mod2mask` / `mask2mod` | `x % 8` ↔ `x & 7` |
+| `add2mul` / `mul2add` | `x + x` ↔ `x * 2` |
+
+Result: **167 bodies unchanged, 6 improved, 0 matched, 1 stale draft**. The full 174-row before/after table is
+committed as `work/scale-sweep-table.tsv`; the rows that moved are:
+
+| body | before | winning rewrite | after |
+|---|---|---|---|
+| `func_80020D74` | 22/39 | `shift2div` | **11/39** |
+| `func_80048598` | 37/37 | `shift2mul` | **23/37** |
+| `func_800484B4` | 37/57 | `shift2div` | **24/57** |
+| `func_800519C4` | 39/73 | `shift2div` | **28/73** |
+| `func_80035C9C` | 30/34 | `shift2div` | 30/34 |
+| `func_80011B48` | 12/17 | `shift2mul` | 11/17 |
+| `func_80034B98` | 0/0 | already matching | **stale draft — prune** |
+
+`mod2mask`, `mask2mod`, `add2mul` and `mul2add` produced no winning cell anywhere in the corpus.
+
+**The rule is narrower than "constant scale".** `shift2mul` — the form that converted `func_80020398` — moved
+only two bodies in 174, and neither close to matching. The tell needs all three parts: the value is a **call
+argument**, it is **also live after the call**, and the scale is a **constant**. Parked bodies that have a
+constant shift either keep the shifted value in a variable only (already optimal) or have a different residue
+entirely. The four `shift2div` wins are a different mechanism: `x >> N` and `x / 2**N` differ in *sign
+handling*, so the rewrite changes the emitted sequence rather than the allocation.
+
+**Methodology trap, recorded because it produced eleven false conversions.** The first sweep rewrote
+`a + i * 16` into `a + i << 4` without parentheses, which is `(a + i) << 4` — a compile error on a pointer. The
+scorer counted a failed compile as "zero diffs", so eleven bodies reported as MATCH that never compiled at all.
+Any mechanical rewrite has to parenthesise its replacement, and a sweep must treat an error result as an error,
+not as a perfect score.
+
+**Second finding from the same run:** `func_80034B98`'s parked draft matches exactly but is rejected by
+`scan.py` for the literal `0x801FC000`, which has no symbol in `config/` (protected). It stays blocked until a
+maintainer adds `D_801FC000`; this is the only body in the corpus whose verdict is "matches, cannot ship".

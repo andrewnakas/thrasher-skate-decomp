@@ -376,3 +376,17 @@ whole difference (`func_80020398`). What does *not* work: the same trick on a va
 `func_80026EC8` changes nothing), and bodies whose residue is a pointer fold or a global-address home rather than
 argument birth. So read the tell first — argument register plus a pre-call copy — and only then reach for the
 multiply spelling.
+
+## The constant-scale rule needs all three parts, and the multiply direction is the weak one
+`work/scale_sweep.py` applied every constant-only equivalence to 174 parked bodies: 0 conversions, 6 partial
+improvements. `shift2mul` (the `func_80020398` form) moved two bodies and neither is near a match. Read the rule
+as: **call argument + live after the call + constant scale**, and do not reach for it when the shifted value is
+only cached in a variable — that case is already what gcc wants.
+
+What does move bodies is the *other* direction on division: `x >> N` ↔ `x / 2**N` varies in sign handling, not
+allocation, and it took four drafts down by up to thirteen words (`func_800484B4` 37 → 24). None converted, so
+it is a shaping aid rather than a converter.
+
+When writing any mechanical rewrite: **parenthesise the replacement**. `a + i * 16` → `a + i << 4` parses as
+`(a + i) << 4`; the first sweep's unparenthesised form silently failed to compile and, because the scorer read a
+failed compile as zero diffs, reported eleven false conversions. Score errors as errors.
