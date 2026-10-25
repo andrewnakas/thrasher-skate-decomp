@@ -341,3 +341,38 @@ park both with one note rather than treating the second as a fresh body.
 - `func_80045828` — `lui $gp` / `lw $gp,-0x4C68($gp)` / `jr $ra`; a gp-reload stub, the only body that writes
   `$gp`. Detect all three by shape: a body that writes `$sp` other than in the prologue/epilogue, or writes
   `$gp` at all, is not transcribable and should be dropped on sight like a GTE body.
+
+## The family key is spent — it needs siblings, not a template
+`work/family_queue.py` reports 9 families with a matched template and **one** unopened member each, and 0 of the
+6 drafted this pass matched. The four units the key produced earlier all came from families with 2-4 unopened
+members. Rule: run the family key only where the cluster has **two or more unopened members**; a one-member
+family costs the full template read to buy a single draft and lands in the same allocation wall as any other
+100+ word body.
+
+## Two delay-slot classes, in opposite directions
+- **Missing (toolchain).** `func_8002DAE8` is 19 words short and every missing word is the two `nop`s the game
+  leaves after each `mult` (seven of them). This is the same class as the `func_80032C28` report on the toolchain
+  issue: it applies to plain `s16 * s16` products, not only to 64-bit fixed point. Read any body with `mult` as
+  "sequence right, two words per multiply missing" and do not spend source shapes on it.
+- **Extra (scheduler).** `func_80025544` is **+18**: one load-delay `nop` per statement, because our gcc cannot
+  hoist the next `%gp_rel` load above the store through the parameter, while the game's build does hoist it.
+  Grouping the loads, computing addresses into locals first, and `-O1`/`-O2`/`-O3` all fail to change it. So the
+  census class is **delay-slot fill direction**, not "a missing nop".
+
+## gcc folds a walked member pointer to its lowest offset
+In `func_80052380`, a `u8 *p = e` (or a struct pointer, or an `s32 *` with `p[0x13]`) used only at +0x48/+0x4C/+0x50
+is rewritten as `p = e + 0x48` with offsets 4/8/0, and the extra `addu` the game has (`s0 = s2`) disappears. The
+game keeps both pointers live, which needs a use of `p` at an offset below the fold base. Worth one shape only:
+if the fold survives, the body is a pointer-shape question the pass could not answer, not a statement-order one.
+
+## Argument-register birth: spell a constant scale as a multiply
+A value that the game computes in `$a0` and then copies to a callee-saved register in the `jal` delay slot is
+**born as the call argument**. gcc picks that shape when the scale in the expression is a multiplication:
+
+    size = *(u32 *) dst * 16;     /* MATCH */         size = *(u32 *) dst << 4;   /* homed in $s2 */
+
+Fourteen source shapes and eight per-file flags fail to move the `<< 4` version off 3/87; the multiply is the
+whole difference (`func_80020398`). What does *not* work: the same trick on a variable shift (`i * (1 << j)` in
+`func_80026EC8` changes nothing), and bodies whose residue is a pointer fold or a global-address home rather than
+argument birth. So read the tell first — argument register plus a pre-call copy — and only then reach for the
+multiply spelling.

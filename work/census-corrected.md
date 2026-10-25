@@ -770,3 +770,83 @@ Family yield: **4 matched of 7 drafted (57%)**, against 1 of 5 (20%) body-at-a-t
 The lever is real where a family exists, but the shape view proves the population is almost exhausted: 10 of 310
 unopened bodies sit in a near-duplicate family. The callee-set view is what makes the method general, and it
 still leaves 49 unopened bodies with a matched template undealt with — that is the queue for the next pass.
+
+### Family-queue pass: nine families, one unopened member each — 0 of 6 drafted
+
+`work/family_queue.py` now reports **9 families with at least one matched template and exactly one unopened
+member**, so the premise that made the family key pay last pass — pay the template cost once across several
+siblings — has no remaining instances. Six of the nine were attempted; none matched.
+
+| body | words | best | residue |
+|---|---|---|---|
+| `func_80017140` | 153 | 113 | 23-case switch (case order read from `jtbl_80010188`). gcc merges the three identical `f4`-compare case bodies (compare 1/2/3, then `s32` load, jump to the shared return) into one copy and jumps to it; the game keeps three copies. 10 words short; no shape tried separated them |
+| `func_80026EC8` | 61 | 0xf0 vs 0xf4 | 3-deep `i << j` index nest with three descending base walkers. Structure and count right; the last word is which copy of the allocation size gcc keeps |
+| `func_80020398` | 87 | **3/87** | Stream identical, size identical. The alloc-size value is homed in `$s2` with a move to `$a0`; the game computes it in `$a0` and copies into `$s2` in the `jal` delay. `-fno-schedule-insns2` 12/87, `-fno-schedule-insns` 53/87 |
+| `func_8002DAE8` | 98 | 0x13c vs 0x188 | cross product + `func_800330A4` normalise. 19 words short, and every one of them is the pair of `nop`s the game leaves after each of its seven `mult`s |
+| `func_80025544` | 106 | 113/124 (+18) | eighteen index stores. **One extra load-delay `nop` per statement**: the game hoists the next `%gp_rel` load above the previous store, we emit the nop. `-O1` worse (0x204), `-O2`/`-O3` unchanged |
+| `func_80052380` | 102 | **38/102**, size exact | gcc folds the walked voice pointer to `base + 0x48` (offsets 4/8/0) and homes `&D_8008A998` in `$fp`; the game keeps `s0 = e` beside `s2 = e` and re-materialises the global address each time |
+
+Not drafted: `func_80047C94` (0x25C), `func_80018D18` (0x2A4), `func_80051FD4` (0x2D0), `func_8004B4A8` (0x314)
+— all beyond what the remaining working time covered.
+
+**Family-key yield: 0 of 6 drafted.** Combined with the fact that no multi-member family is left, the method is
+retired: its four earlier units came from clusters with 2-4 unopened members, and a one-member family costs the
+full template read for a single body.
+
+Template sibling used for each of the nine families (`work/family_queue.py`), member → templates:
+
+| member | template(s) |
+|---|---|
+| `func_8004B4A8` | `func_8004B448` |
+| `func_80026EC8` | `func_80014C60`, `func_80014DA8` (the `func_80032C28` dot-product pair) |
+| `func_80020398` | `func_8001C410`, `func_80022118`, `func_8002DC70`, `func_8003AB50`, `func_8003ECE0` |
+| `func_8002DAE8` | `func_8004A270` |
+| `func_80052380` | `func_8004D758`, `func_8004DD38`, `func_8004DE4C` |
+| `func_80025544` | `func_80024D6C`, `func_800256F4`, `func_8002572C`, `func_800257F4`, `func_8002582C` (+4) |
+| `func_80047C94` | `func_8003C1A4`, `func_800411E0` |
+| `func_80018D18` | `func_80017F58`, `func_80018038`, `func_80018C64` |
+| `func_80051FD4` | `func_8005109C` |
+
+The template read paid in only two of the six attempts: `func_80052380` reused the `func_8004D758` group's
+mask/voice idiom (and reached an exact-size 38/102), and `func_80026EC8` reused the dot-product template down to
+one word. The other four needed no template at all — they are straight-line or nest bodies whose residue is
+scheduling or toolchain, so the sibling told us nothing the assembly did not.
+
+### The argument-register birth: `* 16` instead of `<< 4` — `func_80020398` MATCHES
+
+The 3-of-87 park converted on one spelling change. The residue was a value that had to be **born in `$a0` and
+copied out to `$s2`**; gcc homed it in `$s2` and moved it into `$a0` for the call, in that order. Fourteen shapes
+and eight flags kept that order (see the ranked table below). What flipped it was writing the scale as a
+**multiplication** rather than a shift:
+
+```c
+    size = *(u32 *) dst * 16;      /* was: *(u32 *) dst << 4 */
+    b = func_80034C20(size);
+```
+
+The multiply creates the argument pseudo at the call, so gcc computes it in `$a0` and only then copies it to
+`$s2` in the `jal` delay slot — exactly the game's two words. Nothing else in the body moved.
+
+Ranked shapes tried on this decision (all with the rest of the draft fixed):
+
+| shape | result |
+|---|---|
+| `size = *(u32 *) dst * 16; b = f(size);` | **MATCH** |
+| `size = *(u32 *) dst << 4; b = f(size);` | 3/87 (`$s2` home + `addu $a0, $s2`) |
+| `b = f(size = *(u32 *) dst << 4);` | 3/87 |
+| `size = *(u32 *) dst << 4; b = f(*(u32 *) dst << 4);` | 3/87 |
+| `s32 size` with and without a cast at the call, `u32` prototype | 3/87 each |
+| `-O2`/`-O3`/`-fno-strength-reduce`/`-fno-inline`/`-funsigned-char` | 3/87 each |
+| `-fno-schedule-insns2` / `-mno-split-addresses` / `-fno-schedule-insns` / `-O1` | 12 / 13 / 53 / 69 |
+| expression used at both sites, no variable (value recomputed at `memset`) | 79 (0x154) |
+| local count `n`, shift at both sites | 82 (0x154) |
+| `size = *(u32 *) dst; size <<= 4;` | 26 |
+| size read from `src` before the copy | 30 |
+
+**The rule, and its limits.** When a value must land in an argument register and survive the call, writing the
+scale as a constant multiply instead of a shift changes which pseudo the allocator sees first, and that is the
+whole difference. Tested on the two siblings the pass named: `func_80026EC8` re-spelled `(i << j)` as
+`i * (1 << j)` and stayed at 0xf0 (one word short) — a variable shift does not take this route; and
+`func_80052380`'s residue is the pointer fold plus the `&D_8008A998` home, not argument birth, and its
+two-live-pointer form went 38 → 68. So the form needs a **constant** scale and a value that is a call argument
+first and a cross-call temporary second.
