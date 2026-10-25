@@ -146,3 +146,16 @@ Do not apply `volatile` to a body whose stores already match — `80026E88` went
   `sltiu`.
 - **Split the reassociable arithmetic into two statements**: `a - (m - 4)` is rewritten by gcc to
   `(a + 4) - m` (4/15); `t = m - 4; result = a - t;` stops the reassociation and matches.
+
+## The unopened-body queue starts at 20 instructions
+`work/enum_fresh.py` (no draft, no census mention, no handwritten/GTE) finds 290 bodies, smallest **20**.
+The sub-16 and 16-19 bands are now empty of unopened bodies, so the tail ends here; every future pass
+should start at the 20-word floor and re-run that script because it excludes anything this file mentions.
+
+## Two shapes that paid at 20-26 words
+- **Statement order beats initialisers**: in `func_8002B57C` the store `self->f3C = 0` must come before
+  `n = h->head`. Writing `N *n = h->head;` and storing afterwards lets gcc hoist the load above the store
+  and shifts every following word — 24/24 diffs from a one-line difference.
+- **Do not let gcc see the third argument twice**: `func_8002E848` needs `f(buf, (s16) c, c)` with the
+  parameter declared `s32`. Declaring it `s16` and passing it twice makes gcc materialise a copy (`addu`)
+  and the call no longer matches.

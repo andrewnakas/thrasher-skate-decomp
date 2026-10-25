@@ -449,15 +449,16 @@ original; it does not change observable behaviour, and both units are pure store
 
 ### Delay-slot store class, corpus-wide: it is two bodies, and both already shipped
 
-`work/delay_probe.py` re-matched **every** draft under `work/near-miss/*.c` (268 files, 164 distinct
-bodies) at the default level and at `-O1`, source held fixed, and classified each body's residue by where
-the differing words sit rather than by the presence of a `nop`:
+`work/delay_probe.py` re-matched **every** draft under `work/near-miss/*.c` (274 drafts, 135 distinct
+bodies) at the default level — each draft's own `-O1` header stripped, so the level is held fixed — and
+classified each body by where its differing words sit relative to the end of the target, not by the
+presence of a `nop`:
 
 | probe class | bodies | barrier converts |
 |---|---|---|
-| pure sunk final store — size one word short **and** every diff inside the last two words | 2 | 2, both already shipped in #81 (`80032FE0`, `80033804`) |
+| sunk final store — size one word short **and** every differing word inside the last three words | 2 (`80032FE0`, `80033804`) | 2, both already shipped in #81 |
 | store or load word sitting in a `jr`/branch delay slot | 0 | — |
-| everything else (register roles, block layout, `lui` temps, size mismatch) | 162 | 0 |
+| everything else (register roles, block layout, `lui` temps, earlier size mismatch) | 133 | 0 |
 
 So the signature is real but rare: two bodies in the whole parked corpus, and they were exactly the ones
 #81 found. The rest of the set does not have a delay-slot residue, and `volatile` on a body whose store
@@ -484,3 +485,35 @@ Both revert to their parked drafts; no barrier survives on either.
 | `func_80026DAC` | three `out[i] = a[i] - b[i];` statements, same shape |
 | `func_800132FC` | `if (p[0]==0 && p[1]==0 && p[2]==0) return 1; return 0;` — the folded `&&` chain in the *positive* test. Splitting it into `if (p[i]) return 0;` returns makes gcc fold the tail into `sltiu` (6/15) |
 | `func_80034BD8` | `t = m - 4; D_8008A560 = a - t;` as **two statements** — writing `a - (m - 4)` inline makes gcc reassociate to `(a + 4) - m` and swap the `andi`/`subu` operands (4/15) |
+
+### Fresh-ground pass: 290 unopened bodies, 7 units, 5 parks
+
+`work/enum_fresh.py` lists every unmatched body on freshly fetched main that has **neither** a draft under
+`work/near-miss/` **nor** an address mentioned anywhere in this file, minus handwritten/GTE bodies: **290
+bodies**, and the smallest is **20 instructions** — the sub-20 tail is genuinely exhausted, so this pass
+started at the 20-word floor.
+
+| unit | words | shape |
+|---|---|---|
+| `func_80024D6C` | 20 | `idx` read after the call, then two `(&D_8008AF44)[idx] = 0` stores; the 4-byte externs keep both array bases gp-relative |
+| `func_80024DBC` | 20 | three calls, argument order preserved (`b, 0x3333`; `a, 0xCCCC`; `a, b`) |
+| `func_8002B57C` | 24 | unlink from a singly-linked list; the store `self->f3C = 0` must precede `n = h->head` (declaring `n` with its initialiser lets gcc hoist the load and shift every word) |
+| `func_80013D34` | 25 | `(a[i] + b[i] + b[i] + b[i]) >> 1` written as three literal additions — gcc keeps all three `addu`s instead of strength-reducing |
+| `func_80029420` | 26 | an early-return guard on `info[0x18] & 0x1000000`, then `func_8001D5B0(self, 0x4F4E4150, 1)`; `D_800A4F00` declared as `u8[0x40]` so the `lui`/`lw %lo` absolute form survives |
+| `func_8002E848` | 26 | `buf[0] = *a; buf[1] = 0; buf[2] = *b;` then `f(buf, (s16) c, c)` — the third argument must be the **raw** `s32 c`, with `(s16)` only on the second, or gcc inserts an `addu` copy |
+| `func_8001DC98` | 35 | **re-shipped**: still matched on current main but only ever lived in the conflicting PR #77 |
+
+Parks (draft under `work/near-miss/`, residue named):
+
+| body | best | residue |
+|---|---|---|
+| `8002050C` | **4/25** | `s32 end = -1` materialisation (`addu a3,v0,zero` vs `addiu a3,zero,-1`), one `addu` operand order, and the `(u8)` mask landing in the `jr` delay slot instead of the `beq` delay slot |
+| `8001F4E8` | **2/26** | the command word lands in `$v1`; the game loads it into `$a1`. Every other word matches |
+| `8002BF9C` | 9/24 | guard-first with a j-back-edge loop; gcc rotates to a bottom-tested loop (`while`) or inverts the guard (`for(;;)`) |
+| `80034C8C` | 15/25 | sum computed into `$a0` instead of `$a2`, and the rounding tail one word short |
+| `8002FE80` | 2/24 | `&buf` lands in `$v0`; the game uses `$a1` |
+| `8001DB74` | 2/26 | `addu` result in `$v0` instead of `$v1` (base/index roles), same body otherwise |
+
+PR dispositions this pass: **#77** is superseded — `func_80013CE8` and `func_80026DAC` landed through #82,
+`func_8001DC98` is re-shipped here, and its census hunk is long obsolete. **#80** is census-only and
+superseded by this file. **#83** (probe-count correction) is folded into this commit, so it can be closed.
