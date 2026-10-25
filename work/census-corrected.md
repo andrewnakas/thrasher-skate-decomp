@@ -850,3 +850,77 @@ whole difference. Tested on the two siblings the pass named: `func_80026EC8` re-
 `func_80052380`'s residue is the pointer fold plus the `&D_8008A998` home, not argument birth, and its
 two-live-pointer form went 38 → 68. So the form needs a **constant** scale and a value that is a call argument
 first and a cross-call temporary second.
+
+## Synthetic ordering experiment, October 25: the hypothesis is inverted
+
+Ten one-statement functions compiled through `tools/cc.py c … --print-asm` (`work/scratch_order.c`), each
+copying a three-element `s32` vector from `$5` to `$4`:
+
+| # | spelling | emitted order |
+|---|---|---|
+| o1 | `p->x = q->x; p->y = q->y; p->z = q->z;` | **lw, sw, lw, sw, lw, sw** — interleaved |
+| o2 | `*p = *q;` (struct assignment) | lw, lw, lw, sw, sw, sw — grouped |
+| o3 | `memcpy(p, q, 12)` | call, no inline |
+| o4 | `*p = *q` through a 12-byte union | lw, lw, lw, sw, sw, sw — grouped |
+| o5 | `for (i = 0; i < 3; i++) p[i] = q[i];` | loop with lw / sw per iteration |
+| o6 | struct passed **by value**, `*out = v` | three arg stores to the stack, then lw, lw, lw, sw, sw, sw |
+| o7 | `s32 a = q->x, b = q->y, c = q->z; p->x = a; …` | lw, lw, lw, sw, sw, sw — grouped |
+| o8 | `p[0] = q[0]; p[1] = q[1]; p[2] = q[2];` | **lw, sw, lw, sw, lw, sw** — interleaved |
+| o9 | `V3 t; t.x = q->x; …; p->x = t.x; …` | lw→sw stack, lw→sw stack, lw→sw stack, then reload and store |
+| o10 | `s32 a[3]; a[0] = q[0]; …; p[0] = a[0]; …` | identical to o9 |
+
+**Answer: field-per-statement and array subscripting already emit load,store,load,store. It is the *struct
+assignment*, the union assignment, `memcpy`, by-value passing and named scalar locals that group all loads
+before all stores.** The large-band hypothesis was therefore backwards: a draft that writes one field per
+statement is already in the interleaved form, and the ones that grouped loads would have been the struct-copy
+spellings the drafts never used.
+
+Consequence: load/store grouping is **excluded** as the source-side cause of the 40-100 word diffs in the large
+bands. What remains is the stack-slot ordering and the register reuse a value gets when the same parameter
+dereference is used twice — which is layout and allocation, not statement shape.
+
+### `func_80011D60` after the experiment
+
+The first transcription used `(s32 *)(p + 0x18)` for the `func_80033714` output and a three-element layout;
+the game's frame is `h[3]` at 0x10, a 16-byte output array at 0x18, `v` at 0x28 and `b` at 0x38, ending at
+0x48 with `$ra`. Rewritten as `s16 h[3]; s32 out[4]; s32 v[4]; s32 b[4];` with the final negations read from
+`out[]` and the block stores written as `p[0] = a0[0]` (so the parameter load is reused rather than reloaded
+from the stack), the diff went **102/101 → 87/101**, frame 0x19c against 0x194. Two words of frame and 87 words
+of order: the body is not recoverable by spelling, so it is parked with the cause named — stack-slot order and
+register reuse, not load/store grouping.
+
+## Slot-map helper, October 25: layout is a lever for the frame, not for word order
+
+`work/slots.py` reads a body's listing and prints its stack-slot map — frame size, every `($sp)` access with
+its width and access kinds, and which slots have their address taken — plus a declaration set that fills the
+same offsets. It sits next to `verify.py` and `enumerate.py` and writes nothing.
+
+    python work/slots.py func_80011D60 --decls
+
+Recorded slot maps (evidence, not advice):
+
+| body | frame | slots |
+|---|---|---|
+| `func_80011D60` | 0x50 | 0x10/0x12/0x14 `s16` (three halfwords), 0x18/0x1C/0x20 output array (**address taken**), 0x28/0x2C/0x30 `v[]` (address taken), 0x38/0x3C/0x40 `b[]`, 0x48 `$ra` |
+| `func_800212BC` | 0x38 | 0x10/0x14 two out-pointers, 0x18 **address taken**, 0x28/0x2C/0x30/0x34 four saved words |
+| `func_8004BA34` | 0x20 | 0x10/0x14/0x18 three saved words, no arrays |
+| `func_80049A14` | 0x8 | 0x00 `$s0` save, 0x18 is an incoming argument, not a local |
+
+### `func_80011D60` with the layout applied
+
+Declaring exactly what the map shows — `s16 h[3]`, a 12-byte `out[3]`, `s32 v[3]`, `s32 b[3]` — reproduces the
+game's frame **exactly**: `addiu $sp,$sp,-0x50` and `sw $ra,0x48($sp)` both match word for word. The diff is
+still **87 of 101**.
+
+Adding explicit `u8 pad` locals to force the offsets the map shows (v3 of the draft) made it **worse — 94/101
+and a 0x70 frame**, because the pads are real locals and gcc allocates them.
+
+So the distinction the pass asked for is now measured: **layout is fixed and the residue is allocation.** The
+frame matches, every call and argument is present, and 87 words still differ — the game keeps `a0[0]` live in
+`$v1` across twenty stores and reuses one output register where ours reloads from the stack. That is a register
+allocator decision, and the slot map cannot reach it.
+
+Consequence for the large bands: the last source-side lever is spent. 41-100 and 101-200 both fail with correct
+frame, correct calls and correct slot map, on saved-register count and live-range reuse. Further transcription
+passes will reproduce the layout and still land 80-100 words out; the honest options are a toolchain-level
+answer or accepting that this band's units need per-body allocator work, which one pass cannot afford.

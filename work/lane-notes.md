@@ -376,3 +376,56 @@ whole difference (`func_80020398`). What does *not* work: the same trick on a va
 `func_80026EC8` changes nothing), and bodies whose residue is a pointer fold or a global-address home rather than
 argument birth. So read the tell first — argument register plus a pre-call copy — and only then reach for the
 multiply spelling.
+
+## `addu` operand order follows the spelling of the address
+`func_80013EEC` sat at 2/57 for eight passes on `addu $v0,$v0,$s0` against the game's `addu $v0,$s0,$v0` —
+pointer arithmetic written `s + idx * 16 + 0x184` gives the index operand first, while the same address written
+as integer addition, base first — `(u32) s + ((u32) idx << 4) + 0x184` — gives the base first and matches.
+A pointer local (`u8 *e = s + idx*16`) and a widened index local both *lose* (15/57, 16/57). So when a diff is
+one or two `addu` words with the operands swapped, look at operand order before anything else; it is a
+statement-level decision, not allocation.
+
+## The return-signature scan does not out-rank size ordering
+Scanning the unopened set for a closing `addu $v0,$zero,$zero` or a single epilogue reached from several
+returns produced five drafts and **zero** matches; size ordering in the same band converted 3 of 24. Shared
+tails are the norm in this code base, so the signature carries almost no information. Keep both tells in the
+pre-draft checklist, do not reorder the queue by them.
+
+## The 41-100 band of `enumerate.py` has no undrafted bodies left
+All 453 enumerator bodies at 41-100 words already carry a draft. Future volume passes must either open the
+120+ band or work parks; asking for "fifteen new 41-100 bodies" is now unsatisfiable.
+
+## The `addu`-order tell fixes the operand, not the home
+On `func_800382C0` the integer-arithmetic spelling emits the game's `addu $a0,$a0,$v0` exactly, yet the body
+still parks because gcc homes the accumulator in `$a0` and copies to `$v0` at the return. Treat the tell as a
+*necessary* fix for an `addu`-swap diff, not a sufficient one: check the destination register of the same
+instruction before spending the shape, and if that is the only remaining difference the body is in the closed
+allocation class.
+
+## The 41-100 band was never exhausted — the checkout was stale
+The "no undrafted bodies in 41-100" result from the previous pass was measured on a branch that already
+contained that band's units. Against freshly fetched `origin/main` the band holds 70 undrafted C bodies, and
+the whole undrafted set is 244 C bodies (`work/queue_census.py`). Always run the census on a branch cut from
+`origin/main`, never on a working branch that has local units in it.
+
+## A buffer's declared size sets the frame, not the bytes used
+`func_80027090` memsets six bytes but the game's frame is 0x60: the local buffer is `u8 buf[0x38]` at sp+0x18,
+reaching the save area. Declaring the buffer at its *used* size (0x10) gives a 0x38 frame and ten diffs. When a
+frame is larger than the live locals explain, grow the largest array to fill it before touching statements.
+
+## A `u32` flag word decides `srl` vs `sra`
+`func_8001CDA4` was one word off on `>> 22`: with the flag pointer declared `s32 *` gcc emits `sra`, with
+`u32 *` it emits `srl`. When a field extract that the source would call unsigned differs by exactly that word,
+change the pointer's pointee signedness before anything else.
+
+## Small bodies are now failing on frame size, not on statements
+Four of seven drafts this pass (2/40, 10/40, 29/39, 35/40) were 4-8 bytes off in frame with the statement
+shape already close. At 37-40 words the usable first move is to settle the frame from the prologue/epilogue
+*saved-register set* and the largest local, and to stop at one shape once the frame is wrong — the body is then
+allocation-bound, which is the closed class.
+
+## A two-case `switch` is how the game spells a `sltiu` dispatch
+`func_8001F3D4` wants `sltiu $v0, $v1, 3` / `beqz` / `bnez $v1`. An `if (st < 3 && st != 0)` chain folds to
+`st - 1 < 2` and never matches; `switch (st) { case 1: case 2: … default: … }` produces the game's two tests
+and halved the diff (32/37 → 17/37). When a state test rejects exactly one small value and accepts a contiguous
+run, write it as adjacent `case` labels.
