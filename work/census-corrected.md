@@ -397,3 +397,52 @@ roles swapped in the `addu`; separate `off` statement and a struct-typed table b
 leaves it at 3/11) — both parked.
 
 Yield this pass: 2 units (`8002DCA8`, `80056A3C`) from 2 fresh bodies plus the 22-body matrix.
+
+### `-O1` near-miss queue: per-body outcome
+
+Every queue body was re-matched from its best draft with `/* cflags: -O1 */` in place and shapes spent
+against the remainder. **The queue itself converts none of the 24**: every residue left after `-O1` is
+either a register-role swap or a load/store-delay placement, and both are compiler decisions, not shapes.
+
+| body | best `-O1` | what the remainder is |
+|---|---|---|
+| `80015D38` | **2/20** | the gp load of `D_8008AD38` lands in `$v0` and is copied by `addiu $v1,$v0,-0x10`; the game loads straight into `$v1`. Source forms tried: declaration order swapped (4/20), split assignment (3/20), cast arithmetic (3/20), `p = D_8008AD38; p -= 0x10;` (3/20, fixes the load but flips the loop's block layout) |
+| `80026E88` | 12/16 | two load-delay `nop`s where the game interleaves the neighbouring stores; reordering the loop to the game's statement order gains 2 words but cannot remove them |
+| `80034004` | 13/23 | `u16` counter promotion: game masks the counter at the compare and keeps `n` in `$a2`; any source form that says so re-masks at the increment (17/23, 24/23) |
+| `80035810` | 18/20 | block layout: `beq` target and a duplicated `andi`/return path |
+| `800432D8` | 15/24 | six-value shuffle; `lui`/`addiu` of `D_8008B384` hoisted before the index scale, then the loaded base copied instead of used in place |
+| `80035BC0` | 18/21 | struct-store order |
+| `80034C20` | 19/23 | rounding fold + a store in the `jr` delay slot |
+| `80032400` | 23/27 | prologue save order, `mult` body |
+| `80033DB0` | 23/25 | loop strength reduction |
+| `80058448` | 27/43 | pointer/index walk |
+| `8004734C` | 28/50 | copy-loop strength reduction |
+| `80057CA4` | 29/45 | block layout, size still 0xc4 vs 0xb4 |
+| `8002C5FC` | 32/35 | loop stride, size 0x9c vs 0x8c |
+| `8004995C` | 44/46 | size 0xc4 vs 0xb8, allocation |
+| `8004AF80` | 34/66 | size 0x104 vs 0x108 |
+| `80047268` | 44/57 | size 0xe0 vs 0xe4 |
+| `8004A094` | 45/39 | size 0xb8 vs 0x9c |
+| `80057B94` | 45/68 | size 0x118 vs 0x110 |
+| `80046EFC` | 55/70 | allocation |
+| `80051354` | 125/136 | size 0x22c vs 0x220 |
+| `80051844` | 84/96 | size 0x16c vs 0x180 |
+| `80053A4C` | 59/58 | size 0xf8 vs 0xe8 |
+| `80048450`, `8003A33C`, `8005853C` | — | no draft left after the archive prune (drafts were stale copies of merged units) |
+
+`-O1` axis yield: **0 units from 24 bodies**. The axis is closed; the value it produced was the queue
+ordering above, not conversions.
+
+### Delay-slot store class: two units
+
+Probing the tail for the "gcc swallows the last store into the `jr $ra` slot" signature (game
+`sw; jr $ra; nop`, ours `sw; jr $ra; sw`) found a source shape that fixes it: mark the pointed-to objects
+**`volatile`** so the final store cannot be sunk into the delay slot.
+
+- `func_80032FE0` — `void func_80032FE0(volatile s32 *p) { p[0] = 0; p[1] = 0; p[2] = 0; }` — MATCH
+  (was 3/5, 0x10 vs 0x14).
+- `func_80033804` — same shape through a padded struct with `volatile` members at `+0x24/+0x28/+0x2C` —
+  MATCH (was 3/5, 0x10 vs 0x14).
+
+`volatile` here is a compiler barrier only: the three stores were already unconditional and ordered in the
+original; it does not change observable behaviour, and both units are pure stores.
