@@ -1151,3 +1151,42 @@ was found on, but it does **not** carry the nearest `addu`-order park across the
 `func_80045828` at 4 and `func_80045838` at 5). There is **no undrafted 41-100 body left to draft** — that band
 is now parks only. Volume at 41+ has to come either from the 120+ band or from re-drafting parks, which is why
 this pass's new-body count is zero rather than low.
+
+## Re-derived queue, October 25: 244 undrafted C bodies, worked smallest-first
+
+`work/queue_census.py` (new, reads `enumerate.bodies()` and classifies by idiom; stores no numbers of its
+own) counts **249 undrafted bodies against current `origin/main`, 244 of them ordinary C**:
+
+| band | total | C | non-C |
+|---|---|---|---|
+| 0-20 | 2 | 1 | 1 gp-reload ($gp store/load stub) |
+| 21-40 | 21 | 19 | 2 scratchpad-`$sp` switch |
+| 41-100 | 70 | 70 | — |
+| 101-200 | 96 | 95 | 1 scratchpad-`$sp` switch |
+| 201+ | 60 | 59 | 1 scratchpad-`$sp` switch |
+
+The earlier "41-100 is exhausted" result was measured on a stale checkout that already contained that band's
+units; against `origin/main` the band still has 70 undrafted C bodies. Handwritten and GTE bodies are excluded
+by the enumerator itself. `func_80045838` (5 words, stores `$gp` into `D_8008B398`) and `func_80023B1C`
+(0x8C, switches `$sp` to a saved stack pointer and back) are non-C idioms and were skipped, as was
+`func_80034D4C` — an `or`/`andi`-dispatched memcpy with a `subu` return, almost certainly asm-written.
+
+### The pass's drafts: 3 units from 11 (27%)
+
+| body | words | outcome | shape |
+|---|---|---|---|
+| `func_80027090` | 37 | **MATCH** | frame 0x60 wants `u8 buf[0x38]` at sp+0x18 — the memset only clears six bytes but the buffer still reaches the save area; a 0x10 buffer gives a 0x38 frame and 10 diffs |
+| `func_8001D5B0` | 28 | **MATCH** | `if (r == -1) return 0; return func_8001D530(a0, r);` — the separate `return 0` puts `addu $v0,$zero,$zero` in the `beq` delay and returning the callee's value leaves `$v0` untouched at the epilogue |
+| `func_8002AAE4` | 32 | **MATCH** | count declared `s32` from the `u16` field, consumed by `while (--n != -1)`, keeps it in `$v1`; a `u16` local homes it in `$v0` (3 diffs) |
+| `func_8001F3D4` | 37 | park 32/37 | `st < 3 && st != 0` fold to `st-1 < 2`; the game's `sltiu` + separate `bnez` survives only with the tests unnested, which reorders the read path |
+| `func_8002C3C0` | 37 | park 22/37 | table walk with variable stride; base/walker split and the `-1` pre-check land in the wrong registers |
+| `func_8002B674` | 37 | park 37/37 | `u8 *e = *(u8 **)(a1+0x2C)` then signed halves: size 0x9c against 0x94 |
+| `func_8002B5DC` | 38 | park 37/38 | mirror of `8002B674`; same 4-byte overshoot |
+| `func_80020570` | 38 | park 30/38 | accumulator double-counted: `total = -a2` then `+= v + a2` is close but the index scale hoists differently |
+| `func_8002B360` | 39 | park 41/39 | two descending slot scans (7 and 3, `-4` stride); 8 bytes over, the loop counter and slot pointer swap order |
+| `func_8002B77C` | 39 | park 16/39 | three `u16` field stores then a `u16 v[3]` built for `func_80014784`; the flag test `(x & 0xC00000) != 0xC00000` and the stack vector address order are both still off |
+| `func_8002DE60` | 39 | park 40/39 | `D_8008B060 - 0xC` descending probe against `D_8008B05C`; 12 bytes over |
+
+Yield: **27%**, which is the band's historical rate — the type tells keep working, they just do not scale the
+rate. The two that decided conversions here were frame *size* (a buffer declared bigger than the memset uses)
+and the shared-tail `return`, both already in the checklist.

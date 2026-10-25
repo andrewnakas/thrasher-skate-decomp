@@ -401,3 +401,14 @@ still parks because gcc homes the accumulator in `$a0` and copies to `$v0` at th
 *necessary* fix for an `addu`-swap diff, not a sufficient one: check the destination register of the same
 instruction before spending the shape, and if that is the only remaining difference the body is in the closed
 allocation class.
+
+## The 41-100 band was never exhausted — the checkout was stale
+The "no undrafted bodies in 41-100" result from the previous pass was measured on a branch that already
+contained that band's units. Against freshly fetched `origin/main` the band holds 70 undrafted C bodies, and
+the whole undrafted set is 244 C bodies (`work/queue_census.py`). Always run the census on a branch cut from
+`origin/main`, never on a working branch that has local units in it.
+
+## A buffer's declared size sets the frame, not the bytes used
+`func_80027090` memsets six bytes but the game's frame is 0x60: the local buffer is `u8 buf[0x38]` at sp+0x18,
+reaching the save area. Declaring the buffer at its *used* size (0x10) gives a 0x38 frame and ten diffs. When a
+frame is larger than the live locals explain, grow the largest array to fill it before touching statements.
