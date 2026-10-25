@@ -446,3 +446,41 @@ Probing the tail for the "gcc swallows the last store into the `jr $ra` slot" si
 
 `volatile` here is a compiler barrier only: the three stores were already unconditional and ordered in the
 original; it does not change observable behaviour, and both units are pure stores.
+
+### Delay-slot store class, corpus-wide: it is two bodies, and both already shipped
+
+`work/delay_probe.py` re-matched **every** draft under `work/near-miss/*.c` (268 files, 164 distinct
+bodies) at the default level and at `-O1`, source held fixed, and classified each body's residue by where
+the differing words sit rather than by the presence of a `nop`:
+
+| probe class | bodies | barrier converts |
+|---|---|---|
+| pure sunk final store — size one word short **and** every diff inside the last two words | 2 | 2, both already shipped in #81 (`80032FE0`, `80033804`) |
+| store or load word sitting in a `jr`/branch delay slot | 0 | — |
+| everything else (register roles, block layout, `lui` temps, size mismatch) | 162 | 0 |
+
+So the signature is real but rare: two bodies in the whole parked corpus, and they were exactly the ones
+#81 found. The rest of the set does not have a delay-slot residue, and `volatile` on a body whose store
+already matches wrecks its allocation. The family is closed at two units; the barrier is legitimate only
+where the original's stores are unconditional and ordered under a `nop` slot, which is what both shipped
+units are.
+
+One barrier shape each on the two closest `-O1` stragglers:
+
+| body | best before | barrier applied | after |
+|---|---|---|---|
+| `80015D38` | 2/20 (default), 9/20 (`-O1`) | `extern u8 *volatile D_8008AD38;` so the base load cannot be copied forward | 3/20 — worse; the residue is which register takes the load, not its order |
+| `80026E88` | 12/16 (`-O1`) | `volatile u32 *d` destination for the three loop stores | 17/16, size 0x44 vs 0x40 — the barrier pins the stores but adds a reload and a frame word |
+
+Both revert to their parked drafts; no barrier survives on either.
+
+### Six units from the sub-20-word tail (fresh bodies, this pass)
+
+| unit | shape that matched |
+|---|---|
+| `func_80019C0C` | `if (n != 0) { do { *dst++ = *src++; } while (--i != -1); }` with `i = n - 1` — the guard first, then a bottom-tested do-while; the `for (i = n - 1; i != -1; i--)` form emits a duplicated guard and 0x34 against 0x2c |
+| `func_80019EE4` | the same body with the pointer roles swapped (copy `a1 → a0`) |
+| `func_80013CE8` | three `out[i] = (a[i] + b[i]) >> 1;` statements — last store fills the `jr` slot, which is the *matching* direction here |
+| `func_80026DAC` | three `out[i] = a[i] - b[i];` statements, same shape |
+| `func_800132FC` | `if (p[0]==0 && p[1]==0 && p[2]==0) return 1; return 0;` — the folded `&&` chain in the *positive* test. Splitting it into `if (p[i]) return 0;` returns makes gcc fold the tail into `sltiu` (6/15) |
+| `func_80034BD8` | `t = m - 4; D_8008A560 = a - t;` as **two statements** — writing `a - (m - 4)` inline makes gcc reassociate to `(a + 4) - m` and swap the `andi`/`subu` operands (4/15) |
