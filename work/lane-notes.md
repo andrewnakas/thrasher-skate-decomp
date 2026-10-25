@@ -423,3 +423,9 @@ Four of seven drafts this pass (2/40, 10/40, 29/39, 35/40) were 4-8 bytes off in
 shape already close. At 37-40 words the usable first move is to settle the frame from the prologue/epilogue
 *saved-register set* and the largest local, and to stop at one shape once the frame is wrong — the body is then
 allocation-bound, which is the closed class.
+
+## A two-case `switch` is how the game spells a `sltiu` dispatch
+`func_8001F3D4` wants `sltiu $v0, $v1, 3` / `beqz` / `bnez $v1`. An `if (st < 3 && st != 0)` chain folds to
+`st - 1 < 2` and never matches; `switch (st) { case 1: case 2: … default: … }` produces the game's two tests
+and halved the diff (32/37 → 17/37). When a state test rejects exactly one small value and accepts a contiguous
+run, write it as adjacent `case` labels.

@@ -9,7 +9,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-497 unmatched bodies in the corpus; **205 drafted and measured here** (compile-error 2, instruction-stream 16, match 1, move-vs-materialise 1, operand 16, register-role 35, scheduling 1, size 133); 4 drafts predate a merge and are prunable.
+492 unmatched bodies in the corpus; **203 drafted and measured here** (compile-error 2, instruction-stream 16, match 1, move-vs-materialise 1, operand 15, register-role 34, scheduling 1, size 133); 6 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -51,7 +51,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8001DCF8` | `work/near-miss/func_8001DCF8-parked.c` | 11/24 | +1 | size | parked | - |
 | `func_8001FCB0` | `work/near-miss/func_8001FCB0-parked.c` | 11/25 | +0 | instruction-stream | parked | - |
 | `func_80034758` | `work/near-miss/func_80034758-11of41.c` | 11/41 | +0 | register-role | parked | - |
-| `func_800379F4` | `work/near-miss/func_800379F4-near-miss.c` | 11/26 | +0 | register-role | parked | - |
 | `func_8004A130` | `work/near-miss/func_8004A130-parked.c` | 11/80 | +0 | operand | parked | - |
 | `func_8004CCA0` | `work/near-miss/func_8004CCA0-sweep.c` | 11/34 | +0 | register-role | parked | - |
 | `func_80011B48` | `work/near-miss/func_80011B48-parked.c` | 12/17 | +0 | register-role | parked | - |
@@ -165,7 +164,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8002C688` | `work/near-miss/func_8002C688.c` | 46/61 | +7 | size | parked | - |
 | `func_800201AC` | `work/near-miss/func_800201AC.c` | 47/56 | -2 | size | parked | - |
 | `func_80038970` | `work/near-miss/func_80038970-sweep.c` | 47/68 | +0 | instruction-stream | parked | - |
-| `func_80019670` | `work/near-miss/func_80019670-role-park.c` | 48/55 | +0 | operand | parked | - |
 | `func_8004A094` | `work/near-miss/func_8004A094-near-miss.c` | 48/39 | +11 | size | parked | - |
 | `func_80038864` | `work/near-miss/func_80038864-sweep.c` | 49/67 | +0 | instruction-stream | parked | - |
 | `func_8004912C` | `work/near-miss/func_8004912C-sweep.c` | 49/65 | -1 | size | parked | - |
@@ -220,6 +218,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_800363F8` | `work/near-miss/func_800363F8.c` | - | - | compile-error | broken | - |
 
 <!-- END GENERATED TABLE -->
+
 ---
 
 ## Pass journal (history: numbers here are superseded by the table above)
@@ -1093,3 +1092,36 @@ The band's first drafts are 40-50 words off, not 5-15: at 68-71 words the game d
 held in 21-40 does not transfer to 41-100 on first drafts alone.
 
 No units this pass, so no units PR was opened; `work/shapes/` keeps the three drafts.
+
+## 21-40 finish pass, October 25: the band holds no fresh C ground, 0 units
+
+Census on a branch cut from `origin/main`, after checking the tooling (`work/enumerate.py` 90 lines,
+`work/verify.py` 349 lines, both present and `origin/freebuff/div-baselines` still on the remote, census run OK):
+
+| band | total | C | note |
+|---|---|---|---|
+| 21-40 | 18 | 16 | every C body is a recorded park, an in-flight unit (#112), or a non-C idiom |
+| 41-100 | 68 | 68 | untouched; drafts land 40-50 words out |
+
+The band's remaining 16 C bodies are **not** fresh work: `func_80023B1C` switches `$sp` (non-C),
+`func_80034D4C` is the asm memcpy, `func_80032E94` stores `$ra` to a global (trampoline), `func_8001CDA4` is in
+open PR #112, and the other twelve are parks from earlier passes (2/40 up to 41/39). "Finish the 19 undrafted
+bodies" therefore means re-testing parks, which is what this pass did.
+
+### Re-tests with shapes the original passes did not use
+
+| body | best | new shape | result |
+|---|---|---|---|
+| `func_8002B210` | 2/40 | `for (n = 7; n != -1; n--)` with `p` advanced separately | 7/40 — worse |
+| `func_8002B210` | 2/40 | `do { } while (--n != -1)` (decrement inside the condition) | 2/40 — unchanged; park stands |
+| `func_8002C818` | 10/40 | index-first address `(u8 *) (n * 4 + a1)` for the `addu` operand order | 10/40 — unchanged |
+| `func_8001F3D4` | 32/37 | dispatch rewritten as `switch (state) { case 1: case 2: … default: … }` | **17/37** — the two adjacent cases produce the game's `sltiu` + `beqz` + `bnez`; still 15 short, park |
+| `func_80029BBC` | 16/68 | count declared `s32` from the `u16` field | 16/68 — unchanged |
+| `func_8002635C` | 41/71 | full-body transcription with all seven calls (`func_80033804`, two `func_80026DAC`, two `func_800330A4`, two `func_80026DEC`) | 73/71 — the body got longer and the frame overshot by 4 words |
+
+Two findings worth keeping: the `switch` with two adjacent cases is the right spelling for a
+`sltiu`/`beqz`/`bnez` dispatch (it halved `func_8001F3D4`'s diff), and a *complete* call list does not by itself
+bring a 71-word body closer — `func_8002635C` regressed when the missing tail calls were added, so the
+argument/pointer shapes matter as much as the call count.
+
+No units this pass, so no units PR. Drafts stay in `work/shapes/`.
