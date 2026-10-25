@@ -1128,8 +1128,8 @@ No units this pass, so no units PR. Drafts stay in `work/shapes/`.
 
 ## 101-200 band sample, October 25: the band does not convert on transcription
 
-Sampled the untouched 101-200 ground with full-body transcriptions rather than smallest-first. Three bodies
-were read end to end; two were written out in full and measured.
+Sampled the untouched 101-200 ground with full-body transcriptions rather than smallest-first. Four bodies were
+read end to end; two were written out in full and measured.
 
 | body | words | transcription | result |
 |---|---|---|---|
