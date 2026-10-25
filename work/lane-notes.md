@@ -202,3 +202,24 @@ high half of the 64-bit shift result as a dead `srl` that `-O1` does not delete,
 stack spill of the DImode pair. Read a 64-bit body's `-O1` result as "sequence correct, one word per multiply
 too long" rather than as a source problem; `8003302C` and `8003353C` behave the same way (34/29 and 33/30).
 Do not spend shapes on this class without a way to make the truncated DImode result visible to the optimiser.
+
+## The 41-55 band is allocation-bound, not shape-bound
+Sixteen first drafts produced four units (25%), against 69% in the 33-40 band. The failures are not missing
+structure: `func_8002D904` is 7 of 46 words with the whole instruction stream correct, and `func_80034758` is
+11 of 41 with the size already exact. Past ~40 words the allocator has enough live values that a swapped
+callee-saved pair or one value in `$a0` instead of `$a3` is the normal outcome, and no declaration order,
+scope or pointer form tested moved it. Budget one or two shapes at this size, record the diff and move on;
+the band does not reward depth.
+
+Two things still pay at this size, both structural rather than cosmetic: a masked flag means a **narrow**
+variable (`u8 flag` produced `andi 0xFF` before the branch in `func_80018C64`), and a callee that takes the
+walked pointer as its argument is what forces `addu $a0,$s0,$zero` into the branch delay slot. Both are the
+same lesson as the 33-40 band: read the masking and the argument setup off the assembly before writing types.
+
+## A filled load-delay nop looks like a missing word, not a missing instruction
+`func_80022308`/`800223AC` sit 3-4 words short with the address arithmetic and all nine copy pairs already
+correct. The absent words are `nop`s: the original leaves the load-delay slot after `lw 0xFF8($a0)` empty, and
+our build fills it with the `addiu` of the tag constant it is about to store. That is the scheduler choosing a
+legal file, not a source shape — the same code with the constant materialised later (`addiu` immediately
+before the `sw`) is what the game has, and the C that produces it is `e->f[0] = 7` with the constant written
+inline. Treat a 3-4 word deficit on an otherwise word-perfect body as this class before re-reading the source.

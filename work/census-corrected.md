@@ -603,3 +603,40 @@ implicit-truncation / explicit-temp spellings all stop at 0x70 or worse. Same tr
 `8003302C` 34/29 → **34/29 at `-O1`, 0x88 against 0x74**; `8003353C` 37/30 → **33/30, 0x84 against 0x78**.
 Verdict: the class is *reachable* at `-O1` but not closed; the residue is one dead shift per multiply, which
 no source spelling tested removes. Drafts parked as `work/near-miss/func_80033{1FC,02C,53C}-o1*.c`.
+
+### 41-55 word band: 4 units from 16 drafts
+
+| unit | words | shape |
+|---|---|---|
+| `func_800248B0` | 42 | `func_80024720(a0, a1)` then a three-level nest over four gp-relative `s32[2]` tables indexed by `D_8008A2BC`, re-read at every use (a cached index loses the second `lw`) |
+| `func_80027A9C` | 42 | four chained calls through `func_8001D080()`, each re-invoked rather than cached; two `return 0` paths and a `return r` tail |
+| `func_8001E900` | 43 | unlink walk on a singly-linked list at `self+0x24` with a `prev` that stays 0 for the head case; `if (--*(u8 *)(self + 0x35))` is what puts the `andi 0xFF` after the `sb` |
+| `func_80018C64` | 45 | `u8 flag` (not `s32`) — the game masks it with `andi 0xFF` before the branch; and `func_8001954C` takes the same `a0` the walker used, which is what materialises `addu $a0,$s0,$zero` in the `bnez` delay slot |
+
+Band yield: **4 of 16 drafts (25%)** — a sharp drop from 69% in the 33-40 band. Twelve parks, every one of
+them an instruction stream that is *already correct* with one to four words of allocation or scheduling
+residue:
+
+| body | best | residue |
+|---|---|---|
+| `func_8002D904` | **7/46** | one swapped callee-saved pair: the game keeps the counter in `$s2` and the pointer in `$s1` (reusing the `self` register); declaration order and pointer form do not move it |
+| `func_80034758` | 11/41 | size exact, `frac` lands in `$a0` where the game uses `$a3`, and the dependent `sb`/`addiu` then use `$s0` instead of `$a0` |
+| `func_80015684` | 25/44 | size 0xb8 against 0xb0: the two `lw`/`sw` pairs on the `0xFF`-filled block keep `D_8008AD34` in a register rather than reloading it |
+| `func_8002AB64` | 38/44 | the game carries a 0x10-byte frame for the `mult` spills (`sw $v0,0x0($sp)` of the *operand*) and puts the shared `return 0` block at the end of the function; we spill nothing and place it inline |
+| `func_8001D428` | 40/43 | 8 words short: the game emits two `j` paths and an explicit `arg1 = 0` in the third arm of the key test; gcc deletes the dead store and the whole shape collapses |
+| `func_8002A044` | 41/45 | `t` has its address taken by `func_8003B754`, and the game keeps a register copy (`addu $v1,$v0,$zero`) beside the stack slot; we reload from the slot each iteration |
+| `func_80022308` | 31/41 | 4 words short: the load-delay `nop` after `lw 0xFF8($a0)` is filled by our hoisted `addiu` of the tag constant — see the note below |
+| `func_800223AC` | 42/42 | identical stream to `80022308` with tag 7; same filled-nop residue |
+| `func_8002CF94` | 34/41 | the game copies the head into a separate walker in the `bnez` delay (`addu $v1,$v0,$zero`) and keeps the common tail starting at the `f0` store; ours folds both |
+| `func_8002EC14` | 43/41 | three `beqz`/`bnez` must all share one `return 0` block at the end; nested `if`s, a flat `&&`, and adding a `s16 *p = a` local all change the layout |
+| `func_8002B2B0` | 43/44 | `slot` must be `s + 1` off a `(s32 *)(e + 0x1C)` walker to reproduce `addiu $a2,$v1,0x1C` / `lw 0x4($a2)`; 2 words still short |
+| `func_80025004` | 42/44 | 4 words over: the six indexed stores each re-load their gp-relative index; we CSE one of them |
+
+Skipped on sight: `func_80032F34` (handwritten — `addi`, `sub`, `add` markers in the listing).
+
+**New residue class: the filled load-delay nop.** `func_80022308`/`800223AC` are 3-4 words short because the
+game leaves a `nop` in the load-delay slot after `lw 0xFF8($a0)` and after the second `lw` of the same field,
+while our build fills that slot with a hoisted `addiu` of the literal it is about to store. The instruction
+streams are otherwise identical (same 9 load/store pairs, same `addiu 0xFFC` / `addu $a0` address form once the
+struct form is used). This is the mirror of the #38 class: not a *missing* nop before a store, but a nop the
+scheduler is entitled to fill and ours does.
