@@ -223,3 +223,32 @@ our build fills it with the `addiu` of the tag constant it is about to store. Th
 legal file, not a source shape — the same code with the constant materialised later (`addiu` immediately
 before the `sw`) is what the game has, and the C that produces it is `e->f[0] = 7` with the constant written
 inline. Treat a 3-4 word deficit on an otherwise word-perfect body as this class before re-reading the source.
+
+## A re-measure is cheaper than a re-think: `work/retest.py`
+Re-running every draft in `work/near-miss/` (313 files, one line each) against current `main` takes one
+command and gives the pass its cheapest-first ordering *measured*, not remembered. Three of the bodies the
+census listed as 4-8 words off now measure 2, and one (`func_80012274`) converted on a single type change.
+Do this first on any pass that intends to retest: previous verdicts are a stale cache.
+
+## A narrow **parameter** is its own shape
+`func_80012274` needed `s16 v` in the signature, not an `s32` local holding the value: with the parameter
+narrow, gcc copies it to a fresh pseudo (`addu $v1,$a0,$zero` in the `beqz` delay slot) and negates that
+copy in place; with `s32` it coalesces the local with the parameter and negates `$a0` directly. So the
+narrow-variable tell from the 41-55 band extends to **parameter types**: when the assembly has a copy of an
+argument into a second register on one path and an in-place computation of the argument on the other, read
+the parameter as the narrow type.
+
+## What a `lui` address temp is *not*
+`-mno-split-addresses` fixes a `lui` temp only when the game materialises a *whole* address up front. On a
+body where the game has `lui $a0` / `lw %lo($a0)` into an argument register (`func_8003BF7C`,
+`func_80056C90`, `func_8003B8F8`) the flag costs 29 of 36 words and 78 of 79 — every address in the body
+becomes absolute. Check whether the mismatch is the *temp register* (allocation: leave it) or the *split
+itself* (flag: use it) before spending a variant on it.
+
+## Loads into argument registers are the role class, one level up
+The retest found the role class in a new dress: the game loads a value straight into `$a0`/`$a1` (about to be
+a call argument, or the argument itself) while our build loads it into `$v0` and copies. Nine bodies park on
+exactly that, and no spelling tested — inlining the argument, comma-declaring the locals, taking the address
+of a local, passing an oversized extern through `*(u32 *)` — moves a load out of `$v0`. Treat "the game's
+load target is an argument or callee-saved register and ours is `$v0`" as the closed role class and budget
+one draft.
