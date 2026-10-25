@@ -226,3 +226,16 @@ the #17 class; `br_nop` is ordinary branch delay.
 | func_80058448 | 43 | 0 | 0 | 4 | 0 | open |
 
 217 unmatched bodies; 137 convertible now, 80 blocked.
+
+## New window claimed: 0x80051000-0x80052000 (fresh ground, no prior drafts)
+
+The old lane is exhausted of bodies without a drafted verdict, so this window was claimed on issue #1
+(`/claim 0x80051000 0x1000`) and worked off `origin/main` `efe6794`. Four unmatched bodies, none with a
+near-miss draft: `func_80051E14` (74), `func_800515FC` (83), `func_800511C0` (101), `func_80051354` (136).
+
+| func | verdict |
+|---|---|
+| func_80051E14 (74) | **opened, parked at 30/74, size 0x120 vs 0x128.** A 16-slot allocator over `D_800B114C` (0x10-byte entries) with the cursor in gp `D_8008B448`. Three shapes tried: index-and-pointer walk (52/74), comparing the cursor against the reloaded global (56/74), and an explicit `for(;;)` with the reload at the bottom (30/74 — best). Remaining residue: the game keeps the slot pointer in `$a0` from `i<<4` computed once per iteration and stores the rate constant in `$v0`; ours keeps the index and uses `$v1`. Its suffix is otherwise identical, including the `jal` delay-slot store and the 0xAC44/0x2B11/0x3E80/0x5622 rate chain. |
+| func_800515FC (83) | not opened this pass |
+| func_800511C0 (101) | not opened this pass |
+| func_80051354 (136) | not opened this pass |
