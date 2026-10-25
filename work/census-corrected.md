@@ -9,7 +9,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-511 unmatched bodies in the corpus; **175 drafted and measured here** (compile-error 2, instruction-stream 16, match 1, move-vs-materialise 1, operand 13, register-role 33, scheduling 1, size 108); 0 drafts predate a merge and are prunable.
+511 unmatched bodies in the corpus; **180 drafted and measured here** (compile-error 2, instruction-stream 16, match 1, move-vs-materialise 1, operand 13, register-role 33, scheduling 1, size 113); 0 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -59,6 +59,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8003C220` | `work/near-miss/func_8003C220-near-miss.c` | 12/28 | +0 | register-role | parked | - |
 | `func_80056D20` | `work/near-miss/func_80056D20-sweep.c` | 12/44 | +0 | operand | parked | - |
 | `func_8002C490` | `work/near-miss/func_8002C490-parked.c` | 13/21 | +1 | size | parked | - |
+| `func_80024F3C` | `work/near-miss/func_80024F3C-parked.c` | 14/50 | +1 | size | parked | - |
 | `func_80047A44` | `work/near-miss/func_80047A44-sweep.c` | 14/34 | +0 | register-role | parked | - |
 | `func_8004E460` | `work/near-miss/func_8004E460-near-miss.c` | 14/50 | +0 | instruction-stream | parked | - |
 | `func_80029488` | `work/near-miss/func_80029488-frame.c` | 15/29 | +0 | operand | parked | - |
@@ -84,6 +85,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_800432D8` | `work/near-miss/func_800432D8-near-miss.c` | 20/24 | -1 | size | parked | - |
 | `func_8004EECC` | `work/near-miss/func_8004EECC-sweep.c` | 20/33 | +0 | instruction-stream | parked | - |
 | `func_8001D4DC` | `work/near-miss/func_8001D4DC-parked.c` | 21/21 | -3 | size | parked | - |
+| `func_8002BFFC` | `work/near-miss/func_8002BFFC-parked.c` | 21/47 | +1 | size | parked | - |
 | `func_8003834C` | `work/near-miss/func_8003834C-sweep.c` | 21/39 | +0 | operand | parked | - |
 | `func_8004F1E0` | `work/near-miss/func_8004F1E0-near-miss.c` | 21/28 | +0 | register-role | parked | - |
 | `func_80020D74` | `work/near-miss/func_80020D74-sched-park.c` | 22/39 | -1 | size | parked | - |
@@ -112,6 +114,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80034698` | `work/near-miss/func_80034698-fresh.c` | 28/48 | +1 | size | parked | - |
 | `func_8004584C` | `work/near-miss/func_8004584C-sweep.c` | 28/38 | -2 | size | parked | - |
 | `func_80048598` | `work/near-miss/func_80048598-best.c` | 28/37 | +0 | register-role | parked | - |
+| `func_800159D8` | `work/near-miss/func_800159D8-parked.c` | 29/47 | +2 | size | parked | - |
 | `func_8001D540` | `work/near-miss/func_8001D540-parked.c` | 29/28 | +2 | size | parked | - |
 | `func_8002C0B8` | `work/near-miss/func_8002C0B8-29of36.c` | 29/36 | +3 | size | parked | - |
 | `func_8004EDF8` | `work/near-miss/func_8004EDF8-sweep.c` | 29/53 | -3 | size | parked | - |
@@ -152,11 +155,13 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8002B2B0` | `work/near-miss/func_8002B2B0-parked.c` | 43/44 | -2 | size | parked | - |
 | `func_8002EC14` | `work/near-miss/func_8002EC14-parked.c` | 43/41 | +2 | size | parked | - |
 | `func_8004836C` | `work/near-miss/func_8004836C-near-miss.c` | 44/57 | -5 | size | parked | - |
+| `func_80019F10` | `work/near-miss/func_80019F10-parked.c` | 45/47 | -5 | size | parked | - |
 | `func_80038970` | `work/near-miss/func_80038970-sweep.c` | 47/68 | +0 | instruction-stream | parked | - |
 | `func_80019670` | `work/near-miss/func_80019670-role-park.c` | 48/55 | +0 | operand | parked | - |
 | `func_8004A094` | `work/near-miss/func_8004A094-near-miss.c` | 48/39 | +11 | size | parked | - |
 | `func_80038864` | `work/near-miss/func_80038864-sweep.c` | 49/67 | +0 | instruction-stream | parked | - |
 | `func_8004912C` | `work/near-miss/func_8004912C-sweep.c` | 49/65 | -1 | size | parked | - |
+| `func_8001C0AC` | `work/near-miss/func_8001C0AC-parked.c` | 50/50 | -3 | size | parked | - |
 | `func_8004E7EC` | `work/near-miss/func_8004E7EC-clamp-park.c` | 51/81 | +0 | instruction-stream | parked | - |
 | `func_800358A8` | `work/near-miss/func_800358A8-near-miss.c` | 52/61 | -3 | size | parked | - |
 | `func_80036F64` | `work/near-miss/func_80036F64-sweep.c` | 53/67 | -1 | size | parked | - |

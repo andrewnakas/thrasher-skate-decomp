@@ -460,3 +460,25 @@ A fresh 46-word body, `8001D620`, drafted from the table's queue, parked at **16
 word short** for the same filled-nop reason: the game leaves a `nop` after `lw 0xC($s0)` and our build
 schedules the dependent `sltu` into it. Read a one-word deficit on an otherwise word-perfect body as
 that class first, not as a missing statement.
+
+## Volume works: 5 of 11 at 41-60 words (45%, against the 25% the band was averaging)
+Eleven unopened bodies drafted straight from `asm/`, two shapes each, parked on the second failure.
+Five matched: `80027630`, `80019570`, `80027478`, `8001F8BC`, `8001E9AC` (PR #104). Every one turned on
+a *type* decision read off the assembly, not on statement order:
+
+- **A signed halfword read through an `s32` local.** `arr[0] = D_8008AF86;` with an `s16` global emits
+  `lhu`; `a = D_8008AF86; arr[0] = a;` with `a` an `s32` emits the game's `lh`. Three loads were the
+  whole difference between 3/47 and MATCH in `func_80027630`.
+- **A counter loaded from a `u16` field is still signed.** `s32 n = *(u16 *)(v + 0x18);` gives the
+  game's `blez`/`bgtz`/`addiu`; declaring `n` as `u16` gives `andi` + `bnez` (`func_8001E9AC`,
+  11 → MATCH).
+- **A loop bound is unsigned when the game emits `sltiu`.** `u32 i` instead of `s32 i` turned the last
+  word of `func_80027478` (1/48 → MATCH).
+- **A masked `u16` dispatch stays a `u16`.** `(id & 0xE000)` in a `u16` local plus an if-chain reproduces
+  the compare chain; a `switch` would emit a jump table (`func_80019570`).
+- Small gp-relative globals must be declared **small**: `extern u8 D_8008AF84;` + `&D_8008AF84` gives
+  `addiu $a0,$gp,%gp_rel(...)`; `extern u8 D_8008AF84[];` gives a `lui`/`addiu` pair
+  (`func_80027630`, 19 → 3 diffs on that one change).
+
+Parks: `800159D8` 29/47, `80019F10` 45/47, `8002BFFC` 21/47, `8001C0AC` 50/50, `80024F3C` 14/50 — all
+frame or argument-register residue rather than missing structure.
