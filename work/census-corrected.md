@@ -1233,3 +1233,27 @@ moved nothing useful.
 
 Verdict for the division axis: **zero conversions across the corpus, and the four bodies now carry
 re-measured baselines with two of them materially improved.**
+
+## The register-role class: 34 bodies, two converted by a home fix each
+
+`verify.py` on current `main` puts 34 of the 202 drafted bodies in the `register-role` class, and **twelve of
+them are two words out** with the instruction stream otherwise identical. That is where this pass worked.
+
+| body | before | after | what moved it |
+|---|---|---|---|
+| `func_8002B210` | 2/40 | **MATCH** | `s32 end = -1;` as its own local, declared before the pointer, compared in the loop instead of a literal `-1` |
+| `func_8002B77C` | 16/39 | **MATCH** | explicit `src = d;` / `self = p;` copies in the game's saved-register order |
+| `func_8002C3C0` | 22/37 | 23/37 | the sentinel local, no gain — the residue there is the loop's `addu` operand order, not a constant |
+| `func_8002C818` | 10/40 | **9/40** | `s32 end = -1;` plus an integer `(n << 2) + (u32) a1` address; left two clusters: the game keeps `-1` in `$v0` and copies it to `$s2` in the compare's delay, ours assigns `$s2` directly |
+| `func_8002D904` | 7/46 | 46/46 | `u8 *p = self;` reused as the loop base — **worse**, confirm it stays parked on the pointer-vs-counter `$s1`/`$s2` swap |
+| `func_8001F3D4` | 17/37 | 34-37/37 | shared-tail shapes (`goto`, `||`-fold, inverted `c == 0x80` arm) all worse; the game's single tail block reached from two entries is not reachable from a plain nested `if` and the flat forms cost the whole body |
+| `func_800382C0` | 1/12 | 1/12 | `addu` operand order survives `t += a0`, `t = a0 + t` and the inline single-expression form (the last costs the body) |
+| `func_8002BCB0` | 2/17 | 2/17 | `u16`/`s32`/split-declaration locals do not move the load out of `$v0`; the game homes it in `$a1` |
+| `func_8001DB74` | 2/26 | 2/26 | integer-arithmetic base spelling does not flip the `addu` |
+| `func_8002FE80` | 2/24 | 2/24 | a named buffer pointer does not move the `addiu` from `$v0` to `$a1` |
+| `func_80056C90` | 2/36 | 31/36 | `-mno-split-addresses` on the file costs it; the `$t0`/`$v1` high-half home stands |
+
+Read the two matches as proof that the class is **partly** source-shaped: when the whole residue is one
+constant's materialisation point or one saved-register pair, a single line converts it. When the residue is a
+value gcc insists on homing in `$v0` where the game used `$a1`, no spelling tested moves it — that half of the
+class stays allocator-bound and should not be re-attacked with more shapes.
