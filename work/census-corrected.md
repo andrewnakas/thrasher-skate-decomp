@@ -261,3 +261,46 @@ flag test), `func_8001D0A0` (17, `(i * 100 + 8)` folded into a separate `off` lo
 Parked with their diffs: `func_8001D040` 2/16 (gcc picks `$v1` instead of `$a0` for the `lui` temp of the
 absolute `D_80089FE4` load) and `func_8001D340` 11/16 (the table walk's counter lands in `$a1` where the
 game keeps it in `$v1`). The remaining 17 bodies in the window (21-402 instructions) are unopened.
+
+## New window 0x80033000-0x80035000 (claimed on #1): 13 matched first-draft
+
+Untouched ground at the top of the low range: 53 unmatched bodies, 25 of them <=22 words with no loop.
+Opened 26 in size order; 13 matched on the first draft, 10 parked, 1 skipped on sight.
+
+**Matched** (in this PR, by real instruction count): `func_80034C14` (3, return gp s32), `func_80033F68`
+(4, return-old-value then store), `func_80034C7C` (4, `subu` in the jr slot needs the left operand loaded
+first), `func_80034D30` (7, `n = p[-1]; n += 4; D = D + n;` — three statements, or gcc commutes the `addu`
+and loads the gp global first), `func_80034EF4` (8, bare call), `func_80033F44` (9, `while (n > 0) s += *p++;`),
+`func_800347FC` (10, struct fields at +0,+4,+5,+8,+C through a `u8 sym[8]` gp base — the 8-byte declaration
+is what keeps `%gp_rel` while the writes reach past it), `func_80033F1C` (10, the global is loaded straight
+into `$a0` only when it is *passed*: `s32 v = G; if (v) f(v);`), `func_80033EEC` (12, two-call if),
+`func_80033EB4` (14, four-call sequence), `func_80034B68` (12, two constant stores then call — `sw $ra`
+lands after them on its own), `func_80034CF0` (16, allocator: `sz = (n + 3) & ~3`, compare with `sltu`
+against a `u32` bound), `func_80034654` (17, `'-'` then `negu`; the return is the *original* buffer).
+
+**Parked with their diffs**: `func_80033804` 3/5 and `func_800337C4` 16/16 (0x3C vs 0x40) — the last `sw`
+is pulled into the `jr` delay slot, and 337C4 also keeps the base in `$v0` instead of `$a0`; `func_80033818`
+12/13 and `func_80033E14` 24/25 — shape identical, the game's twelve temps land in `$t0-$t9,$v0,$v1` while
+gcc 2.8.1 starts the pool at `$v0`; `func_80034B98` 2/16 and (from the 0x1D000 window) `func_8001D040` 2/16
+— same class both times, the `lui` temp for an absolute global goes to `$v0`/`$v1` instead of the `$a0` the
+game reuses as both base and destination; `func_80034BD8` 3/15 — mask temp in `$v1` instead of `$v0`, the
+`a0 - (x - 4)` expression folds to `(a0 + 4) - x`; `func_80033428`/`33480`/`333C8` 25/22 — all three read
+`d[0..1]` back through `$a0` after the `func_80032F34` call, i.e. the game relies on `$a0` surviving with no
+callee-saved register, while gcc keeps the pointer in `$s1`; `func_80033DB0` 25/25 (0x60 vs 0x64) — the
+game spills `p` to `0($sp)` and reloads before each call, gcc parks it in `$s0`.
+**Skipped on sight**: `func_80033714` — `addu $t9,$ra` save/restore around three unrolled calls, a
+hand-unrolled body.
+
+**Unopened in this window** (21-311 instr): the remaining 27 bodies, including `func_80034060` (311),
+`func_80034874` (129) and the three 115-word `handwritten` bodies at `0x8003384C`/`0x80033A18`/`0x80033BE4`.
+
+### Yield by band in the low range (all passes)
+
+| band | opened | matched | rate |
+|---|---|---|---|
+| <=17 words | 20 | 13 | 65% |
+| 20-30 words | 5 | 0 | 0% |
+| 0x1D000 window (2-17 words) | 19 | 17 | 89% |
+
+Small bodies with no loop and few conditionals convert; from 20 words up, every body in this window
+stalled on allocation or a delay-slot fill.
