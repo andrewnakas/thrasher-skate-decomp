@@ -304,3 +304,38 @@ hand-unrolled body.
 
 Small bodies with no loop and few conditionals convert; from 20 words up, every body in this window
 stalled on allocation or a delay-slot fill.
+
+## Low-band pass: 0x80012000, 0x80019000, 0x80025000 — 20 matched first-draft
+
+Claims #29 (0x80011E00-0x80012400, already held) and #37 (0x80025000); 0x80019000 filed this pass.
+Every body opened was <=21 instructions with no loop. 20 matched, 4 parked, 0 skipped on sight.
+
+**Matched**: `12238` `123A8` `12208` `12004` `121E8` `12214` `12240` `12024` `12078` `1954C` `19FCC`
+`19518` `19630` `256EC` `25A58` `25B5C` `256F4` `257F4` `25A0C` `25B10`.
+
+Shapes worth keeping:
+- `func_80012078`: the zero case must be the **early** `return 0` (`if (t == 0) return 0; return f(p, t);`),
+  not `if (t != 0) return f(...)`. The ternary and the `!=` form both invert the branch and lose a word.
+- `func_80025A0C`/`25B10`: the index is loaded once into a local, and the u16 store's scale must be its own
+  statement (`j = i * 2;`) — inline `i * 2` sinks the `sllv` below the `sw` and adds a reload.
+- `func_80012240`: the `sll 16`/`sra 16` before the call is a `s16` **parameter**, not a cast in the body.
+- `func_80012024`: `count * 0x1C0` compiles as `sll 3; subu; sll 6`; the loop bound compares pointers with
+  `sltu`, so the walking pointer must be `u8 *`, not an index.
+
+**Parked**: `func_80012274` 3/11 and `func_800122A0` 10/11 (0x24 vs 0x2C) — `r = -v`/`r = v` select keeps
+collapsing into `negu` in place; `func_80019C0C` and `func_80019EE4` 4/11 — counter lands in `$a2` where the
+game keeps it in `$v1` (same residue as `func_8001D340`).
+
+### Yield table (updated)
+
+| band | opened | matched | rate |
+|---|---|---|---|
+| <=17 words, low range (all passes) | 40 | 33 | 83% |
+| 18-21 words, low range | 6 | 3 | 50% |
+| 20-30 words, 0x33000 window | 5 | 0 | 0% |
+
+### Unopened in these windows (<=21 instr where noted)
+`0x80012000`: `800122A0`(parked) `80012024`(done); remaining bodies are >=21 instr except `80012068`-area.
+`0x80019000`: `80019C0C`/`80019EE4` parked; next is `80019444`, `80019410`.
+`0x80025000`: `800257A0`(21) `80025A58`(done) `80025B5C`(done); remaining >=19 instr: `80025A0C`/`80025B10` done.
+`0x8001F000` (unclaimed): 7 easy bodies including `8001F374`(14), `8001F3AC`(10), `8001FD14`(16), `8001F984`(19).
