@@ -412,3 +412,17 @@ the whole undrafted set is 244 C bodies (`work/queue_census.py`). Always run the
 `func_80027090` memsets six bytes but the game's frame is 0x60: the local buffer is `u8 buf[0x38]` at sp+0x18,
 reaching the save area. Declaring the buffer at its *used* size (0x10) gives a 0x38 frame and ten diffs. When a
 frame is larger than the live locals explain, grow the largest array to fill it before touching statements.
+<<<<<<< HEAD
+=======
+
+## A `u32` flag word decides `srl` vs `sra`
+`func_8001CDA4` was one word off on `>> 22`: with the flag pointer declared `s32 *` gcc emits `sra`, with
+`u32 *` it emits `srl`. When a field extract that the source would call unsigned differs by exactly that word,
+change the pointer's pointee signedness before anything else.
+
+## Small bodies are now failing on frame size, not on statements
+Four of seven drafts this pass (2/40, 10/40, 29/39, 35/40) were 4-8 bytes off in frame with the statement
+shape already close. At 37-40 words the usable first move is to settle the frame from the prologue/epilogue
+*saved-register set* and the largest local, and to stop at one shape once the frame is wrong — the body is then
+allocation-bound, which is the closed class.
+>>>>>>> 867221d (Record: throughput pass census, u32 flag-word tell, frame-size residue)
