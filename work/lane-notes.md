@@ -131,9 +131,10 @@ this signature: on a body where the store already matches, `volatile` will wreck
 
 ## Delay-slot store barrier: scope, and why it is not a family
 The `volatile` barrier converts only bodies whose residue is *the last store swallowed into the `jr $ra`
-slot*: game `sw; jr $ra; nop`, ours `sw; jr $ra; sw`, size one word short, both diffs in the last two
-words. Measured corpus-wide (268 drafts, default and `-O1`): exactly two bodies qualify, both shipped in
-#81. A store or load word sitting in a *branch* slot is a different residue and no barrier touches it.
+slot*: game `sw; jr $ra; nop`, ours `sw; jr $ra; sw`, size one word short, every differing word inside
+the last three words. Measured corpus-wide (274 drafts, 135 bodies, default level): exactly two bodies
+qualify, both shipped in #81. A store or load word sitting in a *branch* slot is a different residue and no
+barrier touches it.
 Do not apply `volatile` to a body whose stores already match — `80026E88` went 12/16 → 17/16 and
 `80015D38` 2/20 → 3/20 that way. Probe first, then barrier.
 
