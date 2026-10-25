@@ -895,3 +895,12 @@ not as a perfect score.
 **Second finding from the same run:** `func_80034B98`'s parked draft matches exactly but is rejected by
 `scan.py` for the literal `0x801FC000`, which has no symbol in `config/` (protected). It stays blocked until a
 maintainer adds `D_801FC000`; this is the only body in the corpus whose verdict is "matches, cannot ship".
+
+**Correction: the `shift2div` cells above are not equivalences.** `x << N` is `x * 2**N`; the rewrite produced
+`x / 2**N`, which is `x >> N`. Those four rows therefore measured the codegen of a *different expression*, not of
+an equivalent spelling. The clearest case is `func_80020D74`: the game emits `sll $s0,$s0,8` (`a1 << 8`), the
+`shift2div` draft emits `bgez/addiu/sra` (`a1 / 256`), and the draft that scores better (11/39 against 22/39) is
+the one whose *meaning* is wrong. Withdraw the `shift2div` cells: `func_80020D74` returns to 22/39,
+`func_800484B4` to 37/57 and `func_800519C4` to 39/73, and only `func_80048598` 37 → 23 stands, because
+`shift2mul` (`x << N` → `x * (1 << N)`) is an identity. `work/scale_sweep.py` no longer emits `shift2div`;
+`div2shift` (`x / K` → `x >> N`) stays, since that one is an identity for the unsigned case it is used on.

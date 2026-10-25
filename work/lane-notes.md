@@ -390,3 +390,11 @@ it is a shaping aid rather than a converter.
 When writing any mechanical rewrite: **parenthesise the replacement**. `a + i * 16` → `a + i << 4` parses as
 `(a + i) << 4`; the first sweep's unparenthesised form silently failed to compile and, because the scorer read a
 failed compile as zero diffs, reported eleven false conversions. Score errors as errors.
+
+## A rewrite is only a measurement if it is an identity
+`x << N` → `x / 2**N` looks like "division instead of shifting" but computes the *opposite* shift. It scored
+four bodies better and every one of those scores was meaningless: the better-compiling draft was the one with
+the wrong meaning (`func_80020D74` 11/39 for `a1 / 256` against 22/39 for the game's own `a1 << 8`). Before
+adding an equivalence axis, state the identity and check it against the assembler: `x << N` = `x * 2**N`,
+`x / 2**N` = `x >> N` (unsigned), `x % 2**N` = `x & (2**N - 1)`. Anything else is a different expression wearing
+the same words.

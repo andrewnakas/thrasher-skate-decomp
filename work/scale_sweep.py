@@ -7,7 +7,6 @@ constant-only rewrite:
     shift2mul   x << N        -> x * (1 << N)
     mul2shift   x * 16        -> x << 4          (also x * (1 << N))
     div2shift   x / 4         -> x >> 2
-    shift2div   x << 2        -> x / 4
     mod2mask    x % 8         -> x & 7
     mask2mod    x & 7         -> x % 8
     add2mul     x + x         -> x * 2
@@ -58,10 +57,9 @@ def variants(text):
     out = {}
     if SHIFT.search(text):
         out["shift2mul"] = SHIFT.sub(lambda m: "(%s * (1 << %s))" % (m.group("lhs"), m.group("n")), text)
-        out["shift2div"] = SHIFT.sub(
-            lambda m: "(%s / %d)" % (m.group("lhs"), 1 << int(m.group("n"))) if int(m.group("n")) < 11 else m.group(0),
-            text,
-        )
+        # NOTE: x << N is x * 2**N. There is deliberately no "shift2div" cell:
+        # rewriting a left shift as a division computes the right shift instead,
+        # so it is not an equivalence and its diffs measure a different expression.
     if MULPOW.search(text):
         new = MULPOW.sub(_mul2shift_sub, text)
         if new != text:
