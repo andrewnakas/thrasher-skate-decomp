@@ -176,9 +176,9 @@ the #17 class; `br_nop` is ordinary branch delay.
 | func_800504D4 | 100 | 0 | 2 | 3 | 4 | open |
 | func_80050664 | 246 | 0 | 22 | 2 | 2 | open |
 | func_80050A3C | 408 | 1 | 11 | 5 | 3 | #38 load->store |
-| func_800511C0 | 101 | 0 | 1 | 2 | 0 | open |
-| func_80051354 | 136 | 0 | 6 | 0 | 0 | open |
-| func_800515FC | 83 | 0 | 4 | 1 | 0 | open |
+| func_800511C0 | 101 | 0 | 1 | 2 | 0 | parked 61/101, #17 scheduler |
+| func_80051354 | 136 | 0 | 6 | 0 | 0 | parked 131/136, allocation |
+| func_800515FC | 83 | 0 | 4 | 1 | 0 | **matched** |
 | func_80051844 | 96 | 0 | 1 | 1 | 0 | open |
 | func_800519C4 | 72 | 0 | 1 | 0 | 2 | open |
 | func_80051B9C | 158 | 2 | 7 | 1 | 1 | #38 load->store |
@@ -226,3 +226,14 @@ the #17 class; `br_nop` is ordinary branch delay.
 | func_80058448 | 43 | 0 | 0 | 4 | 0 | open |
 
 217 unmatched bodies; 137 convertible now, 80 blocked.
+
+## Window 0x80051000-0x80052000: the three undrafted bodies, transcribed
+
+All four bodies in the window now have a verdict.
+
+| func | instr | verdict |
+|---|---|---|
+| func_800515FC | 83 | **matched.** State machine over a 0x2C-byte handle: assert template (line 0x3D2), `switch (state)` with cases 1/2 -> state 2, 7 -> state 4 + unk3 = 0, 3/8 -> break, and 4/5/6/default sharing the body. The body is `if (!(flags & 0x2000))` on the success path (the state-3 tail sits out of line after it), func_80051F9C(unk2C), unk18/unk20 cleared, state = 2 stored into the call's delay slot, then the `0x51B9C` unsigned completion compare with the 0x1000/0xEFFF flag tail. Six of the eight jump-table slots point where the game's does; build.py confirmed the table bytes. |
+| func_800511C0 | 101 | parked 61/101. Structure exact (see the note); the only residue is the mismatch return code: the game materialises 0x206 into $s0 before the bne and returns `addu $v0, $s0`, ours loads a constant after the func_80051F3C call. Literal, hoisted-local and inside-else-local forms all sink the constant. #17 scheduler class. |
+| func_80051354 | 136 | parked 131/136, size 0x20C against 0x220. Second arm (the 16-slot allocator over D_800B124C and the `b & 1` insert/append of the node at slot+4) is five words short: the game hoists `n = &s->unk2C` and holds unkC across the allocator in a callee-saved register, which also accounts for its 0x30 frame against our 0x28. Allocation class, and the body is not instruction-complete yet. |
+| func_80051E14 | 74 | parked 30/74 from the previous pass; the sweep re-confirmed 30 as the best of twelve variants. |
