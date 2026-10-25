@@ -302,3 +302,42 @@ address in the body (measured 78/79 and 31/36). Record the class and move on.
   at a positive offset, so our build sets the walker to element+0x74 and uses negative offsets; the game keeps
   the element base. The bias is identical for `u8 *` and struct-pointer spellings, so this is a compiler
   decision, not a source shape.
+
+## Families, not bodies: `work/cluster.py`
+Two keys, both computed from the listing with the address-dependent parts normalised away (displacements to
+`<off>`, `%hi`/`%lo`/`%gp_rel` symbols and branch targets to `<sym>`/`<tgt>`, registers to `$Aa..$Zz` in
+first-appearance order):
+- **shape** — the normalised instruction stream, clustered by greedy leader similarity (difflib ratio >= 0.90;
+  a size-band + opcode-multiset prefilter keeps it to a second over 1081 bodies). This finds exact twins only:
+  310 unopened bodies hold 309 distinct shapes and one twin pair. Useful for *confirming* a family, useless for
+  finding one.
+- **callee set** — the frozenset of `jal` targets. Bodies with no calls must be excluded or every leaf body in
+  the binary joins one family. This is the key that works: 543 families, 56 unopened bodies whose family already
+  contains a matched member, and the members differ in length (0xE0 to 0x4D4 in the `80015E8C`/`15F10` family).
+
+**The rule: reach for the callee set first, then read the matched sibling's C before drafting.** The transferable
+part is the idiom, not the text — which of the `arg` fields are `s32 *` and which `u8 *`, whether the callee takes
+out-parameters (`func_80020C34`'s `v[3]`) or returns a pointer, whether stores go straight to the destination or
+through a local triple, and which arm gcc put first. Four of seven drafts matched that way, several in one shape.
+
+Two tells that came out of it:
+- **Push the zero store last.** `func_8001F468` matches only with `f24 = a1[0]; f2C = a1[1]; f28 = 0;` — with the
+  zero store before the second load, gcc hoists it into the first load-delay slot and the body ends up a word
+  short with no `nop` at `+0x14`. A missing load-delay `nop` right after an argument load means the *next*
+  statement in the source depends on that load; move the independent store down.
+- **Branch polarity is a source-order decision, not a compiler one.** `func_80026FBC` flipped our `beqz` to the
+  game's `bnez` purely by writing the arms as `if (s >= 7)`; the same trick converted earlier bodies. Write the
+  arm the game jumps *to* as the `if` body.
+
+## What a twin's identical divergence means
+`func_8002D734` and `func_8002D81C` are the same function with X and Z swapped, and both park at 32 of 58 words
+with the same residue (the `func_80035E40` return kept in `$v0` where the game copies it to `$a0`). When two
+bodies that differ only in constants diverge identically, the residue is the allocator and no shape will fix it;
+park both with one note rather than treating the second as a fresh body.
+
+## Three bodies in this binary are not C
+- `func_800262E8` / `func_80027538` — scratchpad stack switch (`lui 0x1F8003FC` / `sw $sp,0x10($t0)` /
+  `addiu $t0,-4` / `addu $sp,$t0`); an asm macro in the original source.
+- `func_80045828` — `lui $gp` / `lw $gp,-0x4C68($gp)` / `jr $ra`; a gp-reload stub, the only body that writes
+  `$gp`. Detect all three by shape: a body that writes `$sp` other than in the prologue/epilogue, or writes
+  `$gp` at all, is not transcribable and should be dropped on sight like a GTE body.

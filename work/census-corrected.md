@@ -728,3 +728,45 @@ everything in the corpus where the pattern appears. The 41+ word queue was then 
 | `func_80034698` | 48 | 28/48 | digit loop + zero pad + in-place reverse. Declaration order `char *p = dst; u32 value = v; u16 n = 0;` is what orders the prologue (`t0 = a0`, `v1 = a1`, `a1 = 0`); the pad loop is `n++; do { *p++ = '0'; } while (n++ < width);` (test-before-increment). Residue is which register holds the pad counter (`$a1` vs `$t1`) |
 
 Fresh-ground yield this pass: **1 unit from 5 drafts (20%)**, in line with the 41+ band's ~25%.
+
+### Family pass: cluster the corpus, instantiate one member, 4 units from 7 drafts
+
+`work/cluster.py` clusters bodies by normalised disassembly shape — memory displacements masked to `<off>`,
+`%hi`/`%lo`/`%gp_rel` symbols and branch targets to `<sym>`/`<tgt>`, registers renamed to `$Aa..$Zz` in order of
+first appearance — and reports two views, since neither is sufficient on its own.
+
+**Shape view (identical stream).** Of the 310 unopened clean bodies there are **309 distinct strict shapes and
+exactly one exact-twin pair** (`func_8002D734`/`func_8002D81C`). Similarity clustering at ratio >= 0.90 gives 52
+families over the whole 1081-body corpus, but only **6 of them touch unopened ground, holding 10 bodies** — and
+the number is identical at 0.80, so these are genuine twins, not a threshold artifact. The unopened population
+is large and diverse (median 102 instructions, p75 169); the small near-duplicates were all drafted in earlier
+passes.
+
+| shape family | members | outcome |
+|---|---|---|
+| `func_80017F58` (matched) + `func_80018038` | 2 | **`func_80018038` MATCH on instantiation** — byte-for-byte the merged template with the final field at `+0x16` instead of `+0x14` |
+| `func_8002D734` / `func_8002D81C` | 2 | template recovered, **both park at 32/58**; the streams are identical but for the X/Z axis swap, and both build to the same residue: the game copies the `func_80035E40` return into `$a0` (`addu $a0,$v0,$zero`) and we keep it in `$v0`, rotating every later word. A twin diverging identically is the cleanest evidence yet that this is allocation, not body shape |
+| `func_800262E8` / `func_80027538` | 2 | **not C**: both switch `$sp` into the scratchpad (`lui 0x1F8003FC` / `sw $sp,0x10($t0)` / `addiu $t0,-4` / `addu $sp,$t0`) — a PsyQ asm macro, not expressible in plain C. Same class as `func_8003B068`, the only other body in the binary with this idiom |
+| `func_80026478` / `func_80026870` | 2 | excluded: both call `func_8003353C` and `func_800331FC`, the 64-bit fixed-point dead class |
+| `func_80018298` / `func_8001876C` | 2 | **deferred** — the largest unopened family (0x4D4 / 0x4F8, 309 words each with only 6 calls). No dead-class dependency, so this is real work, but 309 words is beyond one pass's shape budget |
+| `func_8002BA54` (matched) + `func_80045828` | 2 | **not C**: `lui $gp` / `lw $gp,-0x4C68($gp)` / `jr $ra` — a gp-reload stub, the only body in the corpus that writes `$gp`. Clustered with the matched 4-word getter only because the shape normalisation erases which register is loaded |
+
+**Callee-set view.** Keying on the set of `jal` targets instead finds **543 families, and 56 unopened bodies whose
+family already has a matched member** — the families in this codebase differ in length but share a helper set
+(the table-manager bodies run from 0xE0 to 0x4D4 and all call `func_80015E8C`/`15F10`/`19518`/`1954C`). This is
+where the units came from; the matched sibling supplies types, statement order and branch polarity.
+
+| body | words | family template | outcome |
+|---|---|---|---|
+| `func_8001F468` | 32 | `func_8001F3AC` | **MATCH** — order is `f24 = a1[0]; f2C = a1[1]; f28 = 0;` then the call: with the zero store last, gcc puts the `a1[1]` load above it and the dependent store in the `jal` delay, which is what produces the game's load-delay `nop` at `+0x14` |
+| `func_80022E4C` | 54 | `func_80024DBC` | **MATCH on the first draft** — `s32 v[3]` stack triple, the member base `*(s32 *)(a0 + 8)` re-read on every access, `func_800331FC(v, -a0[9])`, `func_80032FF4(v, a0[1] + 0x44)`, then `v[i] = base[0x11+i] - v[i]`, `func_800331FC(v, -0x9EB)`, `func_80032FF4(base + 0x44, v)` |
+| `func_80026FBC` | 53 | `func_80014AE8` | **MATCH in two shapes** — identical idiom to the template but with `s < 7` and the arms written `if (s >= 7)`; writing the game's arm order is what flips our `beqz` back to the game's `bnez` |
+| `func_80018038` | 56 | `func_80017F58` | **MATCH on instantiation** (see above) |
+| `func_8001C2F0` | 49 | `func_8001C2B8` callers | 26/49 parked: `for` (not `if` + `do`) is what removes the duplicate `blez`; residue is the callee-saved assignment (`$s3`/`$s4` and `$s6`/`$s7` swapped) plus where the `$a0` argument copy lands |
+| `func_80019670` | 55 | `func_80016D00` etc. | 48/55 parked: structure right, but `((s32 *) &D_8008AD64)[6 + i]` folds `+0x18` into the symbol (`%gp_rel(D_8008AD7C)`) where the game keeps the base and adds the offset; roles also swap (`$s2`/`$s3`) |
+| `func_80020D74` | 39 | `func_80020C34` (6-member family, no matched member) | 22/39 parked: `v[3]` triple of out-parameters, `r = (a0 << 16) | (a1 << 8)`, walk `+0x30`; gcc sinks the `or` into the `beqz` delay slot where the game emits it before the load, and the extra load-delay `nop` is the one missing word |
+
+Family yield: **4 matched of 7 drafted (57%)**, against 1 of 5 (20%) body-at-a-time on the same queue last pass.
+The lever is real where a family exists, but the shape view proves the population is almost exhausted: 10 of 310
+unopened bodies sit in a near-duplicate family. The callee-set view is what makes the method general, and it
+still leaves 49 unopened bodies with a matched template undealt with — that is the queue for the next pass.
