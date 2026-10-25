@@ -640,3 +640,34 @@ while our build fills that slot with a hoisted `addiu` of the literal it is abou
 streams are otherwise identical (same 9 load/store pairs, same `addiu 0xFFC` / `addu $a0` address form once the
 struct form is used). This is the mirror of the #38 class: not a *missing* nop before a store, but a nop the
 scheduler is entitled to fill and ours does.
+
+### Retest pass: every parked draft re-measured, 1 conversion, 11 parks survive with the shape named
+
+`work/retest.py` re-ran **every** draft under `work/near-miss/` (313 files, unique bodies only, merged units
+excluded) against current `main` and `work/diffscan.py` printed the differing words for each. That is the
+measured ordering the table below uses — not the history of previous verdicts. Cheapest first:
+
+| body | before | retest shape (on top of the parked draft) | after | verdict |
+|---|---|---|---|---|
+| `func_80012274` | 8/11 | parameter declared **`s16`** and negated in place (not through an `s32` local) | **MATCH** | converted — the narrow parameter is what puts `addu $v1,$a0,$zero` in the `beqz` slot |
+| `func_800382C0` | 1/12 | `t = a0 + t` instead of `t += a0`; single-expression `a0 + ((a0+4)>>7)` form | 1/12 (13/12) | park stands: gcc canonicalises the commutative `addu` to the *second* pseudo; the game has `$a0` first. Not reachable from source |
+| `func_8001CD7C` | 2/10 | typed struct pointer, `u8 *` walker, base local, `s16`/`u16` index | 2/10 | park stands: base in `$a2` + scaled index in `$v1` come out swapped in every form — saved-pair class |
+| `func_8002BCB0` | 2/17 | `u16` field (already narrow) feeding the branch | 2/17 | park stands: the `lhu` lands in `$v0`, the game uses `$a1` — role class |
+| `func_8002C9B8` | 2/36 | — | 2/36 | park stands: `lhu`/`addiu` chain split into two registers (`$v0`→`$v1`), role class |
+| `func_8002FE80` | 2/24 | address-of-local passed as an argument | 2/24 | park stands: `addiu $v0,$sp,0x10` where the game uses `$a1` |
+| `func_80056C90` | 2/36 | `-mno-split-addresses` (lui-temp tell) | 31/36 | park stands: the flag is *wrong* here — it costs 29 words |
+| `func_8003BF7C` | 2/79 | `-mno-split-addresses` | 78/79 | park stands, same: `lui` temp in `$v0` for `$a0` |
+| `func_8003B8F8` | 4/46 | args inline, comma-declaration, `*(u32 *)` of an oversized extern | 4/46 | park stands: the two early global loads want `$a0`/`$a1` (callee argument registers) and stay in `$v0` |
+| `func_8004BF94` | 2/52 | — | 2/52 | park stands: two-word schedule rotation (`addiu $s2` before `addiu $s0,$gp`) |
+| `func_80036F24` | 4/13 | `u32`/`s32` call-result local, volatile flag globals, `s16` callee, `void` form | 4–5/13 | park stands: the callee result must be copied to `$v1` and stored after `lw $ra`; no spelling creates the copy |
+
+**Tally: 1 conversion from 12 re-tested bodies (8%); 11 parks re-examined and retained, each now naming the
+shape tried on top of the original.** The five shapes the pass asked for converted once — `s16` parameter —
+and failed on the rest, and each failure is the same physical cause:
+`$v0` is the temp register for a freshly loaded or computed value that the game keeps in an argument
+(`$a0`/`$a1`) or callee-saved (`$v1`/`$a2`/`$t0`) register. That is allocation, and the retest extends the
+role-class verdict (`work/lane-notes.md`) from one-value swaps to *loads into argument registers*.
+
+Skipped on sight, classes already measured dead: `80055820` (1/34, `jal` slot), `80015D38` (3/20), the
+64-bit trio, `80022308`/`800223AC` (filled load-delay nop), and `80034B98` (matches but is scan-blocked on a
+protected-symbol name — it stays parked).
