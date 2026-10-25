@@ -27,8 +27,8 @@ from common import ASM, BUILD, CONFIG, ROOT, compiler_config, load_functions, un
 from elftools.elf.elffile import ELFFile  # noqa: E402
 from elftools.elf.relocation import RelocationSection  # noqa: E402
 
-R_MIPS_32, R_MIPS_26, R_MIPS_HI16, R_MIPS_LO16, R_MIPS_GPREL16 = 2, 4, 5, 6, 7
-RTYPE = {2: "32", 4: "26", 5: "hi", 6: "lo", 7: "gprel"}
+R_MIPS_32, R_MIPS_26, R_MIPS_HI16, R_MIPS_LO16, R_MIPS_GPREL16, R_MIPS_PC16 = 2, 4, 5, 6, 7, 10
+RTYPE = {2: "32", 4: "26", 5: "hi", 6: "lo", 7: "gprel", 10: "pc16"}
 NAMED_ADDR = re.compile(r"^(?:\.L|[A-Za-z]+_)([0-9A-F]{8})$")
 LABEL_DEF = re.compile(r"^\s*(?:glabel|dlabel|jlabel|alabel|ehlabel)\s+(\S+)")
 OFF_ADDR = re.compile(r"/\*\s*[0-9A-F]+\s+([0-9A-F]{8})\s")
@@ -145,6 +145,11 @@ def read_obj(path, func_name, func_addr, rodata_base):
                     last_hi[r["r_info_sym"]] = w & 0xFFFF
                 elif t == R_MIPS_LO16:
                     addend = (last_hi.get(r["r_info_sym"], 0) << 16) + sext16(w & 0xFFFF)
+                elif t == R_MIPS_PC16:
+                    # A branch to a jlabel: the assembler leaves -1 in the field as a
+                    # placeholder and the linker writes (S - P - 4) >> 2, so the target
+                    # is the symbol itself (cross-checked against branch_target below).
+                    addend = 0
                 else:
                     addend = sext16(w & 0xFFFF)
                 target = base + addend if base is not None else None
@@ -154,6 +159,12 @@ def read_obj(path, func_name, func_addr, rodata_base):
 
 def mask(t, w):
     return w & {R_MIPS_26: 0xFC000000}.get(t, 0xFFFF0000)
+
+
+def branch_target(w, addr):
+    """Where a resolved branch word goes: the branch to an external/global label keeps a
+    PC16 relocation, a branch to a local one is already folded into the offset."""
+    return addr + 4 + sext16(w & 0xFFFF) * 4
 
 
 @dataclass
@@ -186,6 +197,7 @@ def rodata_base(row):
 
 def compare(name, src=None, cc1=None, cflags=None, maspsx_args=None, as_flags=None, outdir=None):
     row = func_row(name)
+    addr = row["addr"]
     src = Path(src) if src else unit_path(name)
     outdir = Path(outdir) if outdir else BUILD / "match"
     cfg = compiler_config()
@@ -211,8 +223,19 @@ def compare(name, src=None, cc1=None, cflags=None, maspsx_args=None, as_flags=No
         if tw is None or ow is None:
             diffs.append(i)
         elif tr or orr:
-            if not (tr and orr) or tr[0] != orr[0] or tr[1] is None or tr[1] != orr[1] \
-                    or mask(tr[0], tw) != mask(orr[0], ow):
+            mt = mask(tr[0], tw) if tr else tw & 0xFFFF0000
+            mo = mask(orr[0], ow) if orr else ow & 0xFFFF0000
+            ok = (tr and orr and tr[0] == orr[0] and tr[1] is not None and tr[1] == orr[1]
+                  and mt == mo)
+            if not ok and mt == mo:
+                # A jlabel target: the original object keeps a PC16 relocation, our compile
+                # folds the same branch to the label. Compare resolved target addresses.
+                here = addr + i * 4
+                if tr and not orr and tr[0] == R_MIPS_PC16:
+                    ok = tr[1] is not None and tr[1] == branch_target(ow, here)
+                elif orr and not tr and orr[0] == R_MIPS_PC16:
+                    ok = orr[1] is not None and orr[1] == branch_target(tw, here)
+            if not ok:
                 diffs.append(i)
         elif tw != ow:
             diffs.append(i)
