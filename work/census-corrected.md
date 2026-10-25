@@ -1,5 +1,296 @@
 # Lane census (0x80035000-0x80058633), corrected nop rule
 
+
+### Extern audit at the `-G8` threshold: 36 rows, no conversions
+
+`work/extern_audit.py` walks every draft, reads the game's relocation for each `D_` symbol and compares
+it with the draft's declared size. First run reported 48 mismatches; fixing the audit itself removed a
+third of them -- `declared_bytes` counted `T *sym[N]` as 4 bytes instead of `4 * N`, so every pointer
+array looked gp-relative. Corrected tally: **36 mismatches across 18 draft files, 7 unique bodies**.
+Only two were live (not stale duplicates): `func_80043294` (`u8 *D_8008B38C` = 4 bytes, game builds the
+address with `lui`/`addiu`, so it must be >8) and `func_800387C8` (`D_8008B3AC[8]`/`B3B0[8]` sit exactly
+on the threshold and become `%gp_rel`). Declaring `u8 D_8008B38C[0xC]` moved `func_80043294` from
+**16/17 to 6/17**; the remaining six words are the address temp in `$v0` vs `$v1` and the final store
+landing in the `jr` delay slot. `func_800387C8` got *worse* (31 -> 32): its `lui`/`lw` pairs are gcc
+CSE-ing the address into a callee-saved register, not a size question. **No free conversions.**
+
+### 41-100 word band, batched: 6 units from 17 drafts (35%)
+
+Drafts were written in groups of three to five into `work/shapes/` and matched in one loop afterwards
+instead of one body at a time. Six matched, most on the first attempt:
+
+| unit | words | shape |
+|---|---|---|
+| `func_80027478` | 48 | `u8 buf[0x30]; s16 tri[3];` declared in that order (stack slots 0x18 and 0x48), the three `tri` stores written 2,1,0 because the game stores `0x4C,0x4A,0x48` |
+| `func_8001F8BC` | 48 | six `s32` copies `a1+0x18..0x2C -> a0+0x44..0x58`, then `func_8001E9AC(a0, 0)`, then two `andi 0x400/0x800` flag tests |
+| `func_80027630` | 47 | the three `lh` of `D_8008AF86/8A/8E` only appear when each value is first held in an `s32` local; storing `s16` straight from the symbol gives `lhu` |
+| `func_8001E9AC` | 51 | 0x4C-entry table `D_8006F2C0` indexed by `*(u16 *)(p+2)`, `n = *(u16 *)(r+0x18)` as an `s32` so the guard is `blez`/`bgtz`, `do { } while (--n > 0)` |
+| `func_800122CC` | 55 | the switch test is unsigned: `p->f0` must be `u32` for `sltiu`; everything else was already right at 55/55 on the first draft (1 word on `slti` vs `sltiu`) |
+| `func_8001F550` | 56 | `-1` hoisted into one local compared against two `lh` fields; `func_8001E9AC(dst, *(u16 *)src)` then `*(u16 *)dst |= *(u16 *)src & 0xF000` |
+
+Eleven parked, eight of them first drafts over 20 words off (`80019570` 4/48 and `80043294` 6/17 are the
+closest). The batched sequence did not lift the rate -- 35% against the band's 45-50% -- but it did fit
+three times as many bodies into the same reading budget, which is the thing the last two passes were short of.
+
+
+### The two nearest parks re-tested: no movement
+
+Two shapes each, neither converted. `func_80019570` (**4/48**) is a four-word tail rotation: the game
+materialises `addu $v0,$zero,$zero` before the `$a0` setup of the last call, ours after the `jal`. Moving
+`return 0` to the end of the chain and adding a redundant trailing `return 0` both gave 12/48, so this is
+scheduler residue. `func_80043294` (**6/17**) loses two words to the address temp (`lui $v0` + `addiu
+$v1,$v0` against the game's `lui $v1` + `addiu $v1,$v1`) and to the final store taking `$v1` where the game
+uses `$at`; reordering the pointer init and the negated-subscript rewrite both fell to 12/17.
+
+### 41-100 word band, 24 drafts in six groups: 3 units (12.5%)
+
+| unit | words | shape |
+|---|---|---|
+| `func_80027798` | 65 | `s32` return plus an explicit `return 0` is what emits the closing `addu $v0,$zero,$zero`; without it the epilogue is a word short |
+| `func_80027124` | 58 | shared tail return (`if (e != 0) { ... } return e;`) makes the early exit reuse `$s1` instead of building a zero |
+| `func_80025898` | 60 | `u8 buf[0xA0]; u8 m1[0x30]; u8 m2[0x30]` in that order fixes the 0x10/0xB0/0xE0 layout; then `buf + i*0xC` against `self + 0x90 + (i-1)*0x8C + 0x44` |
+
+Twenty-one parked; the four closest are `80013EEC` 2/57, `8002FEE0` 57/63, `8002C8B8` 44/64 and
+`80032B1C` 62/64. Reaching for struct declarations before reading the frame layout cost `8002D0B0`,
+`func_8001D88C` and `func_8002DF04` their first drafts.
+
+`func_80026DAC` compiled to a MATCH and had to be discarded: the unit is already on main, and the draft was
+identical apart from a parameter name. `verify.py` reports such bodies as `stale (already merged)`; check
+`src/funcs/` before drafting a callee taken from another body's call list.
+
+<!-- BEGIN GENERATED TABLE -->
+
+## Table of record (generated — do not hand-edit)
+
+Every per-body number in this file is produced by `python work/verify.py --write`; the
+journal sections further down keep the reasoning that led to them and their hand-written
+counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
+number in it, so a measurement cannot go stale in a filename.
+
+504 unmatched bodies in the corpus; **189 drafted and measured here** (compile-error 2, instruction-stream 15, match 1, move-vs-materialise 1, operand 13, register-role 36, scheduling 1, size 120); 1 drafts predate a merge and are prunable.
+
+| body | best draft | words | size | class | status | class verdict |
+|---|---|---|---|---|---|---|
+| `func_80034B98` | `work/near-miss/func_80034B98-match-scan-blocked.c` | 0/16 | +0 | match | blocked | scan: needs D_801FC000 (issue #101) |
+| `func_800382C0` | `work/near-miss/func_800382C0-split.c` | 1/12 | +0 | register-role | parked | - |
+| `func_80055820` | `work/near-miss/func_80055820-draft.c` | 1/34 | +0 | scheduling | parked | - |
+| `func_8001DB74` | `work/near-miss/func_8001DB74-role.c` | 2/26 | +0 | register-role | parked | holds (register-role) |
+| `func_8001F4E8` | `work/near-miss/func_8001F4E8-2of26.c` | 2/26 | +0 | register-role | parked | holds (register-role) |
+| `func_8002BCB0` | `work/near-miss/func_8002BCB0-parked.c` | 2/17 | +0 | register-role | parked | - |
+| `func_8002C9B8` | `work/near-miss/func_8002C9B8-2of36.c` | 2/36 | +0 | register-role | parked | - |
+| `func_8002FE80` | `work/near-miss/func_8002FE80-role.c` | 2/24 | +0 | register-role | parked | holds (register-role) |
+| `func_8003BF7C` | `work/near-miss/func_8003BF7C-sweep.c` | 2/79 | +0 | register-role | parked | - |
+| `func_80042E9C` | `work/near-miss/func_80042E9C-near-miss.c` | 2/58 | +0 | register-role | parked | - |
+| `func_8004BF94` | `work/near-miss/func_8004BF94-sweep.c` | 2/52 | +0 | operand | parked | - |
+| `func_80056C90` | `work/near-miss/func_80056C90-sweep.c` | 2/36 | +0 | register-role | parked | - |
+| `func_80015D38` | `work/near-miss/func_80015D38-o1-2w.c` | 3/20 | +0 | operand | parked | - |
+| `func_80019570` | `work/near-miss/func_80019570.c` | 4/48 | +0 | register-role | parked | - |
+| `func_8002050C` | `work/near-miss/func_8002050C-4of25.c` | 4/25 | +0 | move-vs-materialise | parked | holds (move-vs-materialise) |
+| `func_80035C14` | `work/near-miss/func_80035C14-subscript.c` | 4/34 | +0 | register-role | parked | - |
+| `func_8003B8F8` | `work/near-miss/func_8003B8F8-band.c` | 4/46 | +0 | register-role | parked | - |
+| `func_8003ED28` | `work/near-miss/func_8003ED28-near-miss.c` | 5/60 | +0 | register-role | parked | - |
+| `func_80056FF4` | `work/near-miss/func_80056FF4-subscript.c` | 5/39 | +2 | size | parked | - |
+| `func_80057090` | `work/near-miss/func_80057090-near-miss.c` | 5/92 | +0 | instruction-stream | parked | - |
+| `func_800257A0` | `work/near-miss/func_800257A0-fresh.c` | 6/21 | +0 | instruction-stream | parked | - |
+| `func_8003BDB8` | `work/near-miss/func_8003BDB8-sweep.c` | 6/31 | +0 | register-role | parked | - |
+| `func_80043294` | `work/near-miss/func_80043294-g8.c` | 6/17 | +0 | register-role | parked | - |
+| `func_8002D904` | `work/near-miss/func_8002D904-7of46.c` | 7/46 | +0 | operand | parked | - |
+| `func_800535EC` | `work/near-miss/func_800535EC-band.c` | 7/67 | +0 | register-role | parked | - |
+| `func_8003AC04` | `work/near-miss/func_8003AC04-near-miss.c` | 8/30 | +0 | instruction-stream | parked | - |
+| `func_8002B060` | `work/near-miss/func_8002B060-fresh.c` | 9/32 | +0 | register-role | parked | - |
+| `func_8002BA64` | `work/near-miss/func_8002BA64-parked.c` | 9/23 | +0 | register-role | parked | - |
+| `func_8002BF9C` | `work/near-miss/func_8002BF9C-parked.c` | 9/24 | +1 | size | parked | - |
+| `func_8004E930` | `work/near-miss/func_8004E930-near-miss.c` | 9/121 | +0 | register-role | parked | - |
+| `func_800120B8` | `work/near-miss/func_800120B8-const-sched-park.c` | 10/76 | +0 | instruction-stream | parked | - |
+| `func_80032C28` | `work/near-miss/func_80032C28-signed.c` | 10/11 | -3 | size | parked | - |
+| `func_8003A09C` | `work/near-miss/func_8003A09C-near-miss.c` | 10/49 | +2 | size | parked | - |
+| `func_8003B3CC` | `work/near-miss/func_8003B3CC-sweep.c` | 10/19 | +0 | instruction-stream | parked | - |
+| `func_8001D3B4` | `work/near-miss/func_8001D3B4-11of29.c` | 11/29 | +0 | instruction-stream | parked | - |
+| `func_8001D804` | `work/near-miss/func_8001D804-parked.c` | 11/23 | +0 | instruction-stream | parked | - |
+| `func_8001DCF8` | `work/near-miss/func_8001DCF8-parked.c` | 11/24 | +1 | size | parked | - |
+| `func_8001FCB0` | `work/near-miss/func_8001FCB0-parked.c` | 11/25 | +0 | instruction-stream | parked | - |
+| `func_80034758` | `work/near-miss/func_80034758-11of41.c` | 11/41 | +0 | register-role | parked | - |
+| `func_800379F4` | `work/near-miss/func_800379F4-near-miss.c` | 11/26 | +0 | register-role | parked | - |
+| `func_8004A130` | `work/near-miss/func_8004A130-parked.c` | 11/80 | +0 | operand | parked | - |
+| `func_8004CCA0` | `work/near-miss/func_8004CCA0-sweep.c` | 11/34 | +0 | register-role | parked | - |
+| `func_80011B48` | `work/near-miss/func_80011B48-parked.c` | 12/17 | +0 | register-role | parked | - |
+| `func_80032FF4` | `work/near-miss/func_80032FF4-parked.c` | 12/13 | +0 | register-role | parked | - |
+| `func_80033818` | `work/near-miss/func_80033818-parked.c` | 12/13 | +0 | register-role | parked | - |
+| `func_8003C220` | `work/near-miss/func_8003C220-near-miss.c` | 12/28 | +0 | register-role | parked | - |
+| `func_80056D20` | `work/near-miss/func_80056D20-sweep.c` | 12/44 | +0 | operand | parked | - |
+| `func_8002C490` | `work/near-miss/func_8002C490-parked.c` | 13/21 | +1 | size | parked | - |
+| `func_80024F3C` | `work/near-miss/func_80024F3C-parked.c` | 14/50 | +1 | size | parked | - |
+| `func_80047A44` | `work/near-miss/func_80047A44-sweep.c` | 14/34 | +0 | register-role | parked | - |
+| `func_8004E460` | `work/near-miss/func_8004E460-near-miss.c` | 14/50 | +0 | instruction-stream | parked | - |
+| `func_80029488` | `work/near-miss/func_80029488-frame.c` | 15/29 | +0 | operand | parked | - |
+| `func_80034C8C` | `work/near-miss/func_80034C8C-role.c` | 15/25 | -1 | size | parked | - |
+| `func_8004862C` | `work/near-miss/func_8004862C-stmtorder.c` | 15/28 | +0 | instruction-stream | parked | - |
+| `func_80052518` | `work/near-miss/func_80052518-near-miss.c` | 15/73 | -1 | size | parked | - |
+| `func_8001D620` | `work/near-miss/func_8001D620-parked.c` | 16/46 | -1 | size | parked | - |
+| `func_8002BCF4` | `work/near-miss/func_8002BCF4-16of28.c` | 16/28 | +0 | instruction-stream | parked | - |
+| `func_80032CF4` | `work/near-miss/func_80032CF4-parked.c` | 16/18 | +0 | register-role | parked | - |
+| `func_800337C4` | `work/near-miss/func_800337C4-parked.c` | 16/16 | -1 | size | parked | - |
+| `func_8002DD88` | `work/near-miss/func_8002DD88-parked.c` | 17/22 | -1 | size | parked | - |
+| `func_8002DDE0` | `work/near-miss/func_8002DDE0-parked.c` | 17/14 | +4 | size | parked | - |
+| `func_8002DE18` | `work/near-miss/func_8002DE18-parked.c` | 17/18 | -1 | size | parked | - |
+| `func_80032D88` | `work/near-miss/func_80032D88-parked.c` | 17/17 | -2 | size | parked | - |
+| `func_80034004` | `work/near-miss/func_80034004-parked.c` | 17/23 | +1 | size | parked | - |
+| `func_80035810` | `work/near-miss/func_80035810-sweep.c` | 17/20 | +2 | size | parked | - |
+| `func_8001D340` | `work/near-miss/func_8001D340-parked.c` | 18/16 | +2 | size | parked | - |
+| `func_80032D3C` | `work/near-miss/func_80032D3C-sched.c` | 18/19 | -1 | size | parked | - |
+| `func_80056F4C` | `work/near-miss/func_80056F4C-sweep.c` | 18/42 | -2 | size | parked | - |
+| `func_80026E88` | `work/near-miss/func_80026E88-parked.c` | 19/16 | +3 | size | parked | - |
+| `func_80035BC0` | `work/near-miss/func_80035BC0-check.c` | 20/21 | -2 | size | parked | - |
+| `func_800432D8` | `work/near-miss/func_800432D8-near-miss.c` | 20/24 | -1 | size | parked | - |
+| `func_8001D4DC` | `work/near-miss/func_8001D4DC-parked.c` | 21/21 | -3 | size | parked | - |
+| `func_8002BFFC` | `work/near-miss/func_8002BFFC-parked.c` | 21/47 | +1 | size | parked | - |
+| `func_80030518` | `work/near-miss/func_80030518.c` | 21/55 | -1 | size | parked | - |
+| `func_8003834C` | `work/near-miss/func_8003834C-sweep.c` | 21/39 | +0 | operand | parked | - |
+| `func_8004F1E0` | `work/near-miss/func_8004F1E0-near-miss.c` | 21/28 | +0 | register-role | parked | - |
+| `func_80020D74` | `work/near-miss/func_80020D74-sched-park.c` | 22/39 | -1 | size | parked | - |
+| `func_80034824` | `work/near-miss/func_80034824-parked.c` | 22/20 | +3 | size | parked | - |
+| `func_80034C20` | `work/near-miss/func_80034C20-parked.c` | 22/23 | -1 | size | parked | - |
+| `func_8003BA14` | `work/near-miss/func_8003BA14-sweep.c` | 22/61 | +0 | operand | parked | - |
+| `func_8002C148` | `work/near-miss/func_8002C148-parked.c` | 23/27 | +2 | size | parked | - |
+| `func_80046878` | `work/near-miss/func_80046878-sweep.c` | 23/41 | -1 | size | parked | - |
+| `func_80033E14` | `work/near-miss/func_80033E14-parked.c` | 24/25 | +0 | register-role | parked | - |
+| `func_80037968` | `work/near-miss/func_80037968-sweep.c` | 24/35 | -4 | size | parked | - |
+| `func_800494A4` | `work/near-miss/func_800494A4-check.c` | 24/32 | +1 | size | parked | - |
+| `func_80015684` | `work/near-miss/func_80015684-parked.c` | 25/44 | +2 | size | parked | - |
+| `func_80033428` | `work/near-miss/func_80033428-parked.c` | 25/22 | +4 | size | parked | - |
+| `func_80033480` | `work/near-miss/func_80033480-parked.c` | 25/22 | +4 | size | parked | - |
+| `func_800334D8` | `work/near-miss/func_800334D8-parked.c` | 25/25 | -2 | size | parked | - |
+| `func_80033DB0` | `work/near-miss/func_80033DB0-parked.c` | 25/25 | -1 | size | parked | - |
+| `func_800484B4` | `work/near-miss/func_800484B4-best.c` | 25/57 | +0 | register-role | parked | - |
+| `func_8001C2F0` | `work/near-miss/func_8001C2F0-role-park.c` | 26/49 | +0 | operand | parked | - |
+| `func_8002F4C0` | `work/near-miss/func_8002F4C0-parked.c` | 26/27 | -1 | size | parked | - |
+| `func_80032400` | `work/near-miss/func_80032400-parked.c` | 26/27 | -1 | size | parked | - |
+| `func_800333C8` | `work/near-miss/func_800333C8-parked.c` | 26/23 | +3 | size | parked | - |
+| `func_800331FC` | `work/near-miss/func_800331FC-o1-27of27.c` | 27/27 | +1 | size | parked | holds (fixed-point) |
+| `func_80033714` | `work/near-miss/func_80033714-parked.c` | 27/21 | +6 | size | parked | - |
+| `func_80011F84` | `work/near-miss/func_80011F84-parked.c` | 28/30 | +2 | size | parked | - |
+| `func_8002B194` | `work/near-miss/func_8002B194-28of31.c` | 28/31 | -3 | size | parked | - |
+| `func_80034698` | `work/near-miss/func_80034698-fresh.c` | 28/48 | +1 | size | parked | - |
+| `func_8004584C` | `work/near-miss/func_8004584C-sweep.c` | 28/38 | -2 | size | parked | - |
+| `func_80048598` | `work/near-miss/func_80048598-best.c` | 28/37 | +0 | register-role | parked | - |
+| `func_800159D8` | `work/near-miss/func_800159D8-parked.c` | 29/47 | +2 | size | parked | - |
+| `func_8001D540` | `work/near-miss/func_8001D540-parked.c` | 29/28 | +2 | size | parked | - |
+| `func_8002C0B8` | `work/near-miss/func_8002C0B8-29of36.c` | 29/36 | +3 | size | parked | - |
+| `func_8004EDF8` | `work/near-miss/func_8004EDF8-sweep.c` | 29/53 | -3 | size | parked | - |
+| `func_80057CA4` | `work/near-miss/func_80057CA4-loaddelay.c` | 29/45 | +4 | size | parked | - |
+| `func_80014170` | `work/near-miss/func_80014170-fresh.c` | 30/46 | -2 | size | parked | - |
+| `func_8002A198` | `work/near-miss/func_8002A198-parked.c` | 30/51 | -4 | size | parked | - |
+| `func_8004813C` | `work/near-miss/func_8004813C-sweep.c` | 30/51 | -1 | size | parked | - |
+| `func_80051E14` | `work/near-miss/func_80051E14-near-miss.c` | 30/74 | -2 | size | parked | - |
+| `func_80022308` | `work/near-miss/func_80022308-parked.c` | 31/41 | -3 | size | parked | holds (filled-nop) |
+| `func_800387C8` | `work/near-miss/func_800387C8-near-miss.c` | 31/37 | -1 | size | parked | - |
+| `func_8001C4BC` | `work/near-miss/func_8001C4BC-32of33.c` | 32/33 | -1 | size | parked | - |
+| `func_8002D734` | `work/near-miss/func_8002D734-role-park.c` | 32/58 | +0 | register-role | parked | - |
+| `func_8002D81C` | `work/near-miss/func_8002D81C-role-park.c` | 32/58 | +0 | register-role | parked | - |
+| `func_8002DA40` | `work/near-miss/func_8002DA40-32of33.c` | 32/33 | -2 | size | parked | - |
+| `func_80035C9C` | `work/near-miss/func_80035C9C-near-miss.c` | 32/36 | -2 | size | parked | - |
+| `func_80053EA8` | `work/near-miss/func_80053EA8-near-miss.c` | 32/39 | -3 | size | parked | - |
+| `func_8002C5FC` | `work/near-miss/func_8002C5FC-parked.c` | 33/35 | +3 | size | parked | - |
+| `func_8003353C` | `work/near-miss/func_8003353C-o1.c` | 33/30 | +3 | size | parked | holds (fixed-point) |
+| `func_8004995C` | `work/near-miss/func_8004995C-near-miss.c` | 33/46 | -1 | size | parked | - |
+| `func_8001FFB4` | `work/near-miss/func_8001FFB4-34of35.c` | 34/35 | -1 | size | parked | - |
+| `func_8002CF94` | `work/near-miss/func_8002CF94-parked.c` | 34/41 | +2 | size | parked | - |
+| `func_8003302C` | `work/near-miss/func_8003302C-64bit.c` | 34/29 | +5 | size | parked | holds (fixed-point) |
+| `func_8004734C` | `work/near-miss/func_8004734C-sweep.c` | 34/50 | -2 | size | parked | - |
+| `func_8002DFF8` | `work/near-miss/func_8002DFF8.c` | 35/55 | -1 | size | parked | - |
+| `func_80058448` | `work/near-miss/func_80058448-band.c` | 35/43 | +0 | register-role | parked | - |
+| `func_8004669C` | `work/near-miss/func_8004669C-sweep.c` | 37/104 | +0 | operand | parked | - |
+| `func_8002AB64` | `work/near-miss/func_8002AB64-parked.c` | 38/44 | -1 | size | parked | - |
+| `func_8002C1B4` | `work/near-miss/func_8002C1B4.c` | 38/52 | +2 | size | parked | - |
+| `func_800474B4` | `work/near-miss/func_800474B4-sweep.c` | 38/49 | -2 | size | parked | - |
+| `func_80047578` | `work/near-miss/func_80047578-sweep.c` | 38/49 | -1 | size | parked | - |
+| `func_80052380` | `work/near-miss/func_80052380-near-miss.c` | 38/102 | +0 | instruction-stream | parked | - |
+| `func_80035F5C` | `work/near-miss/func_80035F5C-sweep.c` | 39/49 | +1 | size | parked | - |
+| `func_800519C4` | `work/near-miss/func_800519C4-band.c` | 39/72 | -1 | size | parked | - |
+| `func_8001D428` | `work/near-miss/func_8001D428-40of43.c` | 40/43 | -8 | size | parked | - |
+| `func_8003571C` | `work/near-miss/func_8003571C-band.c` | 40/45 | -2 | size | parked | - |
+| `func_80038A80` | `work/near-miss/func_80038A80-band.c` | 41/49 | -3 | size | parked | - |
+| `func_800223AC` | `work/near-miss/func_800223AC-42of42.c` | 42/42 | -4 | size | parked | holds (filled-nop) |
+| `func_80025004` | `work/near-miss/func_80025004-parked.c` | 42/44 | +4 | size | parked | - |
+| `func_8002A044` | `work/near-miss/func_8002A044-41of45.c` | 42/45 | +4 | size | parked | - |
+| `func_80047014` | `work/near-miss/func_80047014-sweep.c` | 42/62 | -4 | size | parked | - |
+| `func_8002AD6C` | `work/near-miss/func_8002AD6C-parked.c` | 43/48 | +0 | register-role | parked | - |
+| `func_8002B2B0` | `work/near-miss/func_8002B2B0-parked.c` | 43/44 | -2 | size | parked | - |
+| `func_8002EC14` | `work/near-miss/func_8002EC14-parked.c` | 43/41 | +2 | size | parked | - |
+| `func_8004836C` | `work/near-miss/func_8004836C-near-miss.c` | 44/57 | -5 | size | parked | - |
+| `func_80019F10` | `work/near-miss/func_80019F10-parked.c` | 45/47 | -5 | size | parked | - |
+| `func_800201AC` | `work/near-miss/func_800201AC.c` | 47/56 | -2 | size | parked | - |
+| `func_80038970` | `work/near-miss/func_80038970-sweep.c` | 47/68 | +0 | instruction-stream | parked | - |
+| `func_80019670` | `work/near-miss/func_80019670-role-park.c` | 48/55 | +0 | operand | parked | - |
+| `func_8004A094` | `work/near-miss/func_8004A094-near-miss.c` | 48/39 | +11 | size | parked | - |
+| `func_80038864` | `work/near-miss/func_80038864-sweep.c` | 49/67 | +0 | instruction-stream | parked | - |
+| `func_8004912C` | `work/near-miss/func_8004912C-sweep.c` | 49/65 | -1 | size | parked | - |
+| `func_8001C0AC` | `work/near-miss/func_8001C0AC-parked.c` | 50/50 | -3 | size | parked | - |
+| `func_80022148` | `work/near-miss/func_80022148.c` | 51/53 | -1 | size | parked | - |
+| `func_8004E7EC` | `work/near-miss/func_8004E7EC-clamp-park.c` | 51/81 | +0 | instruction-stream | parked | - |
+| `func_800358A8` | `work/near-miss/func_800358A8-near-miss.c` | 52/61 | -3 | size | parked | - |
+| `func_8001BD0C` | `work/near-miss/func_8001BD0C.c` | 53/56 | -5 | size | parked | - |
+| `func_80036F64` | `work/near-miss/func_80036F64-sweep.c` | 53/67 | -1 | size | parked | - |
+| `func_80047268` | `work/near-miss/func_80047268-sweep.c` | 53/57 | -2 | size | parked | - |
+| `func_8004E6CC` | `work/near-miss/func_8004E6CC-band.c` | 53/72 | -2 | size | parked | - |
+| `func_8002A9E0` | `work/near-miss/func_8002A9E0-parked.c` | 54/50 | +4 | size | parked | - |
+| `func_80042338` | `work/near-miss/func_80042338-sweep.c` | 56/64 | -1 | size | parked | - |
+| `func_80046EFC` | `work/near-miss/func_80046EFC-sweep.c` | 56/70 | +0 | operand | parked | - |
+| `func_80053A4C` | `work/near-miss/func_80053A4C-sweep.c` | 57/58 | +4 | size | parked | - |
+| `func_80026EC8` | `work/near-miss/func_80026EC8-near-miss.c` | 60/61 | +2 | size | parked | - |
+| `func_8004DBF0` | `work/near-miss/func_8004DBF0-parked.c` | 60/82 | -7 | size | parked | - |
+| `func_8003A1B8` | `work/near-miss/func_8003A1B8-sweep.c` | 61/71 | +3 | size | parked | - |
+| `func_800511C0` | `work/near-miss/func_800511C0-parked.c` | 61/101 | +0 | operand | parked | - |
+| `func_80057B94` | `work/near-miss/func_80057B94-sweep.c` | 62/68 | +1 | size | parked | - |
+| `func_8003B478` | `work/near-miss/func_8003B478-sweep.c` | 65/71 | -2 | size | parked | - |
+| `func_8003BE34` | `work/near-miss/func_8003BE34-sweep.c` | 66/82 | +2 | size | parked | - |
+| `func_8004AF80` | `work/near-miss/func_8004AF80-sweep.c` | 66/66 | -3 | size | parked | - |
+| `func_80035D2C` | `work/near-miss/func_80035D2C-sweep.c` | 67/69 | -2 | size | parked | - |
+| `func_8003AF4C` | `work/near-miss/func_8003AF4C-sweep.c` | 68/71 | -2 | size | parked | - |
+| `func_8004E528` | `work/near-miss/func_8004E528-sched-park.c` | 82/105 | -1 | size | parked | - |
+| `func_800568C0` | `work/near-miss/func_800568C0-sweep.c` | 90/95 | -11 | size | parked | - |
+| `func_80051844` | `work/near-miss/func_80051844-near-miss.c` | 92/96 | -5 | size | parked | - |
+| `func_8002DAE8` | `work/near-miss/func_8002DAE8-near-miss.c` | 94/98 | -19 | size | parked | - |
+| `func_80017140` | `work/near-miss/func_80017140-near-miss.c` | 113/153 | -10 | size | parked | - |
+| `func_8003682C` | `work/near-miss/func_8003682C-sweep.c` | 130/138 | +5 | size | parked | - |
+| `func_80051354` | `work/near-miss/func_80051354-parked.c` | 131/136 | -5 | size | parked | - |
+| `func_80037DC4` | `work/near-miss/func_80037DC4-sweep.c` | 143/190 | +1 | size | parked | - |
+| `func_8003A5A4` | `work/near-miss/func_8003A5A4-sweep.c` | 144/144 | +7 | size | parked | - |
+| `func_8003BB1C` | `work/near-miss/func_8003BB1C-sweep.c` | 166/167 | -73 | size | parked | - |
+| `func_8003B068` | `work/near-miss/func_8003B068-sweep.c` | 195/217 | -103 | size | parked | - |
+| `func_80025544` | `work/near-miss/func_80025544-near-miss.c` | - | - | compile-error | broken | - |
+| `func_800363F8` | `work/near-miss/func_800363F8.c` | - | - | compile-error | broken | - |
+
+<!-- END GENERATED TABLE -->
+
+### Drift the first regeneration exposed
+
+`python work/verify.py --drift` compares every journal row that carries a hand-written count against the
+measurement of that body's stored draft. First run: **37 rows compared, 32 agree, 5 disagree**, each with a
+named cause:
+
+| body | journal | measured | cause |
+|---|---|---|---|
+| `func_8002A044` | 41/45 | **42/45** | the draft on disk is one word worse than the recorded number; the park verdict stands (same residue) |
+| `func_80042E9C` | 4/58 | **2/58** | the journal kept the "before" number; the improved draft is what is on disk — a superseded cell, not drift |
+| `func_80048598` | 37/37 | **28/37** | improved baseline (`cast-then-copy`, frame exact); the journal's older cell survives above it |
+| `func_800484B4` | 37/57 | **25/57** | subscript form improved it; the journal's base cell survives above it |
+| `func_800519C4` | 39/73 | **39/72** | the journal's denominator was one high; the body is 72 words |
+
+**No class verdict moved.** Re-measured from the drafts on disk, all three measured-dead families still hold:
+register-role 3/3, move-vs-materialise 1/1 (this is `func_8002050C`, which the journal had filed under
+register-role — the label was loose, the verdict is the same), filled-nop 2/2, fixed-point 3/3.
+
+Hygiene the first run also produced: **10 stale drafts pruned** (`func_80012274`, `800122A0`, `800132FC`,
+`80019C0C`, `80019EE4`, `8001CD7C`, `80032FE0`, `80033804`, `80034BD8`, `80036F24` — all merged since their
+drafts were written), and **2 drafts that do not compile** kept and marked `broken` (`func_80025544`'s
+`-Os` header, which the toolchain does not allow, and `func_800363F8`, whose draft has a parse error).
+
+
+---
+
+## Pass journal (history: numbers here are superseded by the table above)
+
 Rule (verified by probe on issue #38): a `nop` after a load is only wrong when the loaded
 register is consumed by a following *store*; a load feeding a branch or arithmetic matches.
 `ld_st` counts the #38 pattern; `ld_ok` counts load-delays that compile fine; `jal_nop` is
@@ -449,7 +740,7 @@ original; it does not change observable behaviour, and both units are pure store
 
 ### Delay-slot store class, corpus-wide: it is two bodies, and both already shipped
 
-`work/delay_probe.py` re-matched **every** draft under `work/near-miss/*.c` (274 drafts, 135 distinct
+A corpus-wide probe — now `work/verify.py`, the one script that re-measures anything — re-matched **every** draft under `work/near-miss/*.c` (274 drafts, 135 distinct
 bodies) at the default level — each draft's own `-O1` header stripped, so the level is held fixed — and
 classified each body by where its differing words sit relative to the end of the target, not by the
 presence of a `nop`:
@@ -488,7 +779,7 @@ Both revert to their parked drafts; no barrier survives on either.
 
 ### Fresh-ground pass: 290 unopened bodies, 7 units, 5 parks
 
-`work/enum_fresh.py` lists every unmatched body on freshly fetched main that has **neither** a draft under
+`work/enumerate.py --fresh` lists every unmatched body on freshly fetched main that has **neither** a draft under
 `work/near-miss/` **nor** an address mentioned anywhere in this file, minus handwritten/GTE bodies: **290
 bodies**, and the smallest is **20 instructions** — the sub-20 tail is genuinely exhausted, so this pass
 started at the 20-word floor.
@@ -520,7 +811,7 @@ superseded by this file. **#83** (probe-count correction) is folded into this co
 
 ### 20-30 word band pass: 5 units, and the role-forcing matrix
 
-The unopened queue now starts at **27** (`work/enum_fresh.py`, 277 bodies after this pass's units), so this
+The unopened queue now starts at **27** (`work/enumerate.py`, 277 bodies after this pass's units), so this
 pass covered the 27-29 word floor.
 
 | unit | words | shape |
@@ -643,8 +934,8 @@ scheduler is entitled to fill and ours does.
 
 ### Retest pass: every parked draft re-measured, 1 conversion, 11 parks survive with the shape named
 
-`work/retest.py` re-ran **every** draft under `work/near-miss/` (313 files, unique bodies only, merged units
-excluded) against current `main` and `work/diffscan.py` printed the differing words for each. That is the
+`work/verify.py` re-ran **every** draft under `work/near-miss/` (313 files, unique bodies only, merged units
+excluded) against current `main` and printed the differing words for each. That is the
 measured ordering the table below uses — not the history of previous verdicts. Cheapest first:
 
 | body | before | retest shape (on top of the parked draft) | after | verdict |
@@ -850,3 +1141,95 @@ whole difference. Tested on the two siblings the pass named: `func_80026EC8` re-
 `func_80052380`'s residue is the pointer fold plus the `&D_8008A998` home, not argument birth, and its
 two-live-pointer form went 38 → 68. So the form needs a **constant** scale and a value that is a call argument
 first and a cross-call temporary second.
+
+### Equivalence-spelling sweep over the parked corpus: 174 bodies, 0 conversions, 6 improvements
+
+A corpus-wide rewrite sweep — superseded by `work/verify.py`, which now owns the numbers — re-matched every parked draft in `work/near-miss/` (174 unique bodies, skipping the two
+already in `src/funcs/`) under each applicable constant-only rewrite, keeping the best spelling per body:
+
+| rewrite | what it changes |
+|---|---|
+| `shift2mul` | `x << N` → `x * (1 << N)` (the form that converted `func_80020398`) |
+| `mul2shift` | `x * 16` → `x << 4`, likewise `x * (1 << N)` |
+| `shift2div` / `div2shift` | `x << 2` ↔ `x / 4` |
+| `mod2mask` / `mask2mod` | `x % 8` ↔ `x & 7` |
+| `add2mul` / `mul2add` | `x + x` ↔ `x * 2` |
+
+Result: **167 bodies unchanged, 6 improved, 0 matched, 1 stale draft**. The full 174-row before/after table is
+not kept here: `work/verify.py --write` regenerates every per-body number in the table of record at the
+top of this file, from the drafts on disk, so a copy in the journal would only be a second source of truth.
+Four of the six cells this sweep reported (`shift2div`) were later withdrawn as invalid, and the one that
+survived does not re-measure from its stored draft — treat the journal's counts as history and the table of
+record as authority.
+
+`mod2mask`, `mask2mod`, `add2mul` and `mul2add` produced no winning cell anywhere in the corpus.
+
+**The rule is narrower than "constant scale".** `shift2mul` — the form that converted `func_80020398` — moved
+only two bodies in 174, and neither close to matching. The tell needs all three parts: the value is a **call
+argument**, it is **also live after the call**, and the scale is a **constant**. Parked bodies that have a
+constant shift either keep the shifted value in a variable only (already optimal) or have a different residue
+entirely. The four `shift2div` wins are a different mechanism: `x >> N` and `x / 2**N` differ in *sign
+handling*, so the rewrite changes the emitted sequence rather than the allocation.
+
+**Methodology trap, recorded because it produced eleven false conversions.** The first sweep rewrote
+`a + i * 16` into `a + i << 4` without parentheses, which is `(a + i) << 4` — a compile error on a pointer. The
+scorer counted a failed compile as "zero diffs", so eleven bodies reported as MATCH that never compiled at all.
+Any mechanical rewrite has to parenthesise its replacement, and a sweep must treat an error result as an error,
+not as a perfect score.
+
+**Second finding from the same run:** `func_80034B98`'s parked draft matches exactly but is rejected by
+`scan.py` for the literal `0x801FC000`, which has no symbol in `config/` (protected). It stays blocked until a
+maintainer adds `D_801FC000`; this is the only body in the corpus whose verdict is "matches, cannot ship".
+
+Filed as https://github.com/andrewnakas/thrasher-skate-decomp/issues/101 with the match evidence, the
+literal and the exact one-line `config/symbol_addrs.us.txt` entry; the verdict stays *matching, blocked on a
+protected path* until that lands.
+
+**Correction: the `shift2div` cells above are not equivalences.** `x << N` is `x * 2**N`; the rewrite produced
+`x / 2**N`, which is `x >> N`. Those four rows therefore measured the codegen of a *different expression*, not of
+an equivalent spelling. The clearest case is `func_80020D74`: the game emits `sll $s0,$s0,8` (`a1 << 8`), the
+`shift2div` draft emits `bgez/addiu/sra` (`a1 / 256`), and the draft that scores better (11/39 against 22/39) is
+the one whose *meaning* is wrong. Withdraw the `shift2div` cells: `func_80020D74` returns to 22/39,
+`func_800484B4` to 37/57 and `func_800519C4` to 39/73, and only `func_80048598` 37 → 23 stands, because
+`shift2mul` (`x << N` → `x * (1 << N)`) is an identity. The rewrite table holds no `shift2div` cell;
+`div2shift` (`x / K` → `x >> N`) stays, since that one is an identity for the unsigned case it is used on.
+
+### The four `shift2div` baselines: two bodies moved, none closed
+
+The pass adopted the sweep's four "wins" as new baselines. Re-measuring each body from its stored draft
+first shows that three of the four cells were artefacts of the `shift2div` rewrite (which turned
+`x << N` into `x / 2**N` and was withdrawn), and the fourth does not reproduce:
+
+| body | sweep's cell | re-measured baseline | this pass |
+|---|---|---|---|
+| `func_80048598` | 37/37 → 23/37 (`shift2mul`) | **37/37 at 0x90** (four words short); the sweep's own draft re-measures **34/37 at 0x8c** | **28/37, frame exact** — `work/near-miss/func_80048598-best.c` |
+| `func_800484B4` | 37/57 → 24/57 (`shift2div`) | **37/57 at 0xd4** (four words short) | **25/57, frame exact** — `work/near-miss/func_800484B4-best.c` |
+| `func_800519C4` | 39/73 → 28/73 (`shift2div`) | **39/72, frame exact** | still 39/72; three shapes moved nothing |
+| `func_80020D74` | 22/39 → 11/39 (`shift2div`) | **22/39 at 0x98** (two words short) | base stands; the 11/39 cell belonged to the invalid rewrite |
+
+So **all four sweep baselines were unreliable** — the pass's premise dissolved on re-measurement — but
+re-testing the drafts themselves produced two genuine improvements, both now keeping the frame exact.
+
+**Signedness, as the pass asked it to be settled first.** A division rewrite can only be an identity on
+unsigned operands, and the arithmetic in these bodies is signed: `func_80048598` divides with `sra`, and
+the other three shift a pointer scale *left*. No division form is adoptable without changing behaviour,
+and no sign "correction" was added to compensate.
+
+**`func_80048598` (28/37).** The shape that moved it off 37/37: cast the parameter into an `s16` *first*,
+then copy the parameter into an `s32` — the game opens with `addu $t2,$a0,$zero` and takes its `sll`/`sra`
+pair from `$t2`. Ours now copies early too, but to `$v1`, and casts from `$a0`; the value is right and
+only the register differs, which is the register-role class the role matrix measured dead. `-G0` (37/37
+at 0x90) and the subscript form (37/37 at 0x8c) are both worse.
+
+**`func_800484B4` (25/57).** Subscripting `D_800AE794` at each use instead of carrying a `u16 *p` walker:
+37 → 25 diffs and the frame comes right. The remaining residue is the table address build — the game
+holds `addiu $t1,$v0,0x1FE` in a register across the loop where ours emits `sll`/`addu` per iteration.
+Declaring the pointer before the scale/mask computations costs the whole body (57/57); after them leaves
+it at 37/57.
+
+**`func_800519C4` (39/72).** Residue is a callee-saved permutation: the game gives a1→`$s2` and a2→`$s1`,
+ours the reverse. Locals for the two middle parameters (39/72) and computing `hi` before `n` (44/72)
+moved nothing useful.
+
+Verdict for the division axis: **zero conversions across the corpus, and the four bodies now carry
+re-measured baselines with two of them materially improved.**

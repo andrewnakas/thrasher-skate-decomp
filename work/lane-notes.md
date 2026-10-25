@@ -148,7 +148,8 @@ Do not apply `volatile` to a body whose stores already match — `80026E88` went
   `(a + 4) - m` (4/15); `t = m - 4; result = a - t;` stops the reassociation and matches.
 
 ## The unopened-body queue starts at 20 instructions
-`work/enum_fresh.py` (no draft, no census mention, no handwritten/GTE) finds 290 bodies, smallest **20**.
+`work/enumerate.py --fresh` (no draft, no census mention, no handwritten/GTE) finds the queue; it starts at
+**20** instructions.
 The sub-16 and 16-19 bands are now empty of unopened bodies, so the tail ends here; every future pass
 should start at the 20-word floor and re-run that script because it excludes anything this file mentions.
 
@@ -224,7 +225,7 @@ legal file, not a source shape — the same code with the constant materialised 
 before the `sw`) is what the game has, and the C that produces it is `e->f[0] = 7` with the constant written
 inline. Treat a 3-4 word deficit on an otherwise word-perfect body as this class before re-reading the source.
 
-## A re-measure is cheaper than a re-think: `work/retest.py`
+## A re-measure is cheaper than a re-think: `work/verify.py`
 Re-running every draft in `work/near-miss/` (313 files, one line each) against current `main` takes one
 command and gives the pass its cheapest-first ordering *measured*, not remembered. Three of the bodies the
 census listed as 4-8 words off now measure 2, and one (`func_80012274`) converted on a single type change.
@@ -376,3 +377,158 @@ whole difference (`func_80020398`). What does *not* work: the same trick on a va
 `func_80026EC8` changes nothing), and bodies whose residue is a pointer fold or a global-address home rather than
 argument birth. So read the tell first — argument register plus a pre-call copy — and only then reach for the
 multiply spelling.
+
+## The constant-scale rule needs all three parts, and the multiply direction is the weak one
+A corpus-wide rewrite sweep (now part of `work/verify.py`) applied every constant-only equivalence to 174 parked bodies: 0 conversions, 6 partial
+improvements. `shift2mul` (the `func_80020398` form) moved two bodies and neither is near a match. Read the rule
+as: **call argument + live after the call + constant scale**, and do not reach for it when the shifted value is
+only cached in a variable — that case is already what gcc wants.
+
+What does move bodies is the *other* direction on division: `x >> N` ↔ `x / 2**N` varies in sign handling, not
+allocation, and it took four drafts down by up to thirteen words (`func_800484B4` 37 → 24). None converted, so
+it is a shaping aid rather than a converter.
+
+When writing any mechanical rewrite: **parenthesise the replacement**. `a + i * 16` → `a + i << 4` parses as
+`(a + i) << 4`; the first sweep's unparenthesised form silently failed to compile and, because the scorer read a
+failed compile as zero diffs, reported eleven false conversions. Score errors as errors.
+
+## A rewrite is only a measurement if it is an identity
+`x << N` → `x / 2**N` looks like "division instead of shifting" but computes the *opposite* shift. It scored
+four bodies better and every one of those scores was meaningless: the better-compiling draft was the one with
+the wrong meaning (`func_80020D74` 11/39 for `a1 / 256` against 22/39 for the game's own `a1 << 8`). Before
+adding an equivalence axis, state the identity and check it against the assembler: `x << N` = `x * 2**N`,
+`x / 2**N` = `x >> N` (unsigned), `x % 2**N` = `x & (2**N - 1)`. Anything else is a different expression wearing
+the same words.
+
+## `shift2div` is not an identity — read the shift direction before adopting a baseline
+The equivalence sweep's `shift2div` cell rewrote `x << N` as `x / 2**N`, which changes the expression, so
+every cell it reported measured a different program. The withdrawal commit keeps only true identities
+(`shift2mul` on a constant power of two, `mod2mask` on a power-of-two mask, `add2mul`, `mul2add`). Read the
+direction first: `x >> N` and `x / 2**N` agree only for unsigned `x`, and a body that shifts a pointer
+scale *left* is never a division candidate.
+
+## Measured cells are not baselines until they reproduce from the file on disk
+Even the one valid sweep cell (`func_80048598`, reported 37 → 23 of 37 by `shift2mul`) does not reproduce:
+the draft the sweep left behind re-measures 34/37 at a frame four words short. Before adopting a number as
+a baseline, re-run `match.py` against the stored draft and record the size it reports. Two baselines that
+do reproduce came out of re-testing the drafts themselves: `func_80048598` **28/37** (the cast-then-copy
+order, frame exact) and `func_800484B4` **25/57** (subscript per use instead of a pointer walker, frame
+exact). Both are in `work/near-miss/*-best.c`.
+
+## The division axis is closed, not pending
+Across all 174 parked drafts the division form converted nothing, and it was never a valid identity in
+these bodies. Where a body does need a signed-division sequence, the lever is the operand's declared
+signedness, not the spelling — and `80048598`'s remaining residue is a register role, not arithmetic.
+
+## The one body that matches and cannot ship: issue #101
+`func_80034B98` matches byte-for-byte, but `scan.py` rejects the `0x801FC000` it stores — splat has no
+symbol there, and `config/symbol_addrs.us.txt` is a protected path this lane must not edit. Filed as
+https://github.com/andrewnakas/thrasher-skate-decomp/issues/101 with the match evidence and the exact
+one-line fix (`D_801FC000 = 0x801FC000;`). Do not re-draft the body: it needs the symbol, not a shape.
+
+## One owner per fact (read this before adding a script)
+The tab carried twenty-eight scripts with four re-measurement entry points and two copies of the corpus
+table, which is how two passes came to chase baselines that did not reproduce. The split is now:
+
+| script | owns | does not |
+|---|---|---|
+| `work/verify.py` | **every measurement**: per-draft words differing, size delta, residue class, best draft, the generated table | find candidates |
+| `work/enumerate.py` | the queue: unmatched bodies by instruction count, band, window, or scaled-index shape | measure anything |
+| `work/cluster.py` + `work/family_queue.py` | disassembly families, ranked for template reuse | measure anything |
+| `work/memberbase.py` | the member-base scan for the pointer-local shape | measure anything |
+
+Rules that follow from it:
+
+- **Never** record a count that `verify.py` can produce. Run `python work/verify.py --write` and the table of
+  record at the top of the census is replaced; the journal keeps prose and reasoning only.
+- **Drafts have two homes**: `work/near-miss/` is history (any number in a filename is historical), and
+  `work/best/<body>.c` is the canonical draft the table points at. The canonical path has no number in it, so
+  it cannot go stale.
+- A body already merged keeps a draft only until the next run lists it as stale; the script prints those to
+  prune, and pruning is part of shipping a unit.
+- The cache in `work/verify-cache.json` is keyed by draft content and the toolchain fingerprint; bump
+  `verify.VERSION` when the classifier changes or you will read old classes.
+
+## The close list is now allocator-bound, not shape-bound
+Six bodies within two words were re-attempted with shapes their original passes did not have —
+pointer-first byte walk (`(E *) (base + i * 0x40)`), `&base[i]`, early returns instead of nesting,
+`cmd = *p++`, the division spelling of a constant shift, an `s32` field read through a `(u16)` cast,
+`-mno-split-addresses`, and `-fno-schedule-insns{,2}` on the scheduler case. None moved a word:
+`800382C0` (1/12, commutative `addu` operand order), `8001F4E8` (2/26), `8001DB74` (2/26),
+`8002BCB0` (2/17), `8002C9B8` (2/36), `8004BF94` (2/52), `80055820` (1/34, a filled load-delay nop).
+A fresh 46-word body, `8001D620`, drafted from the table's queue, parked at **16/46 with the frame one
+word short** for the same filled-nop reason: the game leaves a `nop` after `lw 0xC($s0)` and our build
+schedules the dependent `sltu` into it. Read a one-word deficit on an otherwise word-perfect body as
+that class first, not as a missing statement.
+
+## Volume works: 5 of 11 at 41-60 words (45%, against the 25% the band was averaging)
+Eleven unopened bodies drafted straight from `asm/`, two shapes each, parked on the second failure.
+Five matched: `80027630`, `80019570`, `80027478`, `8001F8BC`, `8001E9AC` (PR #104). Every one turned on
+a *type* decision read off the assembly, not on statement order:
+
+- **A signed halfword read through an `s32` local.** `arr[0] = D_8008AF86;` with an `s16` global emits
+  `lhu`; `a = D_8008AF86; arr[0] = a;` with `a` an `s32` emits the game's `lh`. Three loads were the
+  whole difference between 3/47 and MATCH in `func_80027630`.
+- **A counter loaded from a `u16` field is still signed.** `s32 n = *(u16 *)(v + 0x18);` gives the
+  game's `blez`/`bgtz`/`addiu`; declaring `n` as `u16` gives `andi` + `bnez` (`func_8001E9AC`,
+  11 → MATCH).
+- **A loop bound is unsigned when the game emits `sltiu`.** `u32 i` instead of `s32 i` turned the last
+  word of `func_80027478` (1/48 → MATCH).
+- **A masked `u16` dispatch stays a `u16`.** `(id & 0xE000)` in a `u16` local plus an if-chain reproduces
+  the compare chain; a `switch` would emit a jump table (`func_80019570`).
+- Small gp-relative globals must be declared **small**: `extern u8 D_8008AF84;` + `&D_8008AF84` gives
+  `addiu $a0,$gp,%gp_rel(...)`; `extern u8 D_8008AF84[];` gives a `lui`/`addiu` pair
+  (`func_80027630`, 19 → 3 diffs on that one change).
+
+Parks: `800159D8` 29/47, `80019F10` 45/47, `8002BFFC` 21/47, `8001C0AC` 50/50, `80024F3C` 14/50 — all
+frame or argument-register residue rather than missing structure.
+
+## The tells held; the yield came from type-reading, not from luck (3 of 6 this batch)
+Second volume batch: six drafts, two shapes each, three matched (`8002AE2C`, `8001D6D8`, `8001EA78`). The
+five tells from the first batch were used on all six; what actually decided the three conversions was
+again a *declaration* read off the assembly:
+
+- **A global used with `lui`/`lw` must be declared larger than 8 bytes.** `extern u32 D_800A4F04[2];` is
+  exactly 8 bytes, so `-G8` makes it gp-relative and the whole body mis-allocates; `u32[4]` restores the
+  game's `lui`/`lw` and converted `func_8002AE2C` outright. This is the mirror of the small-extern rule and
+  the single most common blocker seen in this batch.
+- **Do not cache a pointer the game re-reads.** `func_8001EA78` stores the same node field twice; writing
+  `p = *(u32 *)(s0 + 0x1C)` once emits one `lw` where the game has two, and re-spelling both stores as
+  independent dereferences converted it (7/53 → MATCH).
+- **A body that sets `v0 = 0` before the epilogue returns `int`, not `void`.** Declaring `void` drops that
+  word and shifts the epilogue (`func_8001EA78`).
+
+Parks in the same batch were structural, not type-level: `8002A9E0` 54/50 (an extra callee-saved pointer
+gcc derives for the last field), `8002A198` 30/51 (recursive dispose, 4 words short), `8002AD6C` 43/48
+(three-level loop over a table of records).
+
+## Draft in batches, match in batches
+Writing three to five drafts into `work/shapes/` before running any of them through `match.py` fits about
+three times as many bodies into the same reading budget. The match rate does not improve (35% over 17
+drafts against 45-50% body-at-a-time), so the win is volume, not insight: treat 40% as the planning number
+and never let one body's residue stop the next draft.
+
+## Pointer-array externs are 4*n bytes, and that decides the -G8 side
+`extern T *sym[3]` is 12 bytes, not 4: an address build with `lui`/`addiu` for such a symbol is correct.
+The audit's first version got this wrong and reported eleven false ENLARGE rows. What is *not* false is
+`extern u8 *sym;` -- 4 bytes, so the game's `lui`/`addiu` of that address needs the declaration widened to
+an array (`extern u8 sym[0xC]; *(u8 **)sym`) and that moved `func_80043294` from 16/17 to 6/17. Declaring
+exactly 8 bytes is still the small side: 8 is `<= 8`, so `sym[8]` lands in `%gp_rel` and `sym[0xC]` is the
+first size that gives absolute addressing.
+
+## A narrow load is `lhu` unless an s32 local sees the value
+Storing an `s16` global straight into an `s16` array emits `lhu` (the sign bits cannot affect the stored
+halfword); the game's `lh` only appears when the value passes through an `s32` local before the store.
+That one declaration change turned `func_80027630` from 3/47 into a match. Same family as the `andi 0xFF`
+rule: read what the original does with the value, not just its width.
+
+## A missing closing word is usually the return type
+A body exactly one word short whose last real instruction is `addu $v0,$zero,$zero` before the epilogue is a
+`s32` function with an explicit `return 0` on the fall-through path; `func_80027798` matched on that alone.
+The sibling case is a shared exit: `if (e != 0) { ... } return e;` lets the early-exit branch reuse the loaded
+pointer register instead of materialising a zero (`func_80027124`, 9/58 to match).
+
+## Check `src/funcs/` before drafting a callee
+A family list built from call sites includes already-merged bodies: `func_80026DAC` matched on the first draft
+and had to be thrown away because the file already existed. The enumerator excludes merged bodies; a
+hand-picked family member does not.
