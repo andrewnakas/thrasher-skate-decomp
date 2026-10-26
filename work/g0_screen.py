@@ -11,16 +11,20 @@ import re
 import sys
 from pathlib import Path
 
+import units
+
 ROOT = Path(__file__).resolve().parent.parent
 
 
 def main():
     rows = list(csv.DictReader(open(ROOT / "config/functions.us.csv")))
     out = []
+    skipped = 0
     for r in rows:
         if r["kind"] != "func" or r["segment"] != "game":
             continue
-        if (ROOT / "src/funcs" / (r["name"] + ".c")).exists():
+        if units.done(r["name"]):
+            skipped += 1
             continue
         p = ROOT / r["asm"]
         if not p.exists():
@@ -36,7 +40,7 @@ def main():
     out.sort()
     for size, addr, name, lo in out:
         print(f"{size:6d} {addr} %lo={lo:2d} {name}")
-    print(f"-- {len(out)} candidates")
+    print(f"-- {len(out)} candidates ({skipped} skipped: already matched)")
 
 
 if __name__ == "__main__":

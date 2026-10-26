@@ -1502,3 +1502,60 @@ a jump) supplied fresh candidates rather than the hand-known ones.
   a `%lo` folded into three `jal` delay slots plus the `lui $at` store form; `func_800519C4`'s is the
   `$s2`/`$s1` swap for `arg1`/`arg2` plus one coalesced copy; `func_80034A78` and `func_8004AF80` sit
   at 31 and 13 words with register-allocation residues.
+
+## Pass: the parked-arm screen mined — 3 matches, one new lever
+
+All three came from the screen list; two were first-shape reads of near-identical twins, and the third
+closed only after the constant-materialisation lever below.
+
+- **func_8002D734 / func_8002D81C** (58 words each) — **MATCH, first shape.** X-first and Z-first halves
+  of one axis lerp: `h = (w - b->x) << 12`, `r = func_80035E40(h, (a->x - b->x) << 12)` (falling back to
+  the Z pair when `a->x == b->x`, with `h = 0`), then `out->x = b->x + (h >> 12)` and
+  `out->y/out->z = b->y/z + ((a-b)*r >> 12)`. The `mult`/`mflo`/`sra 12` triple plus the reversed write
+  order (z, y, x) was the whole tell.
+- **func_8002D904** (46 words) — **MATCH, sixth shape, on two words.** Every body shape gave 2 of 46:
+  gcc emitted the four-slot pointer setup `addiu $s1,$s1,0xC` before the loop bound `addiu $s4,$zero,-1`,
+  the original the other way round. `i != -1` lets gcc rematerialise the bound freely; **naming it**
+  (`last = -1; ... while (i != last)`) pins its materialisation to that source position and the unit
+  matched immediately. New lever: when a residue is two adjacent independent `addiu`s setting up a
+  loop, give the loop bound a name.
+- **func_80019F10** (47 words) — **34 of 47, 0xb4 against 0xbc.** The prologue is now exact — the
+  `arg4→$s0, arg1→$s2, arg2→$s4, arg3→$s3, 1→$s1` allocation falls out of **one trailing `return 1`**
+  instead of per-arm returns (the callee-saved-order class again). Residue: the original parks *both*
+  dispatch arms (`beq $a0,$s1,<arm1>`, then `beq $a0,$v0,<arm2>`, with `return 1` inline), and every
+  shape written parks only the first. Class: block order with two parked arms.
+- **func_8001D428** (43 words) — dispatch word-exact, scan loop unchanged. `while (used && ++i < 4)`,
+  `do/while` in both increment orders, `for(;;)`+`break` and a pointer walk all rotate into a preheader
+  that reads the first entry through the folded base register. Class: loop rotation + regalloc.
+- **func_8004813C** (51 words) — **30 of 51.** Prologue, both `strcmp`s, the `arg0[0]` dispatch and the
+  `s8` range chain are right. Residue: gcc turns the two `lb` copies into `lbu` (the sign extension is
+  dead after the `sb`) and schedules the second buffer store into the `jal` delay slot. Class:
+  dead-extension load form + store scheduling. `char *` parameter, `char buf[3]` + `char *s = buf` local
+  is the shape that produced the correct `$s1`/`$s0` pair.
+- **func_8002DA40** (33 words) — **every operation right, 0x7c against 0x84.** The original keeps the
+  `D_800A1C50` base in `$v1` and interleaves each group's next `lh` before the current group's `bgez`;
+  gcc keeps the base in `$a1` and interleaves differently. A base pointer local does not change it.
+  Class: base-register allocation.
+
+## Pass: dust-off sweep — 1 match, and the candidate list was wrong
+
+The strict two-shape budget exposed a workflow defect rather than units: `asm/nonmatchings/<seg>/func_*.s`
+keeps its `nonmatching` header **after** the function is matched, so a list built from those headers
+includes finished units. `func_8002EFCC` was matched two passes ago and its asm still says
+`nonmatching func_8002EFCC, 0x88`; the sweep spent three shapes re-deriving a body that was already
+byte-identical, and the rewrite was reverted. **Filter candidates by `src/funcs/<name>.c` absence.**
+
+- **func_8002B360** (39 words) — **MATCH, first shape.** Two slot-release loops: eight 0x04..0x20 slots of
+  a 0x24-byte `D_800A1C90` entry (index `arg0->2A`, u16 count at +0x02) and four 0x34..0x40 slots of
+  `arg1` (u32 count at +0x44), each clearing the matching pointer and decrementing its count. Straight
+  `for (i = 7; i != -1; i--)` / `for (i = 3; i != -1; i--)` with `break` on the hit.
+- **func_8002F730** (56 words, 0xf0/0xe0) — base-pointer duplication: gcc copies the element pointer and
+  re-bases the index pointer; a four-byte index struct does not change it. Class unchanged from before.
+- **func_8002A198** (51 words, 31/51) — dispatch needs two parked arms with a shared re-testing tail; both
+  a nested `if/else if` and a two-case `switch` with an empty case give `bne` with the arm inline.
+- **func_80022F24** (56 words, 0xe4/0xe0) — pointer init placement (`p = arg0+0xFFC` before `i = 0` is
+  worse, not better) and the `sltiu` range test that a `u32` switch value breaks rather than fixes.
+- **func_8002CF94** (41 words, 0xb4/0xa4) — the three-store tail is duplicated into the empty-list branch
+  by gcc where the original shares it and jumps to it. Class: tail duplication in block layout.
+- **func_8002EFCC** — already matched (61e3096); do not re-derive. Its real shape is 8-byte points
+  (`s16 x; s16 pad; s16 y; s16 pad`) with a `do/while (--i != -1)`.
