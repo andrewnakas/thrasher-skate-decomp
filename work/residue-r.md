@@ -1083,3 +1083,43 @@ unchanged or worse (`func_80029488` 15 → 23/24). Alias shaping is a dead end f
   `andi`/`sll`/`nor`/`andi` in that order).
 - **func_80033714** — not attempted: it saves `$ra` in `$t9` and returns through `$t7`/`$t6`, the
   signature of hand-written or heavily-shared code.
+
+## Pass: 0x8003/0x8004, second strike — no conversions, nine units opened
+
+Shapes tried per unit (all miss; exact best scores):
+
+- **func_80035BC0** (0x54): best **18 of 21** with `/* cflags: -O1 */`, otherwise **20 of 21**.
+  The body is right and the gap is two `andi $x,$x,0xFF` after the two `lbu` loads, which the
+  game has and gcc never emits: `(u8)` values are already known to be 0..255, so `& 0xFF`
+  folds at the front end — plain `u8 *`, `s8 *` with explicit masks, `u32 hi:8`/`lo:8`
+  bitfields, `u16` fields, and `-O1` all produce the same mask-free shift. Also tried: mask on
+  the whole value (`& 0xFFFF` only), `e[0]=4` before/after the expression, one statement vs a
+  named local. **The masks are not reachable from C under this compiler**; whatever produced
+  them, source shape is not it. Sibling `func_80035C14` (0x88) has the identical two masks and
+  the same block, best **33 of 34**.
+- **func_80034824** (0x50): best **15 of 20** (`u8` param with `& 0xFF`, `u8 n`, `p` before `i`,
+  `p` read before the guard, do-while). The game keeps `n` in `$a3` via an explicit
+  `addu $a3,$v0,$zero` copy, the counter in `$a2` and the walker in `$v1`; every spelling puts
+  the counter and walker the other way round and drops the copy. Ruled out this pass: `u8`/`s8`
+  param, `u8` vs `s32` `n`, `i` at loop top vs bottom, `while` vs `for(;;)` vs do-while,
+  `p += 8` in the increment vs the body, early-return guard before the pointer read.
+- **func_80034004** (0x5C): copy-up-to-NUL-then-count, fully reconstructed; best **13 of 23**
+  (`u16 n`, `arg0++`/`arg1++` split, `do { } while (n < arg2)` with a `break`, then a
+  `c = *arg1` loop). Sizes 0x60-0x64 against 0x5C: the game's trailing count loop is
+  `while (*arg1++ != 0) n++;` with the pointer bump in the branch delay slot, which every
+  spelling here emits as a separate `addiu`.
+- **func_800432D8** (0x60): best **17 of 24**. Body, stride 0x14, slot array `D_8008B384` and
+  order `arg2`-first are all right; the single missing word is the game's
+  `addu $a0,$v0,$zero` copy of the dequeued slot pointer, which gcc coalesces. Ruled out:
+  `s32 p` with casts, `s32 *p` with `p + 5`, a separate `q`/`next` variable, `slot = &arr[i]`
+  then `p = *slot`, and `s32 v` read then cast to `s32 *` — all 0x5C, one word short.
+- Not attempted, and why: `func_8003332C`, `func_80033768` are marked handwritten
+  (`mtc2`/`sqr`, `add` with three operands, `$ra` saved in `$t8`); `func_800333C8`,
+  `func_80033428` use `lui %hi(func_80033384 + 0x38)` — an address *inside another function*,
+  i.e. a static object placed there, not expressible as a C reference without that symbol;
+  `func_80045828` returns `$gp` and `func_80045838` returns `$sp`, which no C produces.
+
+Conclusion for the range: it is not uniform. What converted (`func_80035810`) was a plain
+switch wrapper with no masks and no pointer copies; the rest of 0x8003/0x8004 that has been
+opened is either handwritten, static-label based, or blocked on the same two residues that
+blocked 0x8001C/0x8001D — redundant `andi 0xFF` masks and gcc-elided register copies.
