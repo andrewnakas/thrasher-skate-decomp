@@ -1305,3 +1305,78 @@ Twelve units from `work/g0_screen.py`, smallest first. Best scores and the class
 what most of this list is missing — 47 named candidates, and the two that came closest were one
 delay slot and one base fold away, both of which `-G0` does not touch. The screen stays useful as a
 ranked worklist, but the next pass should prefer candidates whose *body* is arithmetic-free.
+
+## Pass: attack the delay slot, then the arithmetic-free remainder — no conversions
+
+**func_80055820 stays at 1 of 34 words.** The residue is a single `nop` versus `addiu $a0,$zero,0x3E8`
+in the delay slot of `jal func_800C3B98`. Flags were already known not to touch it
+(`-fno-schedule-insns` 1, `-fno-schedule-insns2`/`-O1` 8, `-fno-strength-reduce` 1). This pass tried
+to break the fill with a *dependence* instead, per shape:
+
+- callee declared `s32` and its result assigned to a local (`r = func_800C3B98(1000)`) — 1 word.
+- the constant in a `volatile` local — **worse**, 19 of 34, 0x90 against 0x88 (forces a stack slot).
+- the constant as an arithmetic expression (`999 + 1`) — 1 word (folds back).
+- the first call's argument as a plain local while the second keeps the literal — 1 word.
+- a local `t = 1000` shared by both calls — 1 word.
+
+gcc's reorg pass takes the instruction from the fall-through block regardless of which call the
+constant belongs to, and 2.8.1 offers no allowed flag that disables delayed-branch filling
+(`-fno-delayed-branch` is not in `toolchain/compiler.toml`). Classed **delay-slot fill, out of reach
+under the allowed flags** — this is a fourth codegen-policy wall alongside the `andi` masks, the
+pointer copy and base folding.
+
+**Arithmetic-free remainder attempted:** `func_8002C4E4` (0x118, triple nested walk over
+`D_800A4F04` filling a pointer array through `func_8002C454`) — best **52 of 70 at 0x11C against
+0x118** with the default flags (57/70 at 0x120 with `-G0`). The group loop's re-read of
+`*(u16 *)(node + 0x1C)` and the `out` pointer hoisted per group are right; the size overshoot is
+one extra word, class **one extra word / regalloc**. Not pursued further: two shapes used.
+
+`func_8002C8B8` (0x100, the same walk writing a packet stream through `func_80034C8C`) was read and
+classed **not attempted (packet stream)**; the remaining screened units are either 64-bit arithmetic
+(`func_80032F34`, `func_80032E94`), packet builders (`func_8004584C`), or large
+(`func_80032DCC`, `func_8003571C`, `func_8004E*`).
+
+## Pass: mixed-global screen and `-mno-split-addresses`
+
+**The screen.** `work/gp_mix_screen.py` lists every still-unmatched game unit whose assembly contains
+both a `%gp_rel` access and a `%lo` *memory* operand (a `lw`/`sw`/`lbu` through a `lui`-built base) —
+the units the `-G0` screen cannot see, because `-G0` would fold *all* of their globals out of the small
+data section while these functions keep some in it. 43 units on this pass, smallest first.
+
+**Recipe R1, small-data declaration width.** Whether a global lands in `%gp_rel` or `lui/%lo` is a
+property of its *declaration in the unit file*, not of a flag: `extern s32 X[]` (unknown bound) is not
+small data and becomes `lui/%lo`, while `extern s32 X[2]` (8 bytes, under the -G threshold) is small
+data and becomes `addiu $r, $gp, %gp_rel(X)`. `func_8003ED28` needs exactly this split in one file:
+`D_8008A6E8[]` absolute, `D_8008A788[2]`/`D_8008A790[2]`/`D_8008B33C[2]` small-data, and it moved from
+58 of 60 to 12 of 60 the moment the three tables got their bounds.
+
+**Recipe R2, `-mno-split-addresses` for same-register absolute loads — first new match in five passes.**
+When the original loads an absolute global as `lui $a0, %hi(S); lw $a0, %lo(S)($a0)` — the address
+materialised *into the register that receives the load* — the default codegen instead splits it through
+a scratch (`lui $v0; lw $a0, 0($v0)`), and no amount of C spelling changes that. The per-file marker
+`/* cflags: -mno-split-addresses */` produces the unsplit form exactly. `func_8003B8F8` matched on the
+first try once the marker was added, after sitting at 4 of 46 (only the four address-load words) without
+it. The marker is *not* free: it moved `func_8003ED28` from 12 to 56 of 60 and `func_8004E330` from 11
+to 70 of 76, so it is a per-unit property to test, never a house default.
+
+**The wall this pass confirmed but did not cross.** An absolute symbol's address *reused across calls*
+is hoisted by the pinned compiler into a callee-saved register (`lui $s0; ...; lw $a0, 0($s0)`) and
+stays there, while the original rematerialises `lui/%lo` at each use. `func_80058448` (43 words) and
+`func_8001C0AC` (50) both reconstruct completely — call order, `0xA029` index base, the `sltiu` bound,
+the tail helper — and both die on exactly this, 34 of 43 and 28 of 50. Volatile declarations, array
+declarations, `-mno-split-addresses` and `-G0` all leave the hoist in place; the only spelling that
+rematerialises is a literal RAM address, which `tools/scan.py` forbids. Treat "same absolute symbol
+read three times around calls" as a *stop* condition on this toolchain.
+
+**Other residues from the screen, each two shapes.**
+- `func_8003ED28` 12/60: everything matches except (a) the address temp for `D_8008A6E8` lands in `$v0`
+  where the original has `$v1`, (b) the `== 1` arm is placed inline where the original puts it out of
+  line after the `== 0` arm, (c) the final `D_8008B3AC = 0` is a `lui $v0; sw` where the original uses
+  the store-immediate `lui $at; sw $zero`. Class: branch order + regalloc.
+- `func_800519C4` 39/72, one word short of 0x120: `mult`/`%1000` magic (0x10624DD3, shift 6) and every
+  store offset are right; the original allocates `arg1` to `$s2` and `arg2` to `$s1` where gcc gives
+  `$s1`/`$s2` in parameter order, and the whole body cascades from that. Class: callee-saved order.
+- `func_8003BA14` 46/61 after the frame fix: the frame is 0x40 because the local buffer is 24 bytes
+  (`u16 buf[12]`), not the 8 the four used entries suggest, and `D_8008B1DC` must be declared with a
+  bound (`u8[0x18]`) to stay small-data. Remaining residue: `0xFD` and `0x17A` are held in `$s3`/`$s2`
+  by the original and rematerialised into `$v0` by gcc. Class: constant-in-register.
