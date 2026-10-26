@@ -1241,3 +1241,30 @@ are the place to start.
 
 **Rule for later passes:** check the segment column before spending anything on a unit. `psyq`
 means stop, and the `-G0` recipe only counts when it closes a `game` unit.
+
+## Pass: -G0 spent on game units — one match, and a screen for the rest
+
+**Recipe C confirmed outside the library region.** `func_8002C5FC` (0x8C, the two-level
+linked-list scan over `D_800A4F08`) matched on the first attempt with `/* cflags: -G0 */`, and did
+not match at all without it (35 of 35 words, 0x88 against 0x8C). So `-G0` is a real per-unit flag
+in game code, not just a PsyQ quirk.
+
+**The screen** is `work/g0_screen.py`: it walks `config/functions.us.csv`, keeps unmatched `game`
+functions, and flags a unit whose assembly contains a `%lo(sym)` **memory operand**
+(`lw/sw/lbu/lh/... $r, %lo(sym)($r)`) while never using `%gp_rel`. The first version counted any
+`%lo`, which also caught `-G8` array bases built with `addiu`, so the operand test is what makes
+the list usable: **48 candidates**, smallest `func_80032D88`, `func_8002C5FC`,
+`func_8002C0B8`, `func_80032E94`, `func_8002C1B4`, `func_80032F34`. Re-run it by name before
+picking work from that region.
+
+**Misses this pass, classed:**
+
+- `func_80032D88` (0x44, fixed-point clamp then `D_8007F8C8[(v >> 5) << 1]`) — best 0x40 against
+  0x44, four spellings: the clamp itself is right (`sra`, `slti`, `slt`) but gcc 2.8.1 folds the
+  table base into `addiu` and then `addu` with the index, while the game keeps `lui %at`,
+  `addu $at,$at,$a0`, `lh %lo($at)` — the index added to the *hi* half. Class **base-folded
+  addressing**.
+- `func_8002C0B8` (0x90, the same list walked with an absolute-distance box test) — best 29 of 36
+  at 0x9C against 0x90 with a `for`/`continue`/`break` body; the `goto` form is worse (0xa4).
+  The `bgez`/`negu` absolute value and the two `>> 1` halvings are right. Class **loop tail
+  layout** (the game re-enters the node advance from two places).
