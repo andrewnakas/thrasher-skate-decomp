@@ -1559,3 +1559,30 @@ byte-identical, and the rewrite was reverted. **Filter candidates by `src/funcs/
   by gcc where the original shares it and jumps to it. Class: tail duplication in block layout.
 - **func_8002EFCC** — already matched (61e3096); do not re-derive. Its real shape is 8-byte points
   (`s16 x; s16 pad; s16 y; s16 pad`) with a `do/while (--i != -1)`.
+
+## Sweep 145 (regalloc probe pass)
+
+- **`/* cflags: -O1 */` is a first move now**, not a last resort: func_80015D38 (a787bbf) needed
+  nothing but `-O1` to keep the `nop`s the original leaves in its load-delay slots, and the same
+  flag closed func_80026E88 (index loop). Try it before writing a second shape.
+- **Caller-saved permutation (v0/a3/a1/t0 vs a2/a1/a3/v0,v1; func_80032CF4, func_80032D3C) is not
+  reachable from source shape.** Probed live-order, one-statement vs one-expression, derived-from,
+  temp count, argument-vs-local, condition polarity, extra call: `a2/a1/a3/v0,v1` is the only
+  assignment gcc 2.8.1 emits for this body at -O2 and -O1. Parked: dead end, do not re-derive.
+- **func_8004CCA0 — MATCHED** (sweep 146). The arena allocator walks a table of 8-byte entries at
+  `arg0 + 0xC`. Two details decide it. First, the entry must be reached through a **struct pointer
+  inside the loop**, not a manual byte offset: `t = (ENTRY *)(arg0 + 0xC + c * 8); e = t->ptr;` with
+  `typedef struct { s32 cost; u8 *ptr; } ENTRY;`. That lets gcc's strength reduction build the byte
+  offset as a giv initialised to 12 (`addiu $a3,$zero,0xC`) and append it at the *end* of the
+  preheader, which is where the original has it; a hand-written `u32 off = 0xC; ... off += 8`
+  compiles to the same loop but cc1 emits that `li` as the first instruction of the function, so
+  nothing else in the file can match no matter how it is spelled. Second, the arms **`break`** into
+  one trailing `return c`, and the type test is duplicated per case (`else if (type == 1)`,
+  `else if (type == 2)` with the same body): `type == 1 || type == 2` canonicalises to
+  `sltiu $v0,$v0,2`, while duplicated arms let gcc merge the bodies and emit the original's
+  `beq`/`bne` against hoisted `1`/`2`. A `u8` bound (not `u32`) gives the hoisted
+  `addu $t0,$v0,$zero` bound copy, and a `u32` counter gives the `sltu` bottom test.
+- **Base + constant folded into `%lo`** (func_8003B3CC): `lw $a0, %lo(sym+0x44)($a0)` needs the base
+  formed as a split `lui $a0`/`addiu $a0,$a0,%lo(sym)` pair, i.e. two statements, not one expression.
+  Adjacent absolute only means one address form is available; the split form needs the base to be a
+  named local that is also used elsewhere in the function.
