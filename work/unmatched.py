@@ -18,7 +18,9 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "tools"))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import progress  # noqa: E402  (for the cross-check only)
+import units  # noqa: E402  (done/handwritten filters)
 from common import FUNCTIONS_CSV, SRC_FUNCS, load_functions  # noqa: E402
 
 PARKED = {
@@ -47,6 +49,8 @@ def queue():
             "addr": f["addr"],
             "size": f["size"],
             "parked": f["name"] in PARKED,
+            # hand-assembled GTE / 3000 forms: no C spelling can ever match these
+            "asm": units.handwritten(f["name"]),
             # a neighbour only counts as matched if it is a function at all and has a unit
             "left_done": bool(prev_f and prev_f["name"] in done),
             "right_done": any(g["name"] in done for g in funcs if g["addr"] == f["addr"] + f["size"]),
@@ -76,9 +80,11 @@ def main(argv):
         print(json.dumps({"total": total, "matched": matched, "unmatched": len(rows), "rows": rows[:n]}))
         return 0
 
-    live = [r for r in rows if not r["parked"]]
+    live = [r for r in rows if not r["parked"] and not r["asm"]]
     print(f"queue: {len(rows)} unmatched game functions ({matched}/{total} matched); "
-          f"{len(rows) - len(live)} parked by measurement")
+          f"{sum(r['parked'] for r in rows)} parked by measurement, "
+          f"{sum(r['asm'] for r in rows)} not C (hand-written asm)")
+    print(f"queue after filters: {len(live)} reachable")
     print(f"cross-check: {'OK' if ok else 'MISMATCH'}")
     print()
     print(f"{'size':>6}  {'addr':>8}  nb  name")
