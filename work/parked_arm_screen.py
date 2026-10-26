@@ -64,7 +64,8 @@ def main():
         if hits and words >= min_words:
             rows.append((words, hits, name))
     rows.sort()
-    print(f"{len(rows)} parked-arm candidates at >= {min_words} words")
+    print(f"{len(rows)} parked-arm candidates at >= {min_words} words "
+          f"({len(already)} skipped: already matched)")
     print(units.report(len(names), todo))
     for words, hits, name in rows:
         print(f"  {words:4d}w beq={hits} {name}")
