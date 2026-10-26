@@ -1123,3 +1123,31 @@ Conclusion for the range: it is not uniform. What converted (`func_80035810`) wa
 switch wrapper with no masks and no pointer copies; the rest of 0x8003/0x8004 that has been
 opened is either handwritten, static-label based, or blocked on the same two residues that
 blocked 0x8001C/0x8001D — redundant `andi 0xFF` masks and gcc-elided register copies.
+
+## Pass: the micro-probe — two recipes tested, one closes a unit
+
+Probe files: `work/probe/mask.c` (17 constructs for the `andi`-after-`lbu` signature),
+`work/probe/misc.c`, `work/probe/copy.c` (eight constructs for the `addu` copy). Compiled with
+`tools/cc.py c FILE /tmp/x.o --print-asm`, i.e. the exact pinned pipeline.
+
+**Recipe A (works) — test the narrow load, assign it inside the block.** The `addu` copy appears
+when the C tests the *byte* in the guard and assigns it to a wider local inside the body:
+
+    if (arg0[5] != 0) {
+        n = arg0[5];          /* u8 load -> s32 local: gcc emits addu $a3,$v0,$zero */
+
+gcc tests the load's own register (`$v0`), then materialises the assignment as a copy into the
+local's register (`$a3`) because the value crosses types. `func_80034824` matches on this
+first try after nine spellings failed; the whole unit, not just the prologue.
+
+**Recipe A does not transfer as written.** `func_800432D8`'s copy is of a loaded `s32` into a
+pointer, and every spelling that assigns it inside the guard still coalesces (17/24 best).
+
+**The `andi` signature is still unexplained.** Seventeen constructs — `u8`/`s8` element types,
+`& 0xFF` on values already range-known, s32/u16/int/unsigned-char bitfields, struct fields vs
+byte pointers, a union view, volatile loads, compound assignment, `(u16)` casts — all compile to
+the same mask-free `lbu; sll; nor`. A `static` mask helper is not inlined (it becomes a call), so
+it cannot explain a mask inside a call-free function either. Under this pin the pair of
+`andi $x,$x,0xFF` in `func_80035BC0`/`func_80035C14` is **not C-reachable**; those two units were
+almost certainly built by a different compiler from the pinned 2.8.1, which the repository has no
+per-unit mechanism to express.
