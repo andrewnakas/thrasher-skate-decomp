@@ -1221,3 +1221,34 @@ Together with the `andi` result this leaves two codegen signatures in the reposi
 pinned compiler does not produce from any C: the redundant byte masks and the pointer-width
 copy. Both are most likely compiler-generation differences, and the repository has no per-unit
 mechanism to express one.
+
+## Pass: volume on untouched ground — the -G0 recipe, five units
+
+**Recipe C (works, and it is the big one for 0x8005):** the PsyQ-region accessors are compiled with
+`/* cflags: -G0 */`, not the default `-G8`. Under `-G8` a small global comes back `lw $v0,
+%gp_rel(...)`; the game's accessors all use `lui $v, %hi(sym)` + a `%lo` access, i.e. no gp
+relative addressing at all. With the `-G0` marker every one of them matched on the first try:
+
+- `func_8005955C`, `func_80059C80`, `func_8005CAD8`, `func_8005CAE8` — plain getters
+  (`return D_xxxx;`) over u16/u8 globals.
+- `func_8005AE68` — `return *D_800842CC;`.
+
+Before the marker all five were 4-of-4 words different with size 0xC against 0x10: exactly one
+instruction short, the missing `lui`, which is the signature of the wrong `-G` level.
+
+**Misses this pass, with the class each fell in:**
+
+- `func_80032C28` (0x2C) — 64-bit product (`mult`, `mflo`, `mfhi`, `sll`/`srl`/`or`). gcc 2.8.1 has
+  no 64-bit integer type (the parse error on `s64` is at the declaration), so this is unreachable
+  from C: class **needs 64-bit arithmetic**.
+- `func_8005CB90`, `func_8005CBC4`, `func_8005CBD8`, `func_8005C964` — getter/setter pairs
+  returning the old value; with `-G0` they are one word short (0x10 against 0x14): the game
+  recomputes the global's address for the store (`lui $at` + `sw %lo($at, ...)`), ours reuses the
+  loaded base. `-mno-split-addresses` makes it worse (0x18). Class **address recomputation**.
+- `func_8005956C` (u16 pointer swap) — best 2 of 6 with `s32` args and `p[0] = (u16)arg0`, same
+  size; class **regalloc**.
+- `func_8002C490` — 13 of 21, 0x58 against 0x54; class **one extra word** (the two-return shape).
+- `func_8002DD88` — 15 of 22, 0x50 against 0x58; the game copies `arg0` to `$a2` before clobbering
+  `$a0` with the byte load, then copies it back for the call. Class **regalloc**.
+- `func_80033480`, `func_80033428`, `func_800333C8` — `%hi(func_80033384 + 0x38)`; class
+  **static object inside another function**.
