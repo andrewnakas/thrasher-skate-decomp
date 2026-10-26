@@ -1380,3 +1380,125 @@ read three times around calls" as a *stop* condition on this toolchain.
   (`u16 buf[12]`), not the 8 the four used entries suggest, and `D_8008B1DC` must be declared with a
   bound (`u8[0x18]`) to stay small-data. Remaining residue: `0xFD` and `0x17A` are held in `$s3`/`$s2`
   by the original and rematerialised into `$v0` by gcc. Class: constant-in-register.
+
+## Pass: the two levers applied together
+
+**The combination works and is now the house recipe for mixed-global units:**
+`/* cflags: -mno-split-addresses */` + every small-data table declared with its bound
+(`extern s32 X[2]`) + the table bases taken as explicit pointer locals (`s32 *t = X;`) so the
+non-split build still hoists them into `$sN` and increments by 4 in the loop. Under `-mno-split-addresses`
+alone the gp-relative tables degrade to `addu $at, $idx, $gp; sw %gp_rel(X)($at)`; under bounded
+declarations alone the absolute load splits through a scratch. Together they give the original's
+`addiu $s1, $gp, %gp_rel(X)` bases *and* its `lui $v1, %hi(S); lw $v1, %lo(S)($v1)` load.
+
+**`func_8003ED28` — 12 of 60 to 7 of 60, still short.** Everything now matches except the seven-word
+dispatch at 8003ED68–8003ED84. The original tests `== 1` first and parks that one-instruction arm
+*out of line* after the `== 0` arm's `j`, so the `== 1` arm falls through into the shared
+`off/stride/count` block; the pinned compiler always keeps the `== 1` arm inline and gives the `== 0`
+arm its own jump. Source order (`1` first vs `0` first), nesting the second test, an empty
+`else if (v != 0)` arm, `if (base)` around the shared tail, and a two-case `switch` (which becomes a
+jump table, 63 of 60) all leave the seven words in place. Class: block ordering, not spelling. The
+other 53 words — both arms, the cross-jumped tail, the loop, the three hoisted bases, the closing
+`lui $at` store — are exact.
+
+**`func_800519C4` — 39 of 72 and 0x11C against 0x120.** The missing word is the original's
+`addu $a0, $v0, $zero` before `subu $a0, $v1, $a0`: it copies the stored volume into the subtraction's
+destination register. Writing the subtraction as `r = t; r = s - r;`, as `t = s - t;`, and as
+`(s - t) / div` all collapse the copy; gcc coalesces the two statements. Together with the
+`$s2`/`$s1` swap for `arg1`/`arg2` this stays a two-defect unit.
+
+**`func_8004E330`** re-measured under `-mno-split-addresses`: 70 of 76, so the marker is wrong for it
+and `-G0` (11 of 76, prologue s3-before-s2) remains its best form.
+
+**`func_80030518` — 43 of 55 to 37 of 55, loop exact.** `-mno-split-addresses` plus bounds on the four
+gp-relative tables (`D_8008A370[4]`, `D_8008A37A[2]`, `D_8008A37C[2]`, `D_8008B0A8[4]`) and an explicit
+`u16 *p = D_8008B0A8` for the fill loop reproduces the original's `addiu $v1, $gp, %gp_rel(D_8008B0A8)`
+base, its hoisted `ori $a1, $zero, 0xFFFF`, and the `addiu $v1, $v1, 0x2` increment exactly. The
+remaining one-word overshoot (0xE0 against 0xDC) sits in the three `func_8004F250(func_80036E1C(...))`
+calls: the original folds each `addiu $a1, %lo(S)` into the preceding `jal` delay slot and copies the
+string base into `$a0` before the `lui`, so its three call blocks are eight words where the same
+statements here need nine.
+
+**Per-file flags measured against these units (all worse):** `-O1` on `func_8003ED28` 65 of 60 (0x10C);
+`-fno-schedule-insns2` on `func_80030518` 41 of 55 and on `func_800519C4` 61 of 72 (0x124);
+`-fno-strength-reduce` on `func_800519C4` 39 of 72 (0x11C, unchanged). The default pipeline plus the
+`-mno-split-addresses` marker remains the best form for all four units in this family.
+
+## Pass: probes for block order and store form
+
+**Probe P1 (`work/p-dispatch.c`, `work/p-dispatch2.c`) answers the block-order question that blocked
+`func_8003ED28`.** The pinned compiler emits the natural form for every if/else-if spelling:
+`bne v,c,else` with the *then* arm inline, regardless of source order, nesting, empty arms, a `switch`
+(a 2-case switch becomes a compare chain with `beq`-form targets, but both arms out of line), or a
+`goto`. The one spelling that produces the original's shape is to write the arm you want **out of
+line as the source's `else`** and the inline arm as the *body of the inverted test*:
+
+```c
+    if (v != 1) {
+        if (v == 0) {
+            /* the arm that must stay inline */
+        }
+    } else {
+        /* the arm that must be parked after the jump */
+    }
+```
+
+That emits `beq v,c,<else>` (else parked after the inline arm's `j`), then `bnez v,<join>` for the
+inner test, then the inline arm, `j`, the parked arm, and the join — exactly the original's seven
+words. `func_8003ED28` matched on the first try once the dispatch was written this way, after six
+earlier spellings left it at 7 of 60. **This is the recipe to try first whenever a unit's only residue
+is "the wrong arm is out of line".**
+
+**Probe P2 (`work/p-store.c`) answers the store-form question in `func_80030518`.** Storing a constant
+to an absolute global always yields a register-based address (`lui $3,%hi; ... sw $2,%lo($3)`), whether
+the symbol is declared as an unbounded array, an addressed array, or reached through a pointer; a
+*scalar* declaration gives the bare-symbol `sw $2,S` form (which the assembler expands with `$at`) but
+is small data, so it becomes `%gp_rel`. The original's `lui $at; sw $v0,%lo(S)($at)` was not reproduced
+by any spelling probed. `func_80030518` therefore stays at 8 of 55, and everything except that one
+store and the schedule around it is exact once the marker is **removed** and the tables carry bounds
+plus explicit pointer locals (`-mno-split-addresses` was wrong for it: 37 of 55 against 8 of 55).
+
+**Also probed:** `func_8002DF04` (61 words) first shape lands at 41 of 61 with one extra word — the
+absolute block bases (`D_800A4E00`, `D_800A1C8C`) and the loop are right, the residue is that the
+original loads its three halfwords with `lh` where a u16 store allows `lhu`, plus one extra word in
+the store block's schedule.
+
+## Pass: the `else`-side recipe applied — 3 matches, one of them on statement order
+
+No new probes this pass; the whole budget went on applying the recorded recipes. The screen written
+last pass (`work/parked_arm_screen.py`, 96 unmatched units whose assembly has a short arm parked after
+a jump) supplied fresh candidates rather than the hand-known ones.
+
+- **func_8002C818** (28 words) — **MATCH, second shape.** From the screen. `n = (flags & 1) ? 4 : 3`
+  then `n--`, and a `for` walking `arg1[7]` at 8-byte stride. The parked arm is the early `return 0`:
+  write the hit test **inverted** (`if (func(...) != 0) {}` else `return 0`) so the `return 0` lands
+  after the `j`. First shape (`== 0` as the test, `continue` style) left the arm inline.
+- **func_8002A9E0** (50 words) — **MATCH, third shape, on two words.** A 0x10-byte-stride display-list
+  walk that computes three 16.16 coordinates into a stack triple and hands them to `func_800309C4`.
+  Two things had to be right beyond the body: (a) read the entry through **one** pointer —
+  `*(s16 *)(base + 4)`, `*(s16 *)(base + 6)`, `*(s16 *)(base + 8)` and `*(u16 *)(base + 2)` — because
+  a separate `e = base + 2` pointer makes gcc keep two base registers and grows the frame by 8;
+  (b) the **statement order at the bottom of the loop**: `base += 0x10; } while (--n != -1);` gives the
+  original's `addiu $s0` before `addiu $s1` and its `sw $zero,0x10($sp)` in the `jal` delay slot, where
+  `n--; base += 0x10; } while (n != -1);` emits the pair the other way round and misses by exactly
+  those two words. Moving a statement into the loop condition is now a first-class correction.
+- **func_8001D428** (43 words) — **dispatch exact, scan loop still short.** The 14-word dispatch (beq
+  past both miss paths into the parked hit arm, the `t0` flag, the delay-slot `t0 = 0`, the delay-slot
+  `v0 = 1`) is now word-for-word right — that arm needed the hit block as the source's `else` under
+  `if (magic != M)`. The residue is the four-slot scan: the original initialises the index *before*
+  the `used` test (`addu $a3,$zero,$zero` then `lw $v0,0($a2)`), loads the first entry through the
+  **walked pointer** `$a2` (never through the base register), and ends `i++; slti $v0,$a3,4; bnez` with
+  `addiu $a2,$a2,0x14` in the branch delay slot. Five spellings tried — `while (used && i < 4)`,
+  `do { if (used) break; i++; p++; } while (i < 4)` in both increment orders, and a pointer-walk — all
+  rotate the loop and read the first entry from the folded base register. **Class: loop rotation +
+  regalloc.**
+- **func_80019F10** (47 words) — 45 of 47 on the only shape tried. `func_80034C20(0x4010)` →
+  `func_80019884(tmp, arg1, arg2, arg3, arg4)` → `func_80034BD8(tmp)` → `return 0`, then
+  `func_80019C38(arg3, arg4, arg1, arg2) == 1`. The original parks **both** arms after jumps with
+  `return 1` inline (two `beq`s and a `j`/`nop` for the default) and keeps `arg1/arg2/arg3` in
+  `$s2/$s4/$s3`; this shape gives `$s1/$s3/$s2`, 42 words, and a `bne`. **Class: callee-saved order.**
+- **func_80030518 / func_800519C4 / func_80034A78 / func_8004AF80** — untouched this pass beyond
+  re-reading their recorded residues. The block-order recipe does not reach them: `func_80030518`'s is
+  a `%lo` folded into three `jal` delay slots plus the `lui $at` store form; `func_800519C4`'s is the
+  `$s2`/`$s1` swap for `arg1`/`arg2` plus one coalesced copy; `func_80034A78` and `func_8004AF80` sit
+  at 31 and 13 words with register-allocation residues.
