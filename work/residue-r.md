@@ -1268,3 +1268,40 @@ picking work from that region.
   at 0x9C against 0x90 with a `for`/`continue`/`break` body; the `goto` form is worse (0xa4).
   The `bgez`/`negu` absolute value and the two `>> 1` halvings are right. Class **loop tail
   layout** (the game re-enters the node advance from two places).
+
+## Pass: working the -G0 list smallest-first — two units at one word, none closed
+
+Twelve units from `work/g0_screen.py`, smallest first. Best scores and the class each fell in:
+
+- **func_80055820** (0x88, boot init: one conditional library call, then a chain of init calls) —
+  **1 of 34 words** at `/* cflags: -G0 */`. Everything matches, including the
+  `if (&D_800D234C != 0)` guard (a *data* symbol's address test, which gcc keeps) and
+  `func_800309C4(1000, 0, 0, 0, 0)` — the first-argument 1000 belongs to the *second* call, not
+  the first. The single residue is `jal func_800C3B98`'s delay slot: the game has `nop` and
+  materialises `addiu $a0,$zero,0x3E8` after it, gcc 2.8.1 hoists it into the slot. Classed
+  **delay-slot fill**; `-fno-schedule-insns` leaves it at 1 word, `-fno-schedule-insns2` and `-O1`
+  take it to 8. A local `t = 1000` changes nothing.
+- **func_80032D88** (0x44, fixed-point clamp then a s16 table read) — best 0x40 against 0x44 over
+  six spellings (`arr[i]`, `*(s16*)((u8*)arr + i*2)`, `*((s16*)(...))`, with and without the
+  marker). The clamp matches exactly (`sra`, `slti`, `slt`); the residue is the base: the game
+  keeps `lui $at,%hi`, `addu $at,$at,$i`, `lh %lo($at)` while gcc folds the base with `addiu`
+  first. Class **base-folded addressing**, unchanged by the marker.
+- **func_8002C0B8** — 29/36, 0x9C against 0x90 (`for`/`continue`/`break`); `goto` shape 0xA4.
+  Class **loop tail layout**.
+- **func_80032F34** (0xAC) — four 64-bit products (`mult`/`mfhi`/`mflo` with `sll`/`srl`/`or`
+  recombine). Class **needs 64-bit arithmetic** — same as `func_80032C28`; unreachable from C.
+- **func_80032E94** (0xA0) — same 64-bit product recombine, plus calls. Same class.
+- **func_80032DCC** (0xC8) — atan2-style quadrant fixup with two globals and a table. Structures
+  legible but the body is large; not attempted beyond reading. Class **not attempted (size)**.
+- **func_8003571C** (0xB4) — fixed-point ratio with two divisions (`div`, `break 7`, `break 6`
+  overflow guards). Legible, but every guard has to land in the same order; class **division
+  guards**, not attempted beyond reading.
+- **func_8004584C** (0x98) — GPU packet builder with a stack scratch buffer, `0xE1000600` tag,
+  two masked merges into the packet and a pointer bump. Class **not attempted (packet layout)**.
+- **func_80056FF4** (0x9C) — bitmask test then a 0x10-byte record copy loop. Class **not attempted**.
+- **func_80045838** — returns `$sp`; `func_80045828` returns `$gp`. Class **out of scope (not C)**.
+
+**Verdict on the recipe's reach:** `-G0` is real and it closed `func_8002C5FC`, but the flag is not
+what most of this list is missing — 47 named candidates, and the two that came closest were one
+delay slot and one base fold away, both of which `-G0` does not touch. The screen stays useful as a
+ranked worklist, but the next pass should prefer candidates whose *body* is arithmetic-free.
