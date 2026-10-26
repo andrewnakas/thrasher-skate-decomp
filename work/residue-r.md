@@ -1151,3 +1151,73 @@ it cannot explain a mask inside a call-free function either. Under this pin the 
 `andi $x,$x,0xFF` in `func_80035BC0`/`func_80035C14` is **not C-reachable**; those two units were
 almost certainly built by a different compiler from the pinned 2.8.1, which the repository has no
 per-unit mechanism to express.
+
+## Pass: extending the copy recipe to pointers — recipe B does not exist
+
+Recipe A (see above) covers integer **width** crossings: a `u8` load tested in the guard, then
+assigned to an `s32` local, which is what `func_80034824` needed. The units still blocked on a
+missing copy all cross something *else*, so this pass probed those crossings directly.
+
+`work/probe/copy2.c` (7 constructs, `tools/cc.py --print-asm`): `E *` global bumped by `p + 1`
+with a 0x14-byte struct; the same through an `E **` slot; through `slot = &arr[i]`; an `s32`
+array value cast to `E *`; an `s32` array value with `(s32)p + 0x14`; a `u8 *` view of the
+returned pointer. **None emits `addu dst,src,$zero`** — gcc folds the load straight into the
+variable's register and computes the increment from it, which is exactly the 0x5C-vs-0x60,
+4-word-short shape every spelling of the real units produces.
+
+Direct shapes in the blocked units, all still short by the copy:
+
+- `func_800432D8` — 14 spellings now, best **17/24**: `s32`+casts, `s32 *`+`p + 5`, separate
+  `next`, `slot = &arr[i]`, `s32` read then cast, `E *` with a 0x14 struct and `p + 1`,
+  `u8 *`/`void *` array element types, `u8 *` local with `(s32)(p + 0x14)`, `u32` local (same
+  width, sign change), and the `if (arg2 != 0x1000) { ... }` block form.
+- `func_8002DE18` — 10 spellings, best **11/18** with the struct-pointer body (`R *p` over a
+  0xC record, `D_8006F834[arg0[3] * 3]` index). The pool copy `addu $a1,$v0,$zero` never
+  appears: gcc emits `lw $a1` and `addiu $v0,$a1,0xC`, i.e. the increment is computed from the
+  variable rather than from the loaded pseudo.
+
+The boundary is now measured: **2.8.1 emits the conversion copy for integer width crossings
+only.** Not for `s32`→`u32` (same width), not for `u8 *`→`E *`, not for `s32`→pointer, not for
+pointer→`s32`. `func_8001D804`'s `$v0`/`$v1` tie and `func_8001C2F0`'s callee-saved swaps are
+not copies at all, so this lever cannot reach them; `func_80032FF4`/`func_800337C4` were not
+re-opened because their recorded residue is schedule order, not a copy.
+
+Together with the `andi` result this leaves two codegen signatures in the repository that the
+pinned compiler does not produce from any C: the redundant byte masks and the pointer-width
+copy. Both are most likely compiler-generation differences, and the repository has no per-unit
+mechanism to express one.
+
+## Pass: extending the copy recipe to pointers — recipe B does not exist
+
+Recipe A (see above) covers integer **width** crossings: a `u8` load tested in the guard, then
+assigned to an `s32` local, which is what `func_80034824` needed. The units still blocked on a
+missing copy all cross something *else*, so this pass probed those crossings directly.
+
+`work/probe/copy2.c` (7 constructs, `tools/cc.py --print-asm`): an `E *` global bumped by
+`p + 1` with a 0x14-byte struct; the same through an `E **` slot; through `slot = &arr[i]`; an
+`s32` array value cast to `E *`; the same with `(s32)p + 0x14`; a `u8 *` view of the returned
+pointer. **None emits `addu dst,src,$zero`** — gcc folds the load straight into the variable's
+register and computes the increment from it, which is the 0x5C-vs-0x60 shape every spelling of
+the real units produces.
+
+Direct shapes in the blocked units, all still short by the copy:
+
+- `func_800432D8` — 14 spellings now, best **17/24**: `s32` plus casts, `s32 *` with `p + 5`,
+  a separate `next`, `slot = &arr[i]`, `s32` read then cast, `E *` over a 0x14 struct with
+  `p + 1`, `u8 *`/`void *` array element types, a `u8 *` local with `(s32)(p + 0x14)`, a `u32`
+  local (same width, sign change), and the `if (arg2 != 0x1000) { ... }` block form.
+- `func_8002DE18` — 10 spellings, best **11/18** with the struct-pointer body (`R *p` over a
+  0xC record, `D_8006F834[arg0[3] * 3]` index). The pool copy `addu $a1,$v0,$zero` never
+  appears: gcc emits `lw $a1` and `addiu $v0,$a1,0xC`, i.e. the increment is computed from the
+  variable rather than from the loaded pseudo.
+
+The boundary is measured: **2.8.1 emits the conversion copy for integer width crossings only.**
+Not for `s32` to `u32` (same width), not for `u8 *` to `E *`, not for `s32` to pointer, not for
+pointer to `s32`. `func_8001D804`'s `$v0`/`$v1` tie and `func_8001C2F0`'s callee-saved swaps are
+not copies at all, so this lever cannot reach them; `func_80032FF4` and `func_800337C4` were not
+re-opened because their recorded residue is schedule order, not a copy.
+
+Together with the `andi` result this leaves two codegen signatures in the repository that the
+pinned compiler does not produce from any C: the redundant byte masks and the pointer-width
+copy. Both are most likely compiler-generation differences, and the repository has no per-unit
+mechanism to express one.
