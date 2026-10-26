@@ -1221,3 +1221,23 @@ Together with the `andi` result this leaves two codegen signatures in the reposi
 pinned compiler does not produce from any C: the redundant byte masks and the pointer-width
 copy. Both are most likely compiler-generation differences, and the repository has no per-unit
 mechanism to express one.
+
+### Correction: the five accessors are PsyQ, and PsyQ stays asm
+
+The five units matched above (`func_8005955C`, `func_80059C80`, `func_8005CAD8`, `func_8005CAE8`,
+`func_8005AE68`) are **segment psyq**, not game code. They pass every gate, but `README.md` says
+the PsyQ 4.4 libraries "stay asm" and `tools/progress.py` counts game code only, which is why the
+headline stayed at 607/1081 while they were in the tree. They were withdrawn rather than shipped:
+converting library code is outside the project's scope and is a decision for the maintainers, not
+something a pass may take on its own.
+
+**Recipe C is still worth keeping for game units.** The `-G0` signature — `lui $v, %hi(sym)` plus
+a `%lo` access instead of `lw %gp_rel(sym)($gp)` — does occur in the game segment too: grep for
+`sw ... %lo(...)($at)` finds it in `func_8003246C` (twice), `func_800387C8` (three times),
+`func_8002BD64`, `func_80030518`, `func_80032E94`, `func_80038864`, `func_80038970`,
+`func_80038B44`. Those units are the candidates for a future pass; `func_8003246C` is 0x1D8 and
+mostly a chain of calls, so the small ones (`func_80030518`, `func_80038864`, `func_80038970`)
+are the place to start.
+
+**Rule for later passes:** check the segment column before spending anything on a unit. `psyq`
+means stop, and the `-G0` recipe only counts when it closes a `game` unit.
