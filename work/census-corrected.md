@@ -67,7 +67,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-447 unmatched bodies in the corpus; **187 drafted and measured here** (compile-error 3, instruction-stream 14, match 1, move-vs-materialise 2, operand 13, register-role 29, scheduling 1, size 124); 66 drafts predate a merge and are prunable.
+449 unmatched bodies in the corpus; **188 drafted and measured here** (compile-error 3, instruction-stream 14, match 1, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 124); 66 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -138,6 +138,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80046878` | `work/near-miss/func_80046878-sweep.c` | 23/41 | -1 | size | parked | - |
 | `func_80033714` | `work/shapes/func_80033714-a.c` | 24/21 | +3 | size | parked | - |
 | `func_80033E14` | `work/near-miss/func_80033E14-parked.c` | 24/25 | +0 | register-role | parked | - |
+| `func_80038610` | `work/shapes/func_80038610-a.c` | 24/79 | +0 | operand | parked | - |
 | `func_800494A4` | `work/near-miss/func_800494A4-check.c` | 24/32 | +1 | size | parked | - |
 | `func_80015684` | `work/near-miss/func_80015684-parked.c` | 25/44 | +2 | size | parked | - |
 | `func_80033428` | `work/near-miss/func_80033428-parked.c` | 25/22 | +4 | size | parked | - |

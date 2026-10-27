@@ -672,3 +672,12 @@ Five undrafted bodies remain there and none is a target: three scratchpad-`sp` s
 (`func_80027538`, `func_800262E8`, `func_80023B1C`) and two `$gp` stubs (`func_80045828` reloads `$gp`
 into it; `func_80045838` stores it to `D_8008B398` and returns `$sp`). The band's 27% rate was spent on
 the bodies that were C.
+
+## Parked at 24/79: func_80038610 (char-table decoder)
+The if-chain and both table arms reproduce; what does not is which register the table value is born in
+(the game keeps it in `$v1` with the high byte in `$v0`; every spelling tried hands it `$v0`) and the
+frame, which is `0x20` in the game against `0x18` here — an eight-byte live-set difference, not a
+statement. Shapes tried: separate `v0`/`v1` locals with the `r >> 8` computed per arm (24 words), one
+`u32 r` with a single return (24, and it hoists `r << 8` into the jump delay slot), `u8 sub` for the
+masked test (30, one word longer). The `andi` the game spends on `sub` before `beqz` is optimised away
+when `sub` is an `s32` — a narrow local keeps it but costs a word elsewhere.
