@@ -706,3 +706,25 @@ the strlen walk after the first `func_80034654` call emits one `addiu` too many.
 a `k` local with the shifts inlined (56 of 70), `shift & 0xFFFF` inline with `p` assigned first
 (42 of 70, one word long), and a `do { p++; } while (*p)` walk (identical). Residue is a live-set
 difference, not a statement one.
+
+## Harvest sweep: 574 drafts, one unmerged match, and it cannot ship
+Every draft in the corpus was measured against fresh `origin/main` (`verify.py --write`, 256 bodies,
+574 files, 189 unmerged rows). Exactly **one** unmerged body has a matching draft:
+`func_80034B98` at 0/16, and it is blocked for a reason that has changed since issue #101 was filed.
+The game computes the constant as a literal — `lui $v0, 0x801F` + `ori $v0, 0xC000` — while the
+symbol spelling `extern u8 D_801FC000[]; ... = (u32)D_801FC000;` emits `lui %hi` + `addiu %lo` and
+misses by three words (it still passes `scan.py`, which is why the spelling is worth recording).
+So the config symbol #101 asks for would **not** deliver the body: only a literal reproduces `ori`,
+and a literal in `0x80010000`-`0x801FFFFF` is what the scan gate forbids. That is a maintainer call,
+not a tooling gap.
+
+The 67 prunable rows in the same run are bodies whose drafts are for units that already exist on
+`origin/main`; those are the pass's stale list, not harvest.
+
+## `func_8002921C`: the count is re-loaded, and field 1 is copied before field 0
+A 16-byte record copy (7 halfwords, then 2 bytes) that reads as a struct assignment and is not one —
+a struct assignment emits four word copies. Two source facts decide the body: the loop bound is
+re-loaded from the source object (`*(u16 *)(p + 0xA)`) instead of kept in a local, because a local
+costs a third callee-saved register and a word of frame (63 of 65 words wrong with it, 6 with it
+gone); and the copy statements start at field 1 then field 0, which is what reproduces both the copy
+order and the loop-tail `addiu` schedule (6 -> 0).
