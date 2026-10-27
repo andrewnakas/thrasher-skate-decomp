@@ -67,12 +67,11 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-447 unmatched bodies in the corpus; **190 drafted and measured here** (compile-error 3, instruction-stream 14, match 2, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 125); 66 drafts predate a merge and are prunable.
+446 unmatched bodies in the corpus; **189 drafted and measured here** (compile-error 3, instruction-stream 14, match 1, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 125); 67 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
 | `func_80034B98` | `work/near-miss/func_80034B98-match-scan-blocked.c` | 0/16 | +0 | match | blocked | scan: needs D_801FC000 (issue #101) |
-| `func_80034D4C` | `work/shapes/func_80034D4C-b.c` | 0/39 | +0 | match | ready | - |
 | `func_800382C0` | `work/shapes/c382c0-b.c` | 1/12 | +0 | register-role | parked | - |
 | `func_80055820` | `work/shapes/c55820-a.c` | 1/34 | +0 | scheduling | parked | - |
 | `func_8002BCB0` | `work/shapes/c2bcb0-a.c` | 2/17 | +0 | register-role | parked | - |
