@@ -681,3 +681,18 @@ statement. Shapes tried: separate `v0`/`v1` locals with the `r >> 8` computed pe
 `u32 r` with a single return (24, and it hoists `r << 8` into the jump delay slot), `u8 sub` for the
 masked test (30, one word longer). The `andi` the game spends on `sub` before `beqz` is optimised away
 when `sub` is an `s32` — a narrow local keeps it but costs a word elsewhere.
+
+## `func_80034D4C` was a plain body sitting in a band declared closed
+The 21-40 band was recorded as closed and non-C. It is not: `func_80034D4C` (39 words, an
+alignment-selecting copy of 4/2/1-byte units) had no draft and no exclusion idiom, and it matched on
+the second shape. Corrected census of the band: 10 genuinely undrafted bodies, of which 6 are
+handwritten or GTE (invisible to the enumerator), 3 are the scratchpad-`sp` switchers
+(`func_80027538`, `func_800262E8`, `func_80023B1C`) and 1 is the 64-bit `mult` class
+(`func_80032E94`). So the band has exactly one C body left in it and it is now converted; the "closed"
+label was right about the count and wrong about the reason.
+
+**The tell.** The guard is written negatively and the arms in word → half → byte order:
+`if (!(t & 3)) { word } else if (!(t & 1)) { half } else { byte }`, where `t = (u32)dst | (u32)src | (u32)n`.
+Written positively (`if (t & 3) { ... }` first) gcc lays the byte block out first and the body misses by
+thirty words on an otherwise identical prologue. Returning `dst - n` from the walked pointer is what
+puts `subu $v0, $a0, $a2` in the `jr` delay slot.
