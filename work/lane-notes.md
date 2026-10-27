@@ -791,3 +791,22 @@ Three more source facts finished it, all in the tail rather than the loop:
   behind `bnez`;
 - `u16 arg` as the parameter, not `u32 arg` plus a local `arg & 0xFFFF`. That last one took 10 words out to
   MATCH by removing a pseudo and renumbering two temps.
+
+## The parks were already type-checked; statement order and shared returns are what is left
+
+Thirteen parks at 1-5 words re-read layout-first and width-second: **one converted** (`func_8004BF94`, 2/52 →
+MATCH, from putting `i = 0;` before `one = 1;`) and **one improved by four words** (`func_80056FF4`, 5 → 2, size
+exact). Not one park had a record-size or field-offset error, and not one had a parameter or local that should
+have been narrower — the two tells that closed `func_8001C930` were one-body findings, because that draft had
+never been checked against its listing while these have.
+
+The remaining twelve are single-register homes and split addresses: `$a1` vs `$v0` for a loaded halfword
+(`func_8002BCB0`, `func_80042E9C`), `$v1` vs `$v0` for a second counter (`func_8002C9B8`), `$a1` vs `$v0` for a
+stack address (`func_8002FE80`), `lui $a0` vs `lui $v0` for a `%hi` (`func_8003BF7C`, `func_80056C90`,
+`func_80056FF4`), and one commutative `addu` whose accumulator is always in `rs` (`func_800382C0`). Ten spellings
+across those bodies moved none of them; the ones that did move the code cost the whole body.
+
+The new tell, banked: **adjacent `return`s of the same value are tail-merged**. `func_80056FF4`'s extra two words
+were a duplicated `return 7` epilogue, and writing the guard and the failing test as two consecutive
+`if (...) return 7;` statements — rather than `if (ok) { ...; return 0; } return 7;` — produced the game's single
+early return block and the exact size.

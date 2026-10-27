@@ -67,13 +67,13 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-446 unmatched bodies in the corpus; **193 drafted and measured here** (compile-error 3, instruction-stream 14, match 3, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 127); 67 drafts predate a merge and are prunable.
+445 unmatched bodies in the corpus; **192 drafted and measured here** (compile-error 3, instruction-stream 14, match 3, move-vs-materialise 1, operand 14, register-role 30, scheduling 1, size 126); 68 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
 | `func_8001C930` | `work/shapes/func_8001C930-aa.c` | 0/81 | +0 | match | ready | - |
-| `func_8002921C` | `work/shapes/func_8002921C-c.c` | 0/65 | +0 | match | ready | - |
 | `func_80034B98` | `work/near-miss/func_80034B98-match-scan-blocked.c` | 0/16 | +0 | match | blocked | scan: needs D_801FC000 (issue #101) |
+| `func_8004BF94` | `work/near-miss/func_8004BF94-match.c` | 0/52 | +0 | match | ready | - |
 | `func_800382C0` | `work/shapes/c382c0-b.c` | 1/12 | +0 | register-role | parked | - |
 | `func_80055820` | `work/shapes/c55820-a.c` | 1/34 | +0 | scheduling | parked | - |
 | `func_8002BCB0` | `work/shapes/c2bcb0-a.c` | 2/17 | +0 | register-role | parked | - |
@@ -81,11 +81,10 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8002FE80` | `work/near-miss/func_8002FE80-role.c` | 2/24 | +0 | register-role | parked | holds (register-role) |
 | `func_8003BF7C` | `work/near-miss/func_8003BF7C-sweep.c` | 2/79 | +0 | register-role | parked | - |
 | `func_80042E9C` | `work/near-miss/func_80042E9C-near-miss.c` | 2/58 | +0 | register-role | parked | - |
-| `func_8004BF94` | `work/shapes/c4bf94-a.c` | 2/52 | +0 | move-vs-materialise | parked | - |
 | `func_80056C90` | `work/near-miss/func_80056C90-sweep.c` | 2/36 | +0 | register-role | parked | - |
+| `func_80056FF4` | `work/near-miss/func_80056FF4-tail.c` | 2/39 | +0 | register-role | parked | - |
 | `func_8002050C` | `work/near-miss/func_8002050C-4of25.c` | 4/25 | +0 | move-vs-materialise | parked | holds (move-vs-materialise) |
 | `func_80035C14` | `work/near-miss/func_80035C14-subscript.c` | 4/34 | +0 | register-role | parked | - |
-| `func_80056FF4` | `work/near-miss/func_80056FF4-subscript.c` | 5/39 | +2 | size | parked | - |
 | `func_80057090` | `work/near-miss/func_80057090-near-miss.c` | 5/92 | +0 | instruction-stream | parked | - |
 | `func_800257A0` | `work/near-miss/func_800257A0-fresh.c` | 6/21 | +0 | instruction-stream | parked | - |
 | `func_8003BDB8` | `work/near-miss/func_8003BDB8-sweep.c` | 6/31 | +0 | register-role | parked | - |
@@ -93,7 +92,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8003AC04` | `work/near-miss/func_8003AC04-near-miss.c` | 8/30 | +0 | instruction-stream | parked | - |
 | `func_8002B060` | `work/near-miss/func_8002B060-fresh.c` | 9/32 | +0 | register-role | parked | - |
 | `func_8002BA64` | `work/near-miss/func_8002BA64-parked.c` | 9/23 | +0 | register-role | parked | - |
-| `func_8002BF9C` | `work/near-miss/func_8002BF9C-parked.c` | 9/24 | +1 | size | parked | - |
+| `func_8002BF9C` | `work/near-miss/func_8002BF9C-continue.c` | 9/24 | +1 | size | parked | - |
 | `func_8004E930` | `work/near-miss/func_8004E930-near-miss.c` | 9/121 | +0 | register-role | parked | - |
 | `func_800120B8` | `work/near-miss/func_800120B8-const-sched-park.c` | 10/76 | +0 | instruction-stream | parked | - |
 | `func_80032C28` | `work/near-miss/func_80032C28-signed.c` | 10/11 | -3 | size | parked | - |
@@ -1399,3 +1398,35 @@ With the layout right, `func_8001C930` went 34/81 → **MATCH** in four further 
 The last shape is the interesting one for the lane: the body was instruction-identical at 10 words out and the
 residue was two temps with the *same* roles in both listings. A narrow parameter is not just an `andi` tell — it
 removes a pseudo, which renumbers everything after it.
+
+## Re-testing the near-miss parks with the layout and width tells: one conversion, and the tells do not transfer
+
+Every parked body at one to five words was re-read the way `func_8001C930` was closed — element size and field
+offsets off the listing's own `addu`/`addiu`/`lw` schedule first, then every parameter and surviving local for a
+width that should be narrower — before any statement was touched. Thirteen bodies, in residue order.
+
+| body | before | after | cause | what moved it, or what did not |
+|---|---|---|---|---|
+| `func_8004BF94` | 2/52 | **MATCH** | statement order | `i = 0;` before `one = 1;`. The two inits are one word apart and gcc emits them in source order; declaration position does not matter |
+| `func_80056FF4` | 5/39 | 2/39 | shared-tail returns | the copy length was already right at 0x70 (7 x 16B); the two extra words were a duplicated `return 7` epilogue. Rewriting as `if (idx >= 6) return 7; ... if ((t->flags & mask) == 0) return 7;` puts two adjacent returns of the same value where gcc can tail-merge them into the game's single early block |
+| `func_800382C0` | 1/12 | 1/12 | allocation | `addu $v0,$a0,$v0`; four more spellings (`t = a0 + t`, `(u32) a0 + t`, a named base copy, shift-first) all emit the accumulator in `rs`. Only the single-expression form changes it, and that costs the body (13) |
+| `func_8002BCB0` | 2/17 | 2/17 | allocation | the `lhu` homes in `$a1` in the game, `$v0` here; compound condition, named `u16` local, and the `!` form all leave it in `$v0` |
+| `func_8002C9B8` | 2/36 | 2/36 | allocation | the second inner counter homes in `$v1` in the game, `$v0` here; declaration order is inert and `u16` locals cost the body (26) |
+| `func_8002FE80` | 2/24 | 2/24 | allocation | the stack-buffer address homes in `$a1` in the game, `$v0` here; an `s32` buffer is identical, a named `u8 *bp` costs the body (25) |
+| `func_8003BF7C` | 2/79 | 2/79 | allocation (split address) | `lui $a0` vs `lui $v0` for `D_8008ACA0`; `u32[0x10]` + `[0]` is identical, a scalar `u32` declaration goes gp-relative and costs the body (12) |
+| `func_80042E9C` | 2/58 | 2/58 | allocation | the `+8` field load homes in `$a1` in the game, `$v0` here; pointer typing and `!= 0` are inert |
+| `func_80056C90` | 2/36 | 2/36 | allocation (split address) | known class, retyped and unchanged |
+| `func_80035C14` | 4/34 | 4/34 | allocation | the two bytes pair the other way round; an inline expression costs the body (28), swapping the locals costs 8 |
+| `func_8002050C` | 4/25 | 4/25 | allocation | the `-1` sentinel is materialised twice here and copied once in the game; a shared `s32 end = -1` costs a word and 17 diffs, as does the integer address form |
+| `func_8002BF9C` | 9/24 | 9/24 | allocation (loop inversion) | gcc rotates the loop and tests at the bottom; `continue` is inert and explicit `goto` costs the body (20) |
+
+The two tells that closed `func_8001C930` did not apply to any of these thirteen: **no park had a record-type
+error** (every element size and field offset already agreed with its listing) and **no park had a parameter that
+should be narrower** (the `u16`/`u8` widths were already on the parameters). That is evidence the layout and
+width tells are one-body findings, not a class: they fix a body whose *draft was never type-checked against the
+assembly*, and the parks on the books have already been through that filter.
+
+What did pay is a third tell this sweep found on its own: **two `return`s of the same value placed adjacent get
+tail-merged into one epilogue** (`func_80056FF4`, 5 → 2, size exact). Writing the guard and the failing test as
+two consecutive `if (...) return 7;` statements is what produces the game's single early return block; the
+`if (ok) { ...; return 0; } return 7;` form duplicates the epilogue and costs two words.
