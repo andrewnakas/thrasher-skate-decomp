@@ -774,3 +774,20 @@ compare's operand order (`bne $a0, $v0` against `bne $v0, $a0`). **This body mak
 so the residue here is *not* the live-set-across-calls wall: it is loop-GIV splitting and compare
 operand order, which no banked tell reaches. Narrowing the population to leaves moved the failure but
 did not remove it.
+
+## The GIV split was a layout error; the last 10 words were a parameter width
+
+`func_8001C930` is **MATCH** (was 34/81). The `base+8` against `base+0xC` residue that this lane recorded as
+induction-variable splitting is not a compiler decision at all: six spellings compiled through `tools/cc.py`
+(`work/giv/probe.c`) show that every typed pointer walk reading +0 on the walker and +4/+8 on a copy derives
+`+8`, and that the parked draft derived `+0xC` because its record type was 16 bytes with the key at +8. Fixing
+the layout reproduced the game's pointer split in one edit. Subscript forms emit no second pointer at all.
+
+Three more source facts finished it, all in the tail rather than the loop:
+
+- the flags word is written through a **bitfield** (`flag = 0; id = id`), which is why the game has two masks
+  (`-0x81`, `-0x80`) where a folded C expression produces one `-0x100`;
+- the byte copy is `if (found == 0) {0xFF arm} else {copy arm}` — else-first is what puts the copy out of line
+  behind `bnez`;
+- `u16 arg` as the parameter, not `u32 arg` plus a local `arg & 0xFFFF`. That last one took 10 words out to
+  MATCH by removing a pseudo and renumbering two temps.

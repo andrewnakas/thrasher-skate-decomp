@@ -67,10 +67,11 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-446 unmatched bodies in the corpus; **193 drafted and measured here** (compile-error 3, instruction-stream 15, match 2, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 127); 67 drafts predate a merge and are prunable.
+446 unmatched bodies in the corpus; **193 drafted and measured here** (compile-error 3, instruction-stream 14, match 3, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 127); 67 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
+| `func_8001C930` | `work/shapes/func_8001C930-aa.c` | 0/81 | +0 | match | ready | - |
 | `func_8002921C` | `work/shapes/func_8002921C-c.c` | 0/65 | +0 | match | ready | - |
 | `func_80034B98` | `work/near-miss/func_80034B98-match-scan-blocked.c` | 0/16 | +0 | match | blocked | scan: needs D_801FC000 (issue #101) |
 | `func_800382C0` | `work/shapes/c382c0-b.c` | 1/12 | +0 | register-role | parked | - |
@@ -175,7 +176,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80053EA8` | `work/near-miss/func_80053EA8-near-miss.c` | 32/39 | -3 | size | parked | - |
 | `func_8003353C` | `work/near-miss/func_8003353C-o1.c` | 33/30 | +3 | size | parked | holds (fixed-point) |
 | `func_8004995C` | `work/near-miss/func_8004995C-near-miss.c` | 33/46 | -1 | size | parked | - |
-| `func_8001C930` | `work/shapes/func_8001C930-f.c` | 34/81 | +0 | instruction-stream | parked | - |
 | `func_8003302C` | `work/near-miss/func_8003302C-64bit.c` | 34/29 | +5 | size | parked | holds (fixed-point) |
 | `func_8004734C` | `work/near-miss/func_8004734C-sweep.c` | 34/50 | -2 | size | parked | - |
 | `func_8001C810` | `work/shapes/func_8001C810-a.c` | 35/72 | +1 | size | parked | - |
@@ -1360,3 +1360,42 @@ Read the two matches as proof that the class is **partly** source-shaped: when t
 constant's materialisation point or one saved-register pair, a single line converts it. When the residue is a
 value gcc insists on homing in `$v0` where the game used `$a1`, no spelling tested moves it — that half of the
 class stays allocator-bound and should not be re-attacked with more shapes.
+
+## The GIV split is layout, not spelling: probe table and `func_8001C930` closed
+
+`func_8001C930` had been parked twice on "the game derives its loop base as `base + 8`, ours derives `base + 0xC`",
+which the lane had read as gcc induction-variable splitting. It is not. Six equivalent spellings of the same walk
+over a 12-byte record (`u32` word at +0, `u16` key at +4, `u32` tag at +8) were compiled through `tools/cc.py`
+(`work/giv/probe.c`) and the emitted base is a property of the *spelling*, not of the offsets the author typed:
+
+| spelling | derived base | loads |
+|---|---|---|
+| typed pointer walk, `p = (R *)((u8 *)p + 0xC)`, +0 read on `p` | `addu $t,$s,8` | `lw 0($s)`, `lhu -4($t)`, `lw 0($t)` |
+| byte-pointer walk `q += 0xC`, casts at each use | `addu $t,$s,8` | same as above |
+| countdown with the +4 field read first | `addu $t,$s,8` | `lhu -4($t)`, `lw 0($s)`, `lw 0($t)` |
+| subscript `tab[i]` | none — one base | `lw 0`, `lhu 4`, `lw 8`, `addu $t,$t,12` |
+| local base copy + `b[i]` | none — one base | same as subscript |
+| record ordered so the +8 field is read first | `addu $t,$s,4` | `lw 0($s)`, `lw 4($t)`, `lhu 0($t)` |
+
+So `base+8` is what gcc does for **any** typed pointer walk that reads +0 on the walker and +4/+8 on a copy of it.
+The park's `+0xC` was a **layout error**: that draft's record put the key at +8 and the tag at +0xC, i.e. a 16-byte
+record, and the identical walk then derives +0xC. Fixing the record to 12 bytes produced the game's `addiu $a3,$a2,0x8`
+in one edit, with no change of loop form. Subscripting removes the second pointer, so a body that shows the
+`base+8`/`-4` pair is a pointer walk in the original, not an index.
+
+With the layout right, `func_8001C930` went 34/81 → **MATCH** in four further moves, none of them GIV-related:
+
+| shape | words | what changed |
+|---|---|---|
+| g | 35/81 | 12-byte record, `p = (u8 *)p + 0xC`, base+8 + `-4` appear |
+| i | 42/81 | 3 separate byte copies instead of a `u16` copy; early-return tail made it 2 words long |
+| l | 33/81 | tail rewritten as `if (p == end) { allocate }` + one `return p`; size exact from here |
+| n | 30/81 | raw source word loaded before the guard, mask applied at the use |
+| q | 28/81 | `(srcw & 0x1000000)` inline in the condition, no `flag` local |
+| t | 19/81 | bitfield writes for the flags word (`flag = 0; id = id`) — two masks `-0x81`, `-0x80`, not one folded `-0x100` |
+| u | 10/81 | `if (found == 0) {0xFF}` first, copy arm second — the game's `bnez` to an out-of-line copy |
+| **aa** | **MATCH** | `u16 arg` parameter instead of `u32 arg` + a local `arg & 0xFFFF`: flipped the last two temp homes (`$t1`/`$t2`) |
+
+The last shape is the interesting one for the lane: the body was instruction-identical at 10 words out and the
+residue was two temps with the *same* roles in both listings. A narrow parameter is not just an `andi` tell — it
+removes a pseudo, which renumbers everything after it.
