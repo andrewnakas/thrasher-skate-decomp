@@ -749,3 +749,28 @@ lookup through `D_8008AE70[entry->f4]`, a five-argument call whose stack slot is
 sentinel test that writes id/result/flags back. Every step reproduces; mine keeps six callee-saved
 registers against the game's five (`$s5` appears, frame 0x38 against 0x30) because `src`, `out`, `r`
 and `entry` are all live across the two calls in the C I wrote. Nothing in the tells touches that.
+
+## Leaf population: 7 bodies, 5 worth working — and leaves park too
+Filtering the undrafted plain-C set to functions with no `jal` anywhere gives **7** bodies total, of
+which two are the `$gp` stubs (`func_80045828` 4 words, `func_80045838` 5 words) that are not C at all.
+The real leaf population is **5**: `func_8001C930` (81), `func_80055FC4` (92), `func_8002E68C` (111),
+`func_80056104` (117), `func_80020608` (135). That is the honest size of the population this pass was
+asked to work; it is not a band, it is a handful.
+
+**func_8001C930 (81 words) — 34/81, no size delta.** A fixed-slot record allocator over a 12-byte
+record table between `D_8008AE40` and `D_8008AE44`, keyed by a 16-byte source object at
+`D_8008AE5C + (id << 4)`. Two structural fixes were needed and both are reusable:
+
+- the source object is 16 bytes with its flag word at **+0xC** and its key at **+4**; a 12-byte record
+  type shared with the table gives the wrong offsets;
+- the address must be **written inline twice** (`((E *)((id << 4) + D_8008AE5C))->fC` at the flag,
+  again at the key compare) rather than hoisted into a local. Inline: 35 words differ; with a local
+  `E *e`: 77. gcc CSEs the two occurrences into one base and copies it, which is exactly the game's
+  `addu $a3` … `addu $t3, $a3, $zero` pair.
+
+Residue after the three-shape box: the remaining 34 words are the loop's derived base (`addiu $a3,
+$a2, 0x8` against `0xC` — a GIV split), the `sltu` hoisted above the flag load, and the identity
+compare's operand order (`bne $a0, $v0` against `bne $v0, $a0`). **This body makes no calls at all**,
+so the residue here is *not* the live-set-across-calls wall: it is loop-GIV splitting and compare
+operand order, which no banked tell reaches. Narrowing the population to leaves moved the failure but
+did not remove it.
