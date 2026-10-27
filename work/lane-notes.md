@@ -810,3 +810,57 @@ The new tell, banked: **adjacent `return`s of the same value are tail-merged**. 
 were a duplicated `return 7` epilogue, and writing the guard and the failing test as two consecutive
 `if (...) return 7;` statements — rather than `if (ok) { ...; return 0; } return 7;` — produced the game's single
 early return block and the exact size.
+
+## Cluster pass: the dispatch family's template is now banked; the parks are one block each
+
+Picked the cluster by callee set (`work/cluster.py`'s "callee-set families" section), because that is the
+only place a group of undrafted bodies provably shares a template. Largest such group with an unopened
+member: `func_80020D74` (drafted lead) + `func_80020E10` (139w), `func_800212BC` (101w), `func_800219E8`
+(99w), `func_80021B74` (114w) — all four call `GetSp`-family helpers through the same 6-argument
+`func_80020C34(id_hi, id_mid, D_8008A2AC, &v0, &v1, &v2)` dispatch and then walk the same two globals
+(`D_8008A2A4` counting up, `D_8008A2A8` counting down) over `D_8009C0A4` / `D_8009C6D4` / `D_800AB794`.
+
+Attempted four bodies (three from family H first, then the cluster's smallest):
+
+| body | words | verdict | residue |
+|---|---|---|---|
+| `func_80027BA0` | 77 | 62 differ | gcc re-bases the walking slot pointer to `a1+0x48`; game keeps the raw `a1` with `0x48/0x50` displacements. Copy-loop shape matched exactly. |
+| `func_800294FC` | 90 | 29 differ | instruction-identical except the `kind` setter: game materialises `0x70` in *both* true arms and jumps the false arm; gcc merges ours to one materialisation. Size 2 words short. |
+| `func_800219E8` | 99 | 60 differ | head matches; removal loop swaps `i`/`p` register homes and carries one extra `nop`. |
+| `func_800212BC` | 101 | 28 differ, size exact | only the `e+8`/`s1+4` double-load block: game reloads, gcc CSEs. Branch displacements follow. |
+
+Zero conversions. The cluster did carry two real tells, both new:
+
+1. **The id parameter is `u32`.** `(a0 >> 16) & 0xFF` needs `srl`; with `s32` it is `sra`. And the middle byte
+   is spelled **mask-then-shift**: `(a0 & 0xFF00) >> 8` gives `andi`+`srl`, while `(a0 >> 8) & 0xFF` gives
+   `sra`+`andi` — same value, different instruction stream.
+2. **The bounds check appears twice, and the dead one is the tell.** The game's second test is an unreachable
+   `if (lo < 0) return 1;` after `if ((u32) lo >= (u32) v[1]) return 1;`. Dropping the dead test removes eight
+   words (the `bgez`, its delay-slot `-1`, the `j` and the delay-slot `1`); writing it puts the `-1` constant
+   in the branch delay slot exactly where the game has it. `lo` must be `s32` — with `u32` the front end folds
+   the dead test away.
+
+Also measured, and *not* convertible: the two smallest undrafted bodies, `func_80027538` (27w) and its shape
+twin `func_800262E8` (29w), are **scratchpad stack-swap trampolines** — they store `$sp` into `0x1F8003F8`,
+set `sp = 0x1F8003E4`, call the real body, then rebuild `$sp` from the saved word. Not expressible in plain C,
+and the enumerator does not filter them because they carry neither a GTE op nor a `Handwritten` marker. They
+should be added to the non-C exclusion set rather than drafted.
+
+**Harvest check, corrected.** The regenerated table's only `match` + `ready` row was `func_8004BF94`
+(`work/near-miss/func_8004BF94-match.c`, 0/52). It is *already merged* — PR #152 (`d2f8981`) landed the same
+body while this pass was running; the row read "ready" only because the local `origin/main` ref predated the
+fetch. The other `match` row, `func_80034B98`, is the known scan-blocked one (issue #101). So the pass ships
+nothing: **0 conversions from 4 attempted bodies**, and the table now stands at 444 unmatched / 195 drafted and
+measured with `func_8004BF94` counted as merged.
+
+Closest live bodies after the refresh (`within five words`): `func_80034B98` 0/16 (blocked), `func_8004BF94`
+0/52 (merged), `func_800382C0` 1/12, `func_80055820` 1/34, `func_8002BCB0` 2/17, `func_8002FE80` 2/24,
+`func_8002C9B8` 2/36, `func_80056C90` 2/36, `func_80056FF4` 2/39, `func_8003BF7C` 2/79, `func_80042E9C` 2/58,
+`func_8002050C` 4/25, `func_80035C14` 4/34, `func_80057090` 5/92.
+
+**`func_800382C0` re-tested (1/12).** Three more spellings of the one commuted `addu`: `t = t + a0`, assigning
+the sum back into the parameter, and pulling the shift into its own local (`d = (a0 + 4) >> 7; t = a0 + d;`).
+All still emit `addu $v0,$v0,$a0` where the game has `addu $v0,$a0,$v0`, and every "single expression" form
+(`t = a0 + ((a0 + 4) >> 7) + 0x205;`) costs a word by hoisting the `lui/ori 0x1E000` constant early. That is
+gcc's commutative-operand canonicalisation, not a source shape: the destination and the shifted temp are the
+same pseudo, so the operand order is the compiler's. Park stays, class named.

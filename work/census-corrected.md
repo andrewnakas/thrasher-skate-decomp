@@ -67,13 +67,11 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-445 unmatched bodies in the corpus; **192 drafted and measured here** (compile-error 3, instruction-stream 14, match 3, move-vs-materialise 1, operand 14, register-role 30, scheduling 1, size 126); 68 drafts predate a merge and are prunable.
+444 unmatched bodies in the corpus; **195 drafted and measured here** (compile-error 3, instruction-stream 14, match 1, move-vs-materialise 1, operand 14, register-role 32, scheduling 1, size 129); 70 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
-| `func_8001C930` | `work/shapes/func_8001C930-aa.c` | 0/81 | +0 | match | ready | - |
 | `func_80034B98` | `work/near-miss/func_80034B98-match-scan-blocked.c` | 0/16 | +0 | match | blocked | scan: needs D_801FC000 (issue #101) |
-| `func_8004BF94` | `work/near-miss/func_8004BF94-match.c` | 0/52 | +0 | match | ready | - |
 | `func_800382C0` | `work/shapes/c382c0-b.c` | 1/12 | +0 | register-role | parked | - |
 | `func_80055820` | `work/shapes/c55820-a.c` | 1/34 | +0 | scheduling | parked | - |
 | `func_8002BCB0` | `work/shapes/c2bcb0-a.c` | 2/17 | +0 | register-role | parked | - |
@@ -153,12 +151,14 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80032400` | `work/near-miss/func_80032400-parked.c` | 26/27 | -1 | size | parked | - |
 | `func_800333C8` | `work/near-miss/func_800333C8-parked.c` | 26/23 | +3 | size | parked | - |
 | `func_800331FC` | `work/near-miss/func_800331FC-o1-27of27.c` | 27/27 | +1 | size | parked | holds (fixed-point) |
+| `func_800212BC` | `work/shapes/f212bc-a.c` | 28/101 | +0 | register-role | parked | - |
 | `func_8002B194` | `work/near-miss/func_8002B194-28of31.c` | 28/31 | -3 | size | parked | - |
 | `func_80034698` | `work/near-miss/func_80034698-fresh.c` | 28/48 | +1 | size | parked | - |
 | `func_8004584C` | `work/near-miss/func_8004584C-sweep.c` | 28/38 | -2 | size | parked | - |
 | `func_80048598` | `work/near-miss/func_80048598-best.c` | 28/37 | +0 | register-role | parked | - |
 | `func_8001CE98` | `work/shapes/func_8001CE98-e.c` | 29/67 | +1 | size | parked | - |
 | `func_8001D540` | `work/near-miss/func_8001D540-parked.c` | 29/28 | +2 | size | parked | - |
+| `func_800294FC` | `work/shapes/f294fc-a.c` | 29/90 | -2 | size | parked | - |
 | `func_8002C0B8` | `work/near-miss/func_8002C0B8-29of36.c` | 29/36 | +3 | size | parked | - |
 | `func_8002C77C` | `work/shapes/func_8002C77C-t.c` | 29/39 | +2 | size | parked | - |
 | `func_8004EDF8` | `work/near-miss/func_8004EDF8-sweep.c` | 29/53 | -3 | size | parked | - |
@@ -206,6 +206,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80019F10` | `work/shapes/func_80019F10-a.c` | 45/47 | -5 | size | parked | - |
 | `func_8001A108` | `work/shapes/func_8001A108-a.c` | 45/57 | +0 | instruction-stream | parked | - |
 | `func_80022F24` | `work/shapes/func_80022F24-a.c` | 45/56 | +2 | size | parked | - |
+| `func_80021894` | `work/shapes/f21894-d.c` | 46/85 | +0 | register-role | parked | - |
 | `func_800201AC` | `work/shapes/func_800201AC-a.c` | 47/56 | -2 | size | parked | - |
 | `func_80038970` | `work/near-miss/func_80038970-sweep.c` | 47/68 | +0 | instruction-stream | parked | - |
 | `func_8004A094` | `work/near-miss/func_8004A094-near-miss.c` | 48/39 | +11 | size | parked | - |
@@ -229,12 +230,14 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80029CCC` | `work/shapes/func_80029CCC-a.c` | 58/56 | +2 | size | parked | - |
 | `func_80015D88` | `work/shapes/func_80015D88-a.c` | 59/65 | -2 | size | parked | - |
 | `func_8001D88C` | `work/shapes/func_8001D88C-a.c` | 60/58 | +5 | size | parked | - |
+| `func_800219E8` | `work/shapes/f219e8-b.c` | 60/99 | +1 | size | parked | - |
 | `func_80026EC8` | `work/near-miss/func_80026EC8-near-miss.c` | 60/61 | +2 | size | parked | - |
 | `func_8002F730` | `work/shapes/func_8002F730-a.c` | 60/56 | +4 | size | parked | - |
 | `func_8004DBF0` | `work/near-miss/func_8004DBF0-parked.c` | 60/82 | -7 | size | parked | - |
 | `func_8002D0B0` | `work/shapes/func_8002D0B0-a.c` | 61/58 | +11 | size | parked | - |
 | `func_8003A1B8` | `work/near-miss/func_8003A1B8-sweep.c` | 61/71 | +3 | size | parked | - |
 | `func_800511C0` | `work/near-miss/func_800511C0-parked.c` | 61/101 | +0 | operand | parked | - |
+| `func_80027BA0` | `work/shapes/f27ba0-b.c` | 62/77 | -1 | size | parked | - |
 | `func_80032B1C` | `work/shapes/func_80032B1C-a.c` | 62/64 | +1 | size | parked | - |
 | `func_80057B94` | `work/near-miss/func_80057B94-sweep.c` | 62/68 | +1 | size | parked | - |
 | `func_8003B478` | `work/near-miss/func_8003B478-sweep.c` | 65/71 | -2 | size | parked | - |
