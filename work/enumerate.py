@@ -25,6 +25,10 @@ sys.path.insert(0, str(ROOT / "work"))
 import drafts  # noqa: E402  the one owner of which bodies have drafts, in every directory
 PAT = re.compile(r"/\* [0-9A-F]+ [0-9A-F]{8} [0-9A-F]{8} \*/\s+(\S+)")
 GTE = re.compile(r"\b(mtc2|mfc2|ctc2|cfc2|lwc2|swc2|gpf|gpl)\b")
+# $sp switched onto the scratchpad stack (`addu $sp, $t0, $zero` / `lw $sp, 0x10($sp)`): gcc never
+# assigns $sp in a function body, so the class cannot be written in C. func_80023B1C, func_800262E8,
+# func_80027538 and func_8003B068 are the four bodies; their twins own the same trampoline.
+SP_SWAP = re.compile(r"\*/\s+(addu|lw|or)\s+\$sp,")
 SCALED = re.compile(r"\bsll\s+\$[a-z0-9]+,\s*\$[a-z0-9]+,\s*[1234]\b")
 BODY = re.compile(r"func_([0-9A-Fa-f]{8})")
 
@@ -43,7 +47,7 @@ def bodies():
         if not asm.exists():
             continue
         text = asm.read_text()
-        if "glabel" not in text or "Handwritten" in text or GTE.search(text):
+        if "glabel" not in text or "Handwritten" in text or GTE.search(text) or SP_SWAP.search(text):
             continue
         yield len(PAT.findall(text)), name, text
 

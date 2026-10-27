@@ -864,3 +864,26 @@ All still emit `addu $v0,$v0,$a0` where the game has `addu $v0,$a0,$v0`, and eve
 (`t = a0 + ((a0 + 4) >> 7) + 0x205;`) costs a word by hoisting the `lui/ori 0x1E000` constant early. That is
 gcc's commutative-operand canonicalisation, not a source shape: the destination and the shifted temp are the
 same pseudo, so the operand order is the compiler's. Park stays, class named.
+
+## `func_800212BC` second look; scratchpad class closed in the enumerator (pass 31)
+
+**`func_800212BC` (101w, parked 28/101, size exact).** The block the last pass blamed on CSE is real: with the
+plain transcription gcc emits one `lhu $v0,0x8(a0)` and reuses it for both stores (`sh $v0,0x10(a0)` then
+`sh $v0,0x20(a0)`), where the game reloads `0x8($a0)` between them. Forcing the load through `volatile` does
+produce the second load, but takes the body *backwards*: `volatile` on the second read measures 50/101
+(0x198 vs 0x194) and on the first read 47/101 (0x198) — both schedule the two loads *adjacent* (`lhu/lhu`
+before either `sh`) where the game's second load sits after the first store, and both carry one extra word: a
+`nop` in the `beqz` delay slot of the removal loop, a slot the game fills with `addu $a0,$a1,$zero`. So the
+reload and the interleave are one decision in this compiler: breaking the CSE buys the load, loses the
+interleave *and* adds a word. The plain shape stays best and is kept as `work/best/func_800212BC.c`; the two
+volatile shapes are kept beside it (`-read1-volatile.c` 47/101, `-read2-volatile.c` 50/101) as the measurement
+that closes the question. Remaining residue: that block's schedule plus the `v0`/`v1` home rotation it causes,
+then every branch displacement behind it.
+
+**Scratchpad stack-swap class: four bodies, now excluded.** Last pass recorded two (`func_80027538`,
+`func_800262E8`). The class is four: `func_80023B1C`, `func_800262E8`, `func_80027538`, `func_8003B068` — each
+materialises the scratchpad page (`0x1F8003FC`, or `D_8008A2B4` for `func_80023B1C`), saves `$sp` at `+0x10`,
+does `addu $sp, $t0, $zero`, runs the real body on the scratchpad stack and rebuilds it with
+`lw $sp, 0x10($sp)`. gcc never assigns `$sp` in a body, so none of them is writable in plain C.
+`work/enumerate.py` now filters them by `SP_SWAP` (`*/ addu|lw|or $sp,`), which takes the queue from 398 to
+394 bodies; `func_8003B068` is the large one (0x364) and was still being offered as work.
