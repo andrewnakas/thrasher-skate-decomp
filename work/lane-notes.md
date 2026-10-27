@@ -728,3 +728,24 @@ re-loaded from the source object (`*(u16 *)(p + 0xA)`) instead of kept in a loca
 costs a third callee-saved register and a word of frame (63 of 65 words wrong with it, 6 with it
 gone); and the copy statements start at field 1 then field 0, which is what reproduces both the copy
 order and the loop-tail `addiu` schedule (6 -> 0).
+
+## Two parks from the ordered queue, both at the same wall
+Worked lowest-word first off the corrected enumerator with the tells as pre-checks; both bodies below
+stopped at the three-shape box with the shape right and the allocation wrong.
+
+**func_8001CE98 (67 words) — 29/67, one word long.** A 12-byte record table: fill 0x140 records' `+4`
+halfword with 0xFFFF descending from `base + 0xEF4`, then walk a rodata table of 4-byte entries writing
+a rotated bit byte into each record's first word plus three bytes and a 0xC stride. Fixed on the way:
+the record's halfword is at **+4, not +8** (a `u8 pad` before a `u16` pushed it to 8 and the whole fill
+loop was off by four), and the three byte stores must go through the global (`((u8 *)D_8008AE44)[1]`)
+so gcc reloads it between stores — with a local record pointer it emits one load instead of three and
+lands three words short. Residue: with the loop bound as a named local gcc spills it to `$s0` and the
+body is one word long (68 vs 67); with the literal it is 67 words but materialises `$a2 = 0` before
+`$t2 = 0x23` and 44 words differ. Neither is a statement problem.
+
+**func_8001C810 (72 words) — 35/72, one register and one word over.** A flag translator: five
+`if (src & BIT) out |= CONST;` steps on a word at `entry + 0xC`, then `out |= src & 0x06000000`, a table
+lookup through `D_8008AE70[entry->f4]`, a five-argument call whose stack slot is `out`, then a 0xFFFF
+sentinel test that writes id/result/flags back. Every step reproduces; mine keeps six callee-saved
+registers against the game's five (`$s5` appears, frame 0x38 against 0x30) because `src`, `out`, `r`
+and `entry` are all live across the two calls in the C I wrote. Nothing in the tells touches that.

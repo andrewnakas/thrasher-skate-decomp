@@ -67,7 +67,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-446 unmatched bodies in the corpus; **190 drafted and measured here** (compile-error 3, instruction-stream 14, match 2, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 125); 67 drafts predate a merge and are prunable.
+446 unmatched bodies in the corpus; **192 drafted and measured here** (compile-error 3, instruction-stream 14, match 2, move-vs-materialise 2, operand 14, register-role 29, scheduling 1, size 127); 67 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -157,6 +157,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80034698` | `work/near-miss/func_80034698-fresh.c` | 28/48 | +1 | size | parked | - |
 | `func_8004584C` | `work/near-miss/func_8004584C-sweep.c` | 28/38 | -2 | size | parked | - |
 | `func_80048598` | `work/near-miss/func_80048598-best.c` | 28/37 | +0 | register-role | parked | - |
+| `func_8001CE98` | `work/shapes/func_8001CE98-e.c` | 29/67 | +1 | size | parked | - |
 | `func_8001D540` | `work/near-miss/func_8001D540-parked.c` | 29/28 | +2 | size | parked | - |
 | `func_8002C0B8` | `work/near-miss/func_8002C0B8-29of36.c` | 29/36 | +3 | size | parked | - |
 | `func_8002C77C` | `work/shapes/func_8002C77C-t.c` | 29/39 | +2 | size | parked | - |
@@ -176,6 +177,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8004995C` | `work/near-miss/func_8004995C-near-miss.c` | 33/46 | -1 | size | parked | - |
 | `func_8003302C` | `work/near-miss/func_8003302C-64bit.c` | 34/29 | +5 | size | parked | holds (fixed-point) |
 | `func_8004734C` | `work/near-miss/func_8004734C-sweep.c` | 34/50 | -2 | size | parked | - |
+| `func_8001C810` | `work/shapes/func_8001C810-a.c` | 35/72 | +1 | size | parked | - |
 | `func_8002A0F8` | `work/shapes/func_8002A0F8-t.c` | 35/40 | +0 | operand | parked | - |
 | `func_8002DFF8` | `work/shapes/func_8002DFF8-a.c` | 35/55 | -1 | size | parked | - |
 | `func_80058448` | `work/near-miss/func_80058448-band.c` | 35/43 | +0 | register-role | parked | - |
