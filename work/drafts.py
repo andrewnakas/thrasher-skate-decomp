@@ -13,6 +13,7 @@ address ends in those digits. An ambiguous or unknown name is reported rather th
 attributing a draft to the wrong body silently corrupts every count derived from it.
 """
 import re
+import subprocess
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -89,6 +90,35 @@ def by_body():
 
 def unresolved():
     return [f for f, body in paths() if body is None]
+
+
+def merged_bodies():
+    """Bodies with a unit file that is committed here or on origin/main.
+
+    Tracked files only, and that is the point: a pass that measures a draft by copying it to
+    src/funcs/<body>.c leaves a file with no commit behind it, and a corpus check that trusts any file
+    present reports the body as shipped. Pass 31 rewrote the census table with func_800212BC copied in
+    for measurement, pruned its parked row as stale and counted 394 bodies in the queue instead of
+    395. The origin/main side stays because a records branch behind main must still see the units
+    another lane shipped.
+    """
+    out = set()
+    for cmd in (["git", "ls-files", "src/funcs/"],
+                ["git", "ls-tree", "--name-only", "origin/main", "src/funcs/"]):
+        try:
+            listed = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True,
+                                    timeout=30, check=False)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        for line in listed.stdout.splitlines():
+            name = Path(line).stem
+            if name.startswith("func_"):
+                out.add(name)
+    if not out:
+        # No git to ask. The working tree is the right answer whenever it is clean, which is how a
+        # records branch is supposed to be regenerated.
+        out = {p.stem for p in (ROOT / "src" / "funcs").glob("func_*.c")}
+    return out
 
 
 if __name__ == "__main__":

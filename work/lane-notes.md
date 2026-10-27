@@ -887,3 +887,14 @@ does `addu $sp, $t0, $zero`, runs the real body on the scratchpad stack and rebu
 `lw $sp, 0x10($sp)`. gcc never assigns `$sp` in a body, so none of them is writable in plain C.
 `work/enumerate.py` now filters them by `SP_SWAP` (`*/ addu|lw|or $sp,`), which takes the queue from 398 to
 394 bodies; `func_8003B068` is the large one (0x364) and was still being offered as work.
+
+**Table hygiene (correction, same pass).** The first regeneration ran while a scratch copy of the
+`func_800212BC` draft sat in `src/funcs/` for measurement, and every corpus check trusted any file present
+there: `verify.py` read the body as already merged, pruned its row as stale and wrote the summary as 194
+drafted / 71 prunable. The merged set now has one owner — `work/drafts.py:merged_bodies()`, which reads
+`git ls-files src/funcs/` plus the `origin/main` tree and never an untracked copy — and `verify.py` and
+`enumerate.py` import it. Regenerated on the clean tree the table reads 443 unmatched, **195 drafted and
+measured** with the `func_800212BC` row back at 28/101 register-role, and 70 prunable; the queue is 398 clean
+bodies before the `SP_SWAP` filter and 394 after, so the exclusion's 398→394 claim holds. The remote half of
+the union is carrying weight too: `func_8004BF94` merged on main as #152 after this branch's last merge, and
+a working-tree-only check would offer it as fresh ground again.

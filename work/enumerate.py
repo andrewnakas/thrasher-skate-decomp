@@ -35,7 +35,7 @@ BODY = re.compile(r"func_([0-9A-Fa-f]{8})")
 
 def bodies():
     """(insn count, name, asm text) for every unmatched, clean game body."""
-    merged = {p.stem for p in (ROOT / "src" / "funcs").glob("func_*.c")}
+    merged = drafts.merged_bodies()  # committed units only: a scratch copy in src/funcs is not a unit
     for row in csv.DictReader(open(ROOT / "config" / "functions.us.csv")):
         addr = int(row["addr"], 16)
         if addr > 0x80058633:

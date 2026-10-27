@@ -43,7 +43,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 import drafts  # noqa: E402  the one owner of which bodies have drafts
 import match as m  # noqa: E402
-from common import BUILD, FUNCTIONS_CSV, SRC_FUNCS, load_functions  # noqa: E402
+from common import BUILD, FUNCTIONS_CSV, load_functions  # noqa: E402
 
 WORK = ROOT / "work"
 DRAFTS = WORK / "near-miss"
@@ -96,29 +96,19 @@ def drafted_bodies():
 
 
 def merged_bodies():
-    """Unit files that exist here or on origin/main.
+    """Unit files committed here or on origin/main, from the one owner of that fact.
 
-    A working branch behind origin reports bodies another lane already shipped as `ready`, which is how
-    drafts for already-merged bodies stayed on the close list for several passes. The remote side is
-    asked too; its absence is not fatal.
+    The remote side is asked because a working branch behind origin reports bodies another lane
+    already shipped as `ready`, which is how drafts for already-merged bodies stayed on the close list
+    for several passes. Untracked copies do not count: one left in src/funcs/ while measuring a draft
+    would otherwise hide that draft's row (pass 31 did this to func_800212BC).
     """
-    out = {f.stem for f in SRC_FUNCS.glob("func_*.c")}
-    try:
-        listed = subprocess.run(
-            ["git", "ls-tree", "--name-only", "origin/main", "src/funcs/"],
-            cwd=ROOT, capture_output=True, text=True, timeout=30, check=False)
-        for line in listed.stdout.splitlines():
-            name = Path(line).stem
-            if name.startswith("func_"):
-                out.add(name)
-    except (OSError, subprocess.SubprocessError):
-        pass
-    return out
+    return drafts.merged_bodies()
 
 
 def corpus():
     """Unmatched code bodies, split into drafted and undrafted."""
-    merged = {f.stem for f in SRC_FUNCS.glob("func_*.c")}
+    merged = merged_bodies()
     unmatched = [r["name"] for r in load_functions()
                  if r["kind"] == "func" and r["segment"] == "game" and r["name"] not in merged]
     drafts = drafted_bodies()
