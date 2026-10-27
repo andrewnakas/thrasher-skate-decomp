@@ -633,3 +633,42 @@ parameter that belongs in the lower register first instead of reordering declara
 
 Neither tell needs a new shape family: they are one line each on top of an already-correct instruction
 stream, which is what the `register-role` class is.
+
+## The queue was over-counting by 66 bodies: drafts for bodies already merged upstream
+`verify.py` decided "merged" from the working tree alone, so on a branch behind `origin/main` every
+draft whose body another lane had already shipped still read `ready` or `parked`. Unioning the working
+tree with `git ls-tree origin/main src/funcs/` pruned **66 rows in one run** (`func_8002C818`,
+`func_8002D904`, `func_8001F3D4`, `func_80022308`, `func_8004CCA0`, `func_8001DB74`, ...). That is the
+answer to a question several passes asked and could not answer: why a park kept re-measuring at two or
+three words and never shipped. It was converted on main while this lane kept re-testing its old draft.
+Before any close-list work, re-run `verify.py` against a fetched `origin/main`; a stale base invents
+work.
+
+## Every draft directory, one owner: `work/drafts.py`
+`enumerate.py`, `extern_audit.py` and `verify.py` each globbed `work/near-miss/` (and `best/`) on their
+own. `work/shapes/` — 200 drafts from the batching passes, written in four different filename
+conventions — was in none of them, so the enumerator reported already-drafted bodies as unopened ground
+and the measure script never compiled a shapes draft. `work/drafts.py` now resolves a filename to its
+body (`func_80019C0C-w1.c`, `c1db74-a.c`, `n159D8-b.c`, `v19c4-a.c`) against the corpus and refuses to
+guess when the match is ambiguous, and all three scripts import it. Measuring the shapes corpus was the
+pass's biggest find: three drafts in it were already exact matches.
+
+## Two lerp tells, both from func_80013A98 / func_80013BA8
+The bodies are a 3-component `s16` lerp written as three component statements in a `do { } while (--n)`
+over `a++`/`b++`/`out++`; gcc's loop optimizer then splits one induction variable per pointer, which is
+why components 1 and 2 come out as `-0x2($t1)` / `0x0($t1)` instead of offsets off `$a0`.
+
+- **A promoted `u16` sum defeats the unsigned shift.** `(u16)x + (u16)y` is an `int`, so `>> 1` compiles
+  to `sra` and both arms of the guard collapse into one. `(u32)(u16)x + (u32)(u16)y` keeps the game's
+  separate `lhu; lhu; addu; srl` arm. Any body whose wide path shifts with `srl` needs the cast.
+- **The inverted guard spelling.** A test that reads `slt $t4, K, $v0` + `bnez` is the *then-first*
+  spelling `if (d <= K) a else b`; writing `if (d > K) b else a` makes gcc lay the arms out the other
+  way round and loses the sum that the game hoists into the branch delay slot.
+- **Add order is source order.** `(a + b + b * 2)` gives `addu; sll; addu` (the game), while `(a + b * 3)`
+  gives `sll; addu; addu`. Same value, two words different.
+
+## The 21-40 band is closed, and what is left in it is not C
+Five undrafted bodies remain there and none is a target: three scratchpad-`sp` switchers
+(`func_80027538`, `func_800262E8`, `func_80023B1C`) and two `$gp` stubs (`func_80045828` reloads `$gp`
+into it; `func_80045838` stores it to `D_8008B398` and returns `$sp`). The band's 27% rate was spent on
+the bodies that were C.

@@ -15,10 +15,14 @@ numbers; work/verify.py owns every measurement.
 import argparse
 import csv
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "work"))
+
+import drafts  # noqa: E402  the one owner of which bodies have drafts, in every directory
 PAT = re.compile(r"/\* [0-9A-F]+ [0-9A-F]{8} [0-9A-F]{8} \*/\s+(\S+)")
 GTE = re.compile(r"\b(mtc2|mfc2|ctc2|cfc2|lwc2|swc2|gpf|gpl)\b")
 SCALED = re.compile(r"\bsll\s+\$[a-z0-9]+,\s*\$[a-z0-9]+,\s*[1234]\b")
@@ -45,13 +49,8 @@ def bodies():
 
 
 def drafted():
-    out = set()
-    for d in (ROOT / "work" / "near-miss", ROOT / "work" / "best"):
-        for f in d.glob("*.c"):
-            hit = BODY.search(f.name)
-            if hit:
-                out.add("func_" + hit.group(1).upper())
-    return out
+    """Bodies that already have a draft somewhere, from the one owner of that fact."""
+    return set(drafts.by_body())
 
 
 def main():
