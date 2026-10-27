@@ -696,3 +696,13 @@ label was right about the count and wrong about the reason.
 Written positively (`if (t & 3) { ... }` first) gcc lays the byte block out first and the body misses by
 thirty words on an otherwise identical prologue. Returning `dst - n` from the walked pointer is what
 puts `subu $v0, $a0, $a2` in the `jr` delay slot.
+
+## Parked at 42/70: func_8003453C (fixed-point decimal formatter)
+The arithmetic reproduces — `ip = value >> (shift & 0xFFFF)`, `fp = (u32)value << (32 - (shift & 0xFFFF))`,
+the `fp * 9999` constant multiply expanding to gcc's shift/add chain, and the rounding
+`(fp * 9999 + (1 << (k - 1))) >> k`. What does not is the allocation and one word: `$s2`/`$s3` come out
+swapped (the game keeps `dst` in `$s3` and `shift` in `$s2`), and the body is 71 words against 70 —
+the strlen walk after the first `func_80034654` call emits one `addiu` too many. Three shapes tried:
+a `k` local with the shifts inlined (56 of 70), `shift & 0xFFFF` inline with `p` assigned first
+(42 of 70, one word long), and a `do { p++; } while (*p)` walk (identical). Residue is a live-set
+difference, not a statement one.
