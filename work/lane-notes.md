@@ -1286,3 +1286,32 @@ When the stored value is a register, gcc materialises the address in a temp inst
 form is not reachable for a store of a computed pointer.
 
 **Conversions: 0 from 4 bodies attempted, 16 shapes measured.**
+
+## Pass 20 — address-materialisation sweep, 1 conversion
+
+Full detail in `work/address-sweep-oct27.md`. Headline: the incomplete-array extern (holding the
+symbol, stride taken from the emitted `sll` chain, field at its true struct offset) removed the
+`%lo(S+N)` fold and the `$at` round-trip on `func_8002DE18` in one step, and the body then needed its
+*last* word from a second, new lever: **advance the pointer in place and write through a named copy**
+
+```c
+Rec *cur = (Rec *) D_8008B060;
+Rec *old = cur;
+cur = (Rec *) ((u8 *) cur + 0xC);
+D_8008B060 = (u8 *) cur;
+old->f00 = (u32) p;
+```
+
+which forces the `addu $a1,$v0,$zero` copy the game keeps (writing it the obvious way makes gcc reuse
+the load register and the body comes out one word short, 0x44 vs 0x48). This is the inverse of the
+copy lever: there a copy killed a pseudo, here it keeps one alive so the allocator must split the load.
+
+`-mno-split-addresses` swept across all 187 parked drafts (`work/scratch/flag_sweep.py`): 22 improve,
+best 3 words, none under ten, none matching — the flag trades one address form for another and is not
+a converter. `work/scratch/at_scan.py` names the 132 drafts that still emit `$at`.
+
+Seven other bodies retested against the tell: `func_8001D804` 10/23, `func_8002FE80` 2/24,
+`func_8002DDE0` size 0x48 vs 0x38 (loop never rotated), `func_8002050C` 4/25, `func_8003B3CC` 11/19,
+`func_8003BDB8` 6/31. All residues are register choice or schedule — no address spelling left.
+
+**Conversions: 1 from 8 bodies attempted (PR #160, merged).**
