@@ -1315,3 +1315,13 @@ Seven other bodies retested against the tell: `func_8001D804` 10/23, `func_8002F
 `func_8003BDB8` 6/31. All residues are register choice or schedule — no address spelling left.
 
 **Conversions: 1 from 8 bodies attempted (PR #160, merged).**
+
+Retested `func_8002DD88` (22 w) against the same family: the ternary return (`return fn ? fn(self) : 0;`)
+took it from 17/22 (size 0x54) to **3/22**, and the three remaining words are one register — the
+parameter copy lands in `$a1` where the game keeps `$a2`. Parked as register-role, draft in
+`work/near-miss/func_8002DD88-ternary.c`.
+
+Note for the next pass: `asm/nonmatchings/game/*.s` exists for merged bodies too, so grepping asm for a
+symbol is not a queue. `func_8002DC70` was already merged (`8d6d408`); the enumerator is right, the grep
+was wrong.
+

@@ -17,8 +17,9 @@ split-address mismatch.
 | `func_8002050C` | 25 | 4 | `-1` sentinel CSE'd into one register + `addu` operand order |
 | `func_8003B3CC` | 19 | 11 | base in `$v1` vs `$a0`; store order 0xE0/0xE4 swapped |
 | `func_8003BDB8` | 31 | 6 | `0xFFFF0000` hoisted in the game, sunk by us |
+| `func_8002DD88` | 22 | 3 | parameter copy lands in `$a1`; the game uses `$a2` |
 
-8 bodies attempted, 1 converted. Every surviving residue is a register-choice or
+9 bodies attempted, 1 converted. Every surviving residue is a register-choice or
 schedule residue, not an address-spelling one — the tell removes exactly the address
 difference and nothing else.
 
@@ -91,6 +92,14 @@ repo (`config/symbol_addrs.us.txt`, `config/link_aliases.us.txt`, `include/` wer
 To unblock it, `config/symbol_addrs.us.txt` needs an entry for `0x801FC000`, e.g.
 `D_801FC000 = 0x801FC000;`; the unit then reads `D_8008B0F4 = (s32) &D_801FC000;`.
 That file is protected, so this is a Steward handoff, not an edit for this lane.
+
+## Process note (cost this pass a wasted branch)
+
+`asm/nonmatchings/game/*.s` exists for **merged** bodies too, so grepping the asm for a
+symbol does not mean the body is open. `func_8002DC70` was redrafted and "matched" on the
+first shape — it had been merged in `8d6d408` all along. Always check
+`git ls-tree origin/main src/funcs/` first; that is what `work/enumerate.py` does through
+`drafts.merged_bodies()` and why the enumerator never offered it.
 
 ## Honest projection
 
