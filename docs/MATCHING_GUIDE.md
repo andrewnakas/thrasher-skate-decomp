@@ -108,3 +108,29 @@ source file and so share flags: check the neighbours' units.
 About 15 attempts for a small function, 25 for a big one. Then run the permuter (`tools/permute.py`), apply
 only a change that reads like real code, and if that fails, move on. Keep your best near miss in `work/` with
 a note on the remaining difference.
+
+## Finding the draft that already exists
+
+Two tools in `tools/` answer "which unit is this file a draft of?" before any attempt is spent.
+
+`tools/attribute.py` applies two rules in order. The **name rule** accepts a 4- to 8-digit hex token when it
+matches the low digits of exactly one tracked address; a token two units share is not guessed. The **content
+signature** rule compares what a listing and a draft both carry — the ordered sequence of calls, the set of
+globals, the immediate constants — weighting only the features the pair actually has, so a body of nothing but
+calls can still score 1.0, and it claims a unit only at 0.55 and 0.15 ahead of the runner-up. Measured over
+the drafts in `work/`: 4,544 attributed by name, **236 more by signature over 20 units**, 438 too close to
+call, 5,446 with no usable evidence at all.
+
+What that is worth, stated as measured: the rule finds *drafts*, not matches. The 3,908 drafts it pointed at
+the 168 unmatched units compiled 3,712 times and put four units at zero words, all four already screened
+(`func_8001C4BC` shipped, `func_80034B98` an owner decision, `func_800382C0` a dead diamond, `func_80058448`
+asm aliases of one symbol); the nearest newly reachable body is `func_80015684` at 5 of 44 words. Use it to
+find the history of a unit, not as evidence that a floor is reachable.
+
+`tools/normalise.py` makes raw decompiler output compile without changing its shape (`?` to `s32`, `void *` to
+`u8 *`, `(unaligned T)` to `(T)`, `p->unkN` to `*(T *)(p + 0xN)`); a pointer already typed as a typedef'd
+struct keeps `->unkN`, because byte arithmetic would be scaled by the struct size. A decompiler draft's score
+measures the draft, not the floor.
+
+`tests/test_attribute.py` and `tests/test_normalise.py` pin both on synthetic fixtures rather than on today's
+`work/` contents, so a rule change is visible without the corpus moving under the test.
