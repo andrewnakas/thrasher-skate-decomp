@@ -29,6 +29,14 @@ GTE = re.compile(r"\b(mtc2|mfc2|ctc2|cfc2|lwc2|swc2|gpf|gpl)\b")
 # assigns $sp in a function body, so the class cannot be written in C. func_80023B1C, func_800262E8,
 # func_80027538 and func_8003B068 are the four bodies; their twins own the same trampoline.
 SP_SWAP = re.compile(r"\*/\s+(addu|lw|or)\s+\$sp,")
+# the function itself writes `$gp` (a gp-reload trampoline: `lw $gp, D_8008B398` / `sw $gp, D_8008B398`
+# and a bare `jr $ra`, the pair at func_80045828/func_80045838).  gcc never assigns $gp in a body, so
+# the class cannot be written in C; only these two bodies carry it.
+GP_SWAP = re.compile(r"\*/\s+(lw|sw|addu|or)\s+\$gp,")
+# no frame at all and `$ra` parked in `$t7` across the calls (`addu $t7, $ra, $zero` ... `addu $ra, $t7`):
+# gcc always spills $ra to its own frame, so the pair (func_80032E94, func_80033268) is hand-written and
+# func_80032E94 also keeps the return address in D_80032C20.  Both are outside the C class.
+RA_T7 = re.compile(r"\*/\s+addu\s+\$t7,\s+\$ra,")
 SCALED = re.compile(r"\bsll\s+\$[a-z0-9]+,\s*\$[a-z0-9]+,\s*[1234]\b")
 BODY = re.compile(r"func_([0-9A-Fa-f]{8})")
 
@@ -47,7 +55,8 @@ def bodies():
         if not asm.exists():
             continue
         text = asm.read_text()
-        if "glabel" not in text or "Handwritten" in text or GTE.search(text) or SP_SWAP.search(text):
+        if ("glabel" not in text or "Handwritten" in text or GTE.search(text)
+                or SP_SWAP.search(text) or GP_SWAP.search(text) or RA_T7.search(text)):
             continue
         yield len(PAT.findall(text)), name, text
 

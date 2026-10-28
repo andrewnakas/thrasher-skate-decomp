@@ -1059,3 +1059,67 @@ append copied from the merged `func_800212BC`, and the `arg0 = rec->next` walk. 
 
 **Pass count: 0 conversions.** Two bodies closed to 4/39 and 6/114 with their classes proven, no unit
 shipped.
+
+## Siblings off the `func_80021B74` skeleton (pass 33): the template carries, the homes do not
+
+The pass stopped pushing the parent's prologue and derived its remaining members from
+`work/near-miss/func_80021B74-6of114.c` (kept, unchanged: 6/114, only the save-order rotation left).
+The shared block — the six-argument `func_80020C34` call with `sp18/sp1C/sp20`, the record patch, the
+`D_8009C6D4` removal loop and the `D_8009C0A4` append — transferred into both siblings without a single
+wording change, so the skeleton is the right carrier. What did not transfer is the save strategy, and
+it is the same wall in every member:
+
+**`func_80021450` (127 words) — 127/127, frame `0x1d8` vs `0x1fc`.** The whole body is one block: no
+instruction is out of order, the frame is nine words short and those nine words are exactly the saved
+set. The game loads all five incoming stack parameters into callee-saved registers at entry
+(`lw $s4,0x64` … `lw $s7,0x70`, plus `$a1/$a2/$a3` into `$s1/$s2/$fp`) and keeps `$s0-$s7 + $fp`; ours
+spills the five incoming slots to its own frame at entry (`sw $a1,0x30` …) and reloads them after each
+call, so it needs `$s0-$s4` only. Three spellings: plain parameters *after* the calls (127/127), the
+four stack parameters copied into locals at the top (`p5..p8`, 127/127), and all eight copied at the top
+(127/127). The allocation is decided in `global_alloc`, not in the statements — the same conclusion the
+parent's prologue reached from the other side.
+
+**`func_80020E10` (139 words) — 93/139 at best, size `0x234` vs `0x22c`.** Its own listing is a
+different body, not a copy of the parent: `if (arg1)` wraps a six-case jump table on `rec->f28`
+(`jtbl_80010244`, read from the table: 0→tail, 1→tail, 2→`f3=9,f7=0x2C`, 3→`f3=5,f7=0x28`,
+4→`f3=8,f7=0x38`, 5→tail, with 3 and 4 sharing a `f7` store and the `f29` flag test) and the `arg1 == 0`
+arm stores `f3 = 0` after the switch, not before it. Five shapes: `rec` local for the switch (136/139,
+`0x1a4` — the local kills the case-body rematerialisation the game does), the expression recomputed per
+statement (`90/139`), the same with the `if (arg1)` arm inverted so the zero case sits last (93/139),
+`rec` local per arm (104/139), and the expr form with the shared `f7` tail. The game recomputes
+`(id & 0xFF) * 0x30 + sp18` at the head of every case and reloads `sp18` between the two stores of a
+case; no spelling reproduces that and the case-body block layout at the same time in this compiler.
+
+**Zero conversions from two siblings**: the family's remaining residue is saved-register placement, so
+drafting `func_8002164C` (146) from the same skeleton would meet the same wall; it stays queued.
+
+## Two non-C classes the enumerator was still listing (queue 387 → 383)
+
+Found by starting at the top of the corrected list: `func_80045828` (4 words) and `func_80045838`
+(5 words), the two smallest bodies left, are a **gp-reload trampoline pair** — `lui $gp,0x8009` /
+`lw $gp,-0x4C68($gp)` / `jr $ra`, and its twin `sw $gp,D_8008B398` / `addu $v0,$sp,$zero` /
+`jr $ra`. gcc never assigns `$gp` or returns `$sp` in a body, so neither can be C.
+
+The next two on the list, `func_80032E94` (40) and `func_80033268` (49), are the **`$ra`-in-`$t7`**
+class: no frame at all, `addu $t7,$ra,$zero` before each `jal` and `addu $ra,$t7,$zero` before the
+`jr`; `func_80032E94` additionally keeps the return address in `D_80032C20` (`sw $ra,%lo(...)` at
+entry). The natural `long long` sum-of-squares transcription of `func_80032E94` compiles to a frame
+with `sw $ra,0x18($sp)` and the multiply/carry chain in the right order (4 words right out of 40) — the
+sequence is C, the return-address home is not: gcc always spills `$ra` to the frame, so these are
+hand-written.
+
+Both classes are now in `work/enumerate.py` (`GP_SWAP`, `RA_T7`), which drops the queue from 387 to
+**383 bodies, smallest 71 words** — the queue no longer advertises four bodies that cannot be written.
+
+## `func_80034B98` (the proven match the scanner refuses): no non-protected spelling exists
+
+Checked rather than assumed. The body needs `D_8008B0F4 = 0x801FC000` as a literal: the game emits
+`lui $v0,0x801F` + `ori $v0,0xC000`, and only a *value* produces `ori` — an address expression
+(`extern u8 D_801FC000[]; ... = (u32)D_801FC000;`) goes through `%hi`/`%lo` and emits `lui` + `addiu`,
+three words off, which is why that spelling passes `scan.py` but does not match. There is no symbol for
+`0x801FC000` in `config/` (`grep` over `*.csv`, `*.h`, `src/`), and `tools/scan.py` rejects any
+`0x80010000..0x801FFFFF` literal in a unit file, `include/` is protected outside `include/game/`, and a
+macro in `include/game/` would only move the same literal into a header — an evasion of the rule, not a
+symbol. **Hand-off, for the maintainer:** allow a scan exemption for an address literal that is only
+ever *stored as data* (never dereferenced), or accept that `func_80034B98` stays unmatched. No config
+symbol fixes it.
