@@ -154,9 +154,6 @@ def scan(limit):
         print("%-14s words=%-3d pairs=%d copies=%-2d %s" % (name, -negn, npair, ncopy, ",".join(syms)))
 
 
-RF = re.compile(r"%hi\(([A-Za-z0-9_]+)\)")
-
-
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("body", nargs="?")

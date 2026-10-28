@@ -32,7 +32,8 @@ the field at `+0x8` — all read, none guessed.
 
 ## The population, counted
 
-`--scan` reports **100 unmerged, undrafted bodies that materialise a symbol as a direct pair**, i.e.
+`--scan` reports **100 unmerged, undrafted bodies that materialise a symbol as a direct pair**
+(99 after this pass's draft of `func_8004E330`, which the scan then correctly stops offering), i.e.
 where lever A (incomplete-array extern, address materialised once) is the spelling the listing
 already shows. Largest pair counts: `func_800309C4` (11), `func_8001B238` (9), `func_8004691C` (9).
 
