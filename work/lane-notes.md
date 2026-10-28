@@ -1003,3 +1003,12 @@ census), **0 conversions**. The family template is real — the call block, the 
 `D_8009C6D4`/`D_8009C0A4` block transfer verbatim — but its smallest member is scheduler-bound at four
 words, so the siblings should be attempted next with `80020D74` as the C skeleton rather than with
 `800212BC`.
+
+**`func_8002028C` (67w, unopened, the smallest body left in the queue).** Straight transcription off the
+listing (u16 string length from `strlen`, u16 char index, nested scan of a 0x10-byte table for the first
+entry whose byte 0 matches, `total += 1 + width * n` on a hit) measures **56/67, size 0xfc vs 0x10c**. The
+shape is understood — the outer test `i < len` and the inner `j < count` both use `andi`-masked u16
+counters with `sltu`, and the game hoists `0 < t->count` into a flag before the outer loop — but two
+structural details are still wrong: the game tests the inner bound through the hoisted flag (`beqz $t4`)
+rather than re-loading `count`, and it carries the matched index in a second variable that survives the
+break. Parked as a first draft, not a near miss.
