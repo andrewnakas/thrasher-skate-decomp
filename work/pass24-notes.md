@@ -79,3 +79,13 @@ and gcc cross-jumps the case bodies into one shared block when the record pointe
 the duplication and the table at the game's size.
 
 Queue after this pass: 650 units on main, 378 bodies unmatched. No unit PR from 24b.
+
+**func_8001D1E8 (71 w) — 3 shapes, best 69/71 at `0x114` vs `0x11c`, parked.** Decoded: three-way
+dispatch on the second parameter, each arm calling `func_8001D304(table + 4*idx, &slot)` then
+returning `func_8001D340(a, b, arg & 0xFFFF, &slot) ? &slot : 0`, with slots `D_8008AE20/28/30`
+(8 bytes each, address-taken → `addiu $x,$gp`), case 0's callee arguments read from the 8-byte
+`D_8006F254[idx]`, cases 1 and 2 passing the constants `D_8006EF88`/`0xC` and `D_8006EE94`/`0x30`.
+Residue: this build puts `idx` in `$s1` and `arg` in `$s2` (three saved registers, the game has
+`$s0`/`$s1`), and the dispatch comes out as a `slti` range test where the game has the compare chain
+`1, 0, 2`; spelling it as an if-chain in that order (0xfc) and as a ternary return (0x134) both move
+away. Class: saved-register pairing plus gcc's case ordering, both recorded as compiler-bound.
