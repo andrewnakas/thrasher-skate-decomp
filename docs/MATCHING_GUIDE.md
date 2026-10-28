@@ -95,6 +95,22 @@ label or a load from the wrong table is a real difference: nothing is masked.
 - Scalar locals instead of an array/struct change alias analysis (loads hoisted, exit tests duplicated).
 - Declare an argument as a struct with named fields instead of `*(T *)((u8 *)p + off)` casts; gcc then
   treats globals and fields as non-aliasing and schedules like the game.
+- Use the struct field directly in the address expression instead of a hoisted copy: `sel ? &t[sel - 1] : 0`
+  written with `rec->sel` twice matched func_80029BBC (16 of 68 with `n = rec->sel;` first, MATCH with the
+  field repeated). The repeat is what puts the index in the register the game multiplies.
+- Duplicate a local assignment into *both* arms of an `if`/`else` when the game materialises it in both branch
+  delay slots: func_80026C88 went 12 -> 2 words with `d = dir;` written in each arm instead of once after the
+  join.
+- Offset-first pointer add: `(u8 *)(i * stride) + (u32) base` emits `addu dst, offset, base`, where
+  `base + i * stride` puts the base in the first operand (func_80026C88, 2 words -> MATCH).
+- gp-relative versus absolute: a scalar `extern u32 X;` reached through `((u32 *)&X)[i]` gives
+  `addiu $v1, $gp, %gp_rel(X)` and `lw $a0, 0x0($gp)`, while `extern u32 X[];` gave `lui`/`addiu %hi/%lo` on the
+  same unit (func_8001C810). The unsized-array rule is the one for absolute references; small data wants the
+  scalar.
+- The counter's mask width names its type: `andi $v0, $s0, 0xFF` means the variable is `u8`, `0xFFFF` means
+  `u16`. Both existed in func_80034F14 and declaring the wrong width cost five words.
+- Keep a wide parameter unmasked and write `arg & 0xFFFF` at each use instead of masking once into a local:
+  func_8003453C went 64 -> 42 of 70 that way (the game masks per use from the untouched argument register).
 
 ## Flags
 
