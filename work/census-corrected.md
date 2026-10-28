@@ -67,7 +67,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-438 unmatched bodies in the corpus; **192 drafted and measured here** (compile-error 3, instruction-stream 13, match 2, move-vs-materialise 1, operand 14, register-role 29, scheduling 1, size 129); 73 drafts predate a merge and are prunable.
+438 unmatched bodies in the corpus; **193 drafted and measured here** (compile-error 3, instruction-stream 14, match 2, move-vs-materialise 1, operand 14, register-role 29, scheduling 1, size 129); 73 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -82,6 +82,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80056C90` | `work/near-miss/func_80056C90-sweep.c` | 2/36 | +0 | register-role | parked | - |
 | `func_80056FF4` | `work/near-miss/func_80056FF4-tail.c` | 2/39 | +0 | register-role | parked | - |
 | `func_8002050C` | `work/near-miss/func_8002050C-4of25.c` | 4/25 | +0 | move-vs-materialise | parked | holds (move-vs-materialise) |
+| `func_80020D74` | `work/near-miss/func_80020D74-4of39.c` | 4/39 | +0 | instruction-stream | parked | - |
 | `func_80035C14` | `work/near-miss/func_80035C14-subscript.c` | 4/34 | +0 | register-role | parked | - |
 | `func_80057090` | `work/near-miss/func_80057090-near-miss.c` | 5/92 | +0 | instruction-stream | parked | - |
 | `func_800257A0` | `work/near-miss/func_800257A0-fresh.c` | 6/21 | +0 | instruction-stream | parked | - |
@@ -127,7 +128,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80030518` | `work/shapes/func_80030518-a.c` | 21/55 | -1 | size | parked | - |
 | `func_8003834C` | `work/near-miss/func_8003834C-sweep.c` | 21/39 | +0 | operand | parked | - |
 | `func_8004F1E0` | `work/near-miss/func_8004F1E0-near-miss.c` | 21/28 | +0 | register-role | parked | - |
-| `func_80020D74` | `work/near-miss/func_80020D74-sched-park.c` | 22/39 | -1 | size | parked | - |
 | `func_8002C3C0` | `work/shapes/func_8002C3C0-q.c` | 22/37 | +0 | register-role | parked | - |
 | `func_80034C20` | `work/near-miss/func_80034C20-parked.c` | 22/23 | -1 | size | parked | - |
 | `func_8003BA14` | `work/near-miss/func_8003BA14-sweep.c` | 22/61 | +0 | operand | parked | - |
@@ -248,6 +248,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8001C540` | `work/shapes/func_8001C540-a.c` | 70/59 | +11 | size | parked | - |
 | `func_80020C34` | `work/shapes/func_80020C34-a.c` | 76/80 | -3 | size | parked | - |
 | `func_8004E528` | `work/near-miss/func_8004E528-sched-park.c` | 82/105 | -1 | size | parked | - |
+| `func_80021B74` | `work/near-miss/func_80021B74-first-draft.c` | 83/114 | -4 | size | parked | - |
 | `func_80011D60` | `work/shapes/func_80011D60-v2.c` | 87/101 | +2 | size | parked | - |
 | `func_80049A14` | `work/shapes/func_80049A14-s.c` | 90/101 | -53 | size | parked | - |
 | `func_800568C0` | `work/near-miss/func_800568C0-sweep.c` | 90/95 | -11 | size | parked | - |

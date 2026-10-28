@@ -955,3 +955,51 @@ there is the parameter register being reused after it dies, another colouring ou
 **Not chased.** `func_80055820` (1/34) is an unfilled `jal` delay slot in the game where ours fills it, and
 `func_800382C0` (1/12) has now had seven spellings across two passes for its commuted `addu`; both are the
 compiler's decision and are parked with the class named.
+
+## Family-first pass on the `func_80020C34` callers (pass 33)
+
+**Family chosen.** `work/cluster.py`'s callee-set view (now reading `drafts.merged_bodies()` for the
+matched set and `drafts.by_body()` for drafts, so a scratch file in `src/funcs` and a `work/shapes/`
+batch both count correctly) reports one family with a merged template and unopened members that is worth
+working: nine bodies that all call `func_80020C34` with three out-parameters on the stack —
+
+    80020D74 (39) 80020E10 (139, unopened) 800212BC (101, merged template) 80021894 (85)
+    800219E8 (99) 80021B74 (114, unopened) 8002103C (160) 80021450 (127) 8002164C (146)
+
+and the three largest additionally call `80020D74`. The template is the merged `func_800212BC`: mask the
+packed id into `(hi, mid)` for the call, index a 0x30-byte record off `v[0]`, patch fields, drop the id
+from `D_8009C6D4` (copy-down, counter decremented), append to `D_8009C0A4`.
+
+**`func_80020D74` 22/39 → 4/39, size exact.** The draft was missing the whole loop-bound shape, not a
+register. Four source facts, measured one at a time:
+
+| shape | words |
+|---|---|
+| starting draft (`r = ((s32) a0 << 16) | ...`, `while (i < v[1])`, s32 counters) | 22/39, 0x98 |
+| guard tests `v[1]` directly, then `n = (u32) v[1]` after it (forces the `addu $a1,$v0,$zero` copy) | 22/39, 0x98 |
+| `i = 0` before `n = v[1]`, `p` assigned last | 6/39, size exact |
+| same, with `i` declared before `n` (`i = 0; n = (u32) v[1]; p = v[0];`) | **4/39, size exact** |
+
+The `i`/`p` ordering is what produces the game's hazard `nop` at the loop head: the `lw $a0,0x18($sp)` is
+immediately followed by `lbu ...($a0)`, and the game fills that load delay with the `nop` instead of
+scheduling `addu $v1,$zero,$zero` into it. Remaining residue: the game computes the packed return
+(`or $s1,$s1,$s0`) *before* the `lw` of the count and leaves `i = 0` in the `beqz` delay slot; our
+scheduler sinks the `or` into that slot and swaps the two copies. `-fno-schedule-insns` 11/39,
+`-fno-schedule-insns2` 17/39 — worse, so this is the scheduler class, not a source shape. Parked at 4/39
+with the class named.
+
+**`func_80021B74` first transcription 93/114 → 83/114.** Written straight off the family template; the
+first draft hoisted the record pointer out of the loop because it used a fixed `idx`. The loop's `arg0`
+changes at the bottom (`arg0 = rec->f2C`), so the game rebuilds `andi/sll/addu/sll/addu` every iteration —
+writing `rec = (Rec *) ((arg0 & 0xFF) * 0x30 + sp18);` inline inside the loop cut the size gap from 6
+words to 4 and took the body to 83/114. The `D_8009C6D4` copy-down loop and the `D_8009C0A4` append are
+byte-for-byte the merged `func_800212BC` code, which is the family payoff: no guessing on that block.
+Residue: the game rematerialises the record address before the `next` load (`andi/sll/addu/sll/addu/lw`)
+where our CSE reuses the body's pointer — four words, allocation; plus the `$a1`/`$a2` parameter pair
+mapping to `$s2`/`$s1` instead of `$s1`/`$s2`, and the last two field stores interleaving differently.
+
+**Pass verdict.** 3 bodies attempted (one re-drafted from 22/39, one opened from nothing, one family
+census), **0 conversions**. The family template is real — the call block, the record patch and the
+`D_8009C6D4`/`D_8009C0A4` block transfer verbatim — but its smallest member is scheduler-bound at four
+words, so the siblings should be attempted next with `80020D74` as the C skeleton rather than with
+`800212BC`.
