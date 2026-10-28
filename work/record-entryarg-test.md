@@ -48,5 +48,10 @@ still a home, not a signature.
 ## Conversions and queue
 
 Conversions **0**; bodies tested **4** (one measured shape each, plus the earlier `-O1` pair).
-Queue: `319 open`, `240 attempted`, `29 not C`, `7 closed-by-evidence`, `96 recorded-but-merged`,
-`687 merged units`, tree at `f41520e5`.
+
+`func_80027880` from the previous pass merged upstream during this one (#209, `5e7ecd3`), so the
+tree moved forward under the guard: `select.py sync` cut to `5e7ecd35`, unit files clean, 688
+units, and the reconciliation marked exactly one entry now merged.
+
+Final queue at `5e7ecd35`: `318 open`, `239 attempted`, `29 not C`, `7 closed-by-evidence`,
+`97 recorded-but-merged`, `688 merged units`.
