@@ -73,10 +73,13 @@ verify: 679 unit files, every merged body from origin/main present and unedited 
 It did not fire during the drafting itself: no branch switch was needed between bodies, because both
 drafts were moved into `work/pass-oct28/` before any checkout.
 
-One defect in the guard fixed here: `dirty_units()` counted untracked drafts (`??`) as local edits, so
-`list` refused to run as soon as a draft existed — the opposite of the README's "untracked drafts are
-expected". It now ignores `??` lines. This fix is on the records branch only; `origin/main`'s copy still
-refuses while a draft is present.
+Two facts about its state, because a guard that lives on an unmerged branch has been lost before:
+
+- The assertion was **not on `origin/main`** when this pass started: main's `lane/select.py` has the
+  freshness classification but no `lost_units`/`verify`. It is now pushed for main in **PR #196**
+  (`freebuff/lane-select`, `lane/` only, mergeable), so the next main checkout inherits it.
+- `dirty_units()` counted untracked drafts (`??`) as local edits, so `list` refused to run as soon as a
+  draft existed — the opposite of the README's "untracked drafts are expected". Fixed in the same PR.
 
 ## Rule check
 
