@@ -83,3 +83,33 @@ of the batch, and a 137-word body is past the size where a first transcription h
 ## Conversions
 
 **0 converted, 2 drafted fully measured, 2 analysed with their layouts extracted.** Queue unchanged.
+
+## Pass 23 — transcription: one shipped unit, one park
+
+No new tooling. Worked the bodies whose layouts were already decoded, whole-body first.
+
+**`func_80057E9C` (74 w) — MATCH, PR #161.** Started from the layout written down last pass and went
+55 → 54 → 58 → 64 → 14 → 0 words in five measurements. What each step turned out to be:
+
+| shape | words | what it fixed |
+|---|---|---|
+| first cut (`total = value / 1000`, `sec = total - min*1000`) | 73, size `0xf8` | nothing: one division where the game has two |
+| `ms = value % 1000; total = (value - ms) / 1000` | 58, `0x10c` | the second division (`multu` appears twice, as in the game) |
+| `sec = total % 1000` | 64, `0x11c` | wrong: a third division instead of the subtract |
+| `+ min = ((u16) total - sec) / 1000;` | **14, size exact** | the signed follow-up division (`mult` + `sra 31` correction) — the game recomputes `min` a second time from the 16-bit total and `sec` |
+| `else if (value <= 999999)` instead of `> 999999` | **MATCH** | gcc's block layout for the last two `sprintf` paths |
+
+The lesson is specific and reusable: when a listing shows the same quotient computed twice, once
+`multu` and once `mult` with the sign correction, the source computed it twice from *different
+operands* — here `(u16) total / 1000` and then `((u16) total - sec) / 1000`.
+
+**`func_8004B1D4` (79 w) — parked at 7/79, size exact.** Whole body transcribed from the layout in one
+pass: counter bump, bounds check with `printf`/`exit` at line 0x1AB, table fetch with the null check at
+0x1AD, `func_8004B41C` gate, then the `flags & 3` dispatch with a linked-list walk for case 0. Restoring
+the shared tail (`e->state = 2` and the counter decrement *outside* the switch, with case 0 storing and
+returning early) took it from 23 to 7. The seven remaining words are the epilogue only: the game hoists
+`addu $v0,$zero,$zero` above the register restores and retires the counter store after them; this build
+orders the decrement before the restores. Scheduler class, issue #17. Draft in
+`work/near-miss/func_8004B1D4-switch.c`.
+
+**Conversions: 1 shipped (PR #161) from 2 attempted.** Queue 381 → 380 once #161 merges.
