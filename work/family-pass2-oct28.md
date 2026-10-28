@@ -77,9 +77,6 @@ import. Once #174 merges, a fresh clone can reproduce the queue count without th
 ## Queue
 
 361 at pass start; **358** measured with `work/enumerate.py` on a branch cut from the current
-`origin/main` (all of #170, #171, #172, #173 merged). The number has not moved between the run before
-#173 merged and the run after it, even though `drafts.merged_bodies()` does contain func_80057CA4 and
-659 unit files are on main; I could not reconcile that one-body drift inside this pass, so treat 358
-as the measured figure and the exact per-body accounting as still owed. The `--limit` listing prints
-194 rows for this queue, so the header total is coming from a different path than the rows and that is
-where the next check belongs.
+`origin/main`, with #170, #171, #172 and #173 all merged (659 unit files) and `drafts.merged_bodies()`
+confirmed to contain all four converted bodies. `--limit` only truncates the printed rows, not the
+header total, so 358 is the queue size and not a listing artefact.
