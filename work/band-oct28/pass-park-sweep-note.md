@@ -54,6 +54,13 @@ The two branch-polarity rules from the previous pass were applied where a park h
 (`func_8002BCB0` in three forms, `func_80042E9C`, `func_800257A0` in two forms): neither moved the
 residue. They remain right, but they are not what was holding this pool back — the argument lever was.
 
+## Permuter, used only as the last resort
+
+`func_80055820` was the only park to reach one differing word, so it was handed over: 150 s, 2236
+reproductions, base score 200, minimum score 200, no move. Its residue is a delay-slot filler, which is
+the one thing the operator set cannot reach: it can reorder statements, it cannot make gcc leave a hole.
+That is the fourth pass in which the tool has returned its starting score.
+
 ## Filing
 
 Opened **#191** — "One register home separates 11 unit bodies from matching; C cannot express it". It
@@ -72,4 +79,5 @@ the point: replacing the slab with matching C must not move a byte.
 
 ## Queue
 
-670 merged units on `origin/main`; 412 unmatched listings open. Three more are in review.
+670 merged units on `origin/main` at the start of the pass, 673 now (two of this pass's units merged while
+it ran); 409 unmatched listings open, with `func_8004DA90` still in review (PR #189).
