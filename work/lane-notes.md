@@ -1123,3 +1123,28 @@ macro in `include/game/` would only move the same literal into a header — an e
 symbol. **Hand-off, for the maintainer:** allow a scan exemption for an address literal that is only
 ever *stored as data* (never dereferenced), or accept that `func_80034B98` stays unmatched. No config
 symbol fixes it.
+
+## The parent landed: `func_80021B74` MATCH (114 words), and the tell is a copy at the top
+
+The skeleton was six words out on the prologue save order (`$s1,$s2,$s0` against our `$s0,$s1,$s2`)
+for four passes. The lever is one statement:
+
+    u32 id = arg0;          /* then use `id` everywhere, including the walk */
+
+Copying the walked id into a fresh local keeps `$a0`'s pseudo dead after the copy, so the value the
+function actually walks is a *later* pseudo and `assign_parms`/`global_alloc` emit its save last. Body
+and frame were already exact; with the copy it is byte-exact. 0 → **MATCH**, shipped as PR #159
+(`src/funcs/func_80021B74.c`) from fresh `origin/main`, gate 646/646, build sha1
+`16829afba66533e2645bf87af2774671b06ff36b`, objdiff 100%.
+
+**Banked tell: when a body is exact except for the order of its prologue saves, copy the parameter or
+call result that the game saves last into a fresh local at the top and use that local throughout.**
+
+Retested on the other two members of the family with the same move: `func_80021450` stays 127/127
+(its residue is the *count* of saves, not their order — the incoming stack parameters), and
+`func_80020E10` goes 93 → 97 of 139, so the copy is not a general fix, only a save-order one.
+
+**`func_8003453C` retested (42/70, one word long).** The `$s2`/`$s3` swap is real and the copies drive
+it: `char *d = dst; p = d;` measures 41/70 and mirrors the roles (`$s3` gets `shift`), while an explicit
+`p = dst;` statement measures 42/70 unchanged. Register choice follows the copy order, but no obvious
+pairing puts `dst` in `$s3` and `shift` in `$s2`; three shapes spent, parked with the swap named.
