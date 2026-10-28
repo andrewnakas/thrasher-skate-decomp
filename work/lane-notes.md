@@ -1232,3 +1232,57 @@ operands). Best stays 4/25; parked in the `move-vs-materialise` class.
 
 **Conversions: 0 from 3 bodies attempted (2 retests + 1 fresh re-derivation), 13 shapes measured.**
 Queue unchanged at 382 bodies.
+
+## Template-similarity probe (pass 36): `work/similar.py`, and four pairs measured
+
+The probe scores every unmatched listing against the merged units by instruction-sequence similarity
+with immediates, displacements and branch targets normalised away (`mnemonic` plus a `+sp`/`+gp`
+marker only, so constant churn does not matter). Merged sequences come from the compiled objects the
+gate cache already holds (`build/match/<unit>.o`, disassembled with the pinned `objdump`), unmatched
+ones from `asm/nonmatchings/game/`. Prefilter is mnemonic-bigram overlap, ranking is
+`difflib.SequenceMatcher`; a full run is ~4 s.
+
+Top of the table (`python work/similar.py`):
+
+| score | unmatched | len | merged twin | len |
+|---|---|---|---|---|
+| 0.759 | `func_80043294` | 17 | `func_80042300` | 12 |
+| 0.700 | `func_8001D804` | 23 | `func_800465CC` | 17 |
+| 0.645 | `func_8004584C` | 38 | `func_80039FF4` | 24 |
+| 0.600 | `func_80033818` | 13 | `func_800465CC` | 17 |
+| 0.588 | `func_8002DE18` | 18 | `func_800367F4` | 16 |
+| 0.579 | `func_8002DD88` | 22 | `func_800367F4` | 16 |
+| 0.571 | `func_80032FF4` | 14 | `func_80034D30` | 7 |
+
+**`func_80043294` / `func_80042300` (descending pointer fill) — ten shapes, best 6/17.** The twin
+supplies the loop exactly (`do { *o = p; o--; i--; p -= 0x3C0; } while (i >= 0);` plus the sentinel
+store). What remains is address materialisation and the two forms are mutually exclusive in this
+compiler: without `-mno-split-addresses` the `la` is emitted as `lui $v0,%hi` + `addiu $v1,$v0,%lo`
+(the game wants both in `$v1`), and with the flag the `la` is right but `p += 0x780` folds into
+`%lo(D_800AAB94+0x780)`, losing the game's separate `addiu`. Shapes tried: the twin verbatim, the
+struct-member store, `-mno-split-addresses` on five spellings, `u32` base variables, reversed add
+order, array-index stores, and a `(u32)` cast chain. Best stays `work/near-miss/func_80043294-g8.c`
+at 6/17 with the exact size.
+
+**`func_80033818` / `func_800465CC` — not an adaptation.** The twin is a 4-word struct copy; the body
+is a three-pair field permutation (4↔0xC, 8↔0x18, 0x14↔0x1C) unrolled into six loads and six stores.
+Same mnemonic shape, different semantics: parked without drafting.
+
+**`func_80032FF4` / `func_80034D30` — twin unrelated.** The body is a three-component vector add
+(`a[i] += b[i]`), and the twin is a bump-accounting helper. Three shapes on the body itself: field
+locals (12/13, unchanged), struct-by-value copies (costs a frame), sum-into-locals-then-store (still
+sinks the stores per field). The game keeps all six loads, then three adds, then three stores; gcc 2.8.1
+sinks each store to its field. Parked.
+
+**`func_8002DE18` (18 w) re-derived from its twin's shape — 0 of 18 words measured clean, 8 lines out.**
+A bump allocator: `p = D_8008B060; D_8008B060 = p + 0xC; p[0] = a0; p[1] = 0;
+p[2] = D_8006F834[a0->f3].f8;` — the whole body is in place and the only residue is that the game keeps
+a *copy* of the old pointer (`addu $a1,$v0,$zero`) where gcc reuses the load register, plus the
+`%lo` fold on the table base. Two shapes (struct-pointer and `u8 *` spellings).
+
+**Banked fact.** `lui $at, %hi(X); sb/sw %lo(X)($at)` — the direct symbolic store — is produced by an
+*incomplete-array* extern storing a constant (`extern u8 X[]; X[0] = 1;`, merged `func_80011BD4`).
+When the stored value is a register, gcc materialises the address in a temp instead, so the `$at`
+form is not reachable for a store of a computed pointer.
+
+**Conversions: 0 from 4 bodies attempted, 16 shapes measured.**
