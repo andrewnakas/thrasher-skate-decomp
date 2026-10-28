@@ -34,3 +34,12 @@ deltas at +0xC/+0x14/+0x10 shifted `sra 16` and negated. Residue: the game keeps
 reproduces the stores but forces a reload before every `mult` (four extra words), and writing them as
 plain locals drops the stores. Class: gcc's store/load forwarding on a local aggregate, not a source
 shape this compiler can be steered into by index order.
+
+**func_8003A1B8** (71 w) — 2 shapes, 62/71, `0x124` vs `0x11c` (two words long). Decoded and present:
+`kind != 2` early return, the 8-byte descriptor at `D_800A8404 + 8 * (h[0] >> 8)`, the 12-byte stack
+header `{f0, f2, f4, f6, f8, fA}` handed to `SetDrawLoad`, the two packed words
+`((a >> 6) & 3) | (((a >> 14) & 3) << 5) | (((a >> 22) & 3) << 10)` (which combine folds into the
+game's `srl 9/andi 0x60` and `srl 12/andi 0xC00` — a `u16` bitfield struct was measured first and is
+worse, `0x144`, because the field writes become read-modify-write of the stack slot), and the
+`0xFF000000`/`0xFFFFFF` link fixups. Residue: store schedule inside the header (`f4` first here, `f0`
+first in the game) and two words of register pressure around the descriptor reads.
