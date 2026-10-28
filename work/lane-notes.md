@@ -1148,3 +1148,42 @@ Retested on the other two members of the family with the same move: `func_800214
 it: `char *d = dst; p = d;` measures 41/70 and mirrors the roles (`$s3` gets `shift`), while an explicit
 `p = dst;` statement measures 42/70 unchanged. Register choice follows the copy order, but no obvious
 pairing puts `dst` in `$s3` and `shift` in `$s2`; three shapes spent, parked with the swap named.
+
+## The copy lever swept across the parked corpus (pass 34): 36 bodies, two moves, no conversions
+
+The lever from `func_80021B74` (`T v = p;` at entry, then use `v` throughout, so the parameter's
+pseudo dies and the copy's live range is the one the allocator colours) was applied mechanically to
+every parked body whose recorded class is `register-role` or `operand`, plus the `save-order` residue
+of `func_8003453C`. The probe is `work/scratch/lever.py`: it parses the signature, emits one variant
+per parameter (skipping only `&p`), and runs `tools/match.py` on each.
+
+**The mechanism is narrower than the win suggested: gcc copy-propagates the copy away.** For
+`func_80029488` the base and the `copy self` variant compile to *identical* assembly (`tools/cc.py
+--print-asm`, `diff` prints nothing), and 34 of the 36 bodies measure the same word count under every
+variant. The copy only survives when the value's live range actually changes — it crosses a call
+(`func_80021B74`, whose `id` is live across both calls and the loop) or is reassigned inside a loop.
+A read-only parameter used in one block is coalesced back into its own pseudo, and the variant is a
+no-op by construction.
+
+**Two bodies moved, neither to a match:**
+
+| Body | Base | Best variant | Residue after the copy |
+|---|---|---|---|
+| `func_8001C2F0` (49) | 26/49 | **20/49** (`a2` copied) | the game saves `$s1` *after* the loop's `blez` pre-check; ours saves it first, and the `a2+i` arm should fall through to the call instead of the `0xFFFF` arm. Pairs `a1+a2` measure the same 20; `a1` alone 22, `a3` 26. |
+| `func_8004669C` (104) | 37/104 | **28/104** (`a3` copied) | nine words better, still 28 out; parked unchanged otherwise. |
+
+Unchanged under every variant (36 bodies probed: `800382C0`, `8002BCB0`, `8002FE80`, `8003BF7C`,
+`80042E9C`, `80056C90`, `80056FF4`, `80035C14`, `8003BDB8`, `80043294`, `8002BA64`, `80034758`,
+`80011B48`, `80032FF4`, `80033818`, `80032644`, `8003C220`, `80056D20`, `80047A44`, `80029488`,
+`8004F1E0`, `80032CF4`, `8002C3C0`, `800159D8`, `80033E14`, `80021894`, `800484B4`, `80048598`,
+`80058448`, `8002AD6C`, `8002A0F8`, `8002C8B8`, `8002FEE0`, `8001CE98`), including every body whose
+class is already recorded as closed (`lui`+`%lo` colouring, the commuted `addu`, the branch-only load).
+
+**`func_80032644` (63w) was re-derived from the listing and is not a copy problem.** The game keeps
+`$s3 = a1`, `$s0 = a2`, `$s2 = a3`, `$s1 = a4`; ours swaps `$s2`/`$s3`. Copies of `a1` (before and
+after the first call) and of `out2` all measure 12/63 — the same colouring class as `func_8003453C`,
+where `char *d = dst; p = d;` reaches 41/70 and mirrors the roles without matching.
+
+**Conversions: 0 from 36 bodies probed.** The queue is unchanged except for the two improved parks;
+the lever's population is bodies with a loop-carried value crossing a call, and `func_80021B74` was
+the only one in the corpus.
