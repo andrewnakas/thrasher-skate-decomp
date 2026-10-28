@@ -30,6 +30,16 @@ label or a load from the wrong table is a real difference: nothing is masked.
   `lui`/`lw`. Declaring it as an **unsized array** (`extern u8 D_x[];`, then `*(s32 *) D_x` or
   `*(s32 *)(D_x + off)`) makes it a big object and restores the absolute `lui`/`lo` form. func_800494A4 turned on
   exactly this: the scalar form shifted every word by the missing `lui` at three load sites (0x74 vs 0x80 bytes).
+- **The mechanism is the object's size against `-G8`, not its type name.** A `u8`, a `u8[4]`, an `s32[2]` and a
+  pointer are all <= 8 bytes and all go through `$gp`; any declaration whose size exceeds 8 bytes is addressed
+  absolutely. So to reproduce a `lui $v0, %hi(D_x)` + `lbu $v0, %lo(D_x)($v0)` pair from a one-byte symbol,
+  declare it as an aggregate just over the threshold (`extern u8 D_x[16];`, read `D_x[0]`). That one edit took
+  func_80055820 from 27 to 1 of 34 words. Two caveats, both measured: (1) it only works where the draft *reads
+  or writes the value* — if it takes the symbol's **address** (`p = D_x;`, `&D_x`), resizing silently turns the
+  address into an element load and the score moves for the wrong reason; (2) a symbol that is read once and
+  written once at the end of the body can still be pinned in a callee-saved register, which costs a saved word
+  (func_80038970, func_80043294 6 -> 15). `work/gp_sweep.py` mechanises the check over every drafted body and
+  labels the address-use cases as shape probes.
 - **A symbol `lui` that the game re-emits at each use**: gcc hoists it into one register (sometimes a
   callee-saved one) when the address outlives a call. `/* cflags: -mno-split-addresses */` stops the hoist and
   took func_800494A4 from 24 differing words to 9. It also changes block-move addressing, so re-check copy
@@ -108,3 +118,20 @@ source file and so share flags: check the neighbours' units.
 About 15 attempts for a small function, 25 for a big one. Then run the permuter (`tools/permute.py`), apply
 only a change that reads like real code, and if that fails, move on. Keep your best near miss in `work/` with
 a note on the remaining difference.
+
+## Levers measured but not yet in a shipped unit
+
+Each of these was measured on a near miss in `work/`; the number is the score it produced there.
+
+- **A dispatch arm that legitimately does nothing must be left empty.** `nudge = 0;` makes gcc
+  re-materialise the zero and re-thread the chain (21 words, func_80038610); the empty arm gives the
+  game's `bnez $v0, tail` (13).
+- **A byte-swapped value wants `u32`, not `u16`.** With `u16` the `andi $v0, $v1, 0xFFFF` lands
+  *before* the shifts; with `u32` it survives only at the return and `srl` (not `sra`) falls out.
+- **`(v >> 8) & 0xFF | (v << 8)` is the game's operand order** for a halfword swap; reversing the
+  two terms moves the `or` destination register.
+- **Declaration order does not steer `$s`-register rank.** Three orders on func_800250B4 all gave
+  86/173 words, and three orders on the two cursors of func_8001C540 all gave 14/59 with an
+  otherwise identical instruction stream. When two saved registers hold swapped roles, changing the
+  spelling will not move it; that is an allocation tie, and it needs a permuter or a tooling
+  decision, not another attempt.
