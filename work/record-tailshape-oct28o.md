@@ -4,10 +4,10 @@ Conversions 0, bodies re-worked 2 (both already-parked drafts, no re-transcripti
 No new body was drafted: the two shape passes took the whole budget, and the third item in the
 plan is the honest miss of this pass. Pipeline green on a synced tree.
 
-| function | words | was | now | size |
+| function | words | best now | was | size |
 |---|---|---|---|---|
-| func_80052874 | 231 | 194/231 @0x358 | **174/231, instruction-complete** | 231/231 |
-| func_8003062C | 230 | 157/230 @0x388 | **84/230, instruction-complete** | 230/230 |
+| func_80052874 | 231 | 174/231 | 194/231 @0x358 | 231/231 |
+| func_8003062C | 230 | 84/230 | 157/230 @0x388 | 230/230 |
 
 Both drafts sat in the records branch from the previous pass, so neither body was transcribed
 again; every change below is a measured shape edit on the kept source.
