@@ -15,19 +15,57 @@ numbers; work/verify.py owns every measurement.
 import argparse
 import csv
 import re
+import sys
 from collections import Counter
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "work"))
+
+import drafts  # noqa: E402  the one owner of which bodies have drafts, in every directory
 PAT = re.compile(r"/\* [0-9A-F]+ [0-9A-F]{8} [0-9A-F]{8} \*/\s+(\S+)")
 GTE = re.compile(r"\b(mtc2|mfc2|ctc2|cfc2|lwc2|swc2|gpf|gpl)\b")
+# $sp switched onto the scratchpad stack (`addu $sp, $t0, $zero` / `lw $sp, 0x10($sp)`): gcc never
+# assigns $sp in a function body, so the class cannot be written in C. func_80023B1C, func_800262E8,
+# func_80027538 and func_8003B068 are the four bodies; their twins own the same trampoline.
+SP_SWAP = re.compile(r"\*/\s+(addu|lw|or)\s+\$sp,")
+# the function itself writes `$gp` (a gp-reload trampoline: `lw $gp, D_8008B398` / `sw $gp, D_8008B398`
+# and a bare `jr $ra`, the pair at func_80045828/func_80045838).  gcc never assigns $gp in a body, so
+# the class cannot be written in C; only these two bodies carry it.
+GP_SWAP = re.compile(r"\*/\s+(lw|sw|addu|or)\s+\$gp,")
+# no frame at all and `$ra` parked in `$t7` across the calls (`addu $t7, $ra, $zero` ... `addu $ra, $t7`):
+# gcc always spills $ra to its own frame, so the pair (func_80032E94, func_80033268) is hand-written and
+# func_80032E94 also keeps the return address in D_80032C20.  Both are outside the C class.
+RA_T7 = re.compile(r"\*/\s+addu\s+\$t7,\s+\$ra,")
+# `$at` as a data temporary (`slt $at, ...`, `addu $at, ...`): the assembler only produces that from
+# its own hand-written macros never from gcc, and none of the 653 merged units contains it, so the
+# body is hand-written asm and not a C target.  The *other* `$at` form -- `lui $at, %hi(sym)` plus a
+# `mem ... %lo(sym)($at)` -- is compiler output under the allowed `-mno-split-addresses` flag
+# (func_80011BD4, func_80011C40, func_8003ED28 and two more merged units carry it), so it must NOT
+# be filtered: those bodies are C work with a per-file cflag.
+AT_VALUE = re.compile(r"\*/\s+(slt|sltu|slti|sltiu|addu|or|and|xor|subu|negu)\s+\$at,")
+# `mult` followed by two or more `nop`s: manual HI/LO hazard padding. gcc emits `mult` immediately
+# before `mflo` (see func_800331FC); func_80032C28 hand-schedules the delay.
+MULT_NOPS = re.compile(r"\*/\s+mult\s+[^\n]*\n(?:\s*/\*[^\n]*\*/\s+nop\n){2,}")
+# ordered `lw $t0` ... `lw $t1` ... `lw $t2` ... `lw $t3` in one listing: the hand-written register
+# walk (t0-t9, then v0/v1) that the 0x80033xxx copy/vector bodies use. gcc fills low registers first
+# -- a C 12-word copy compiles to `$2,$3,$6..$14,$5` (proved with a synthetic through tools/cc.py) --
+# and none of the 653 merged units contains this chain, so the body is not a C target.
+LW_CHAIN = re.compile(r"\*/\s+lw\s+\$(t\d|v0|v1|a\d)\b")
+
+
+def hand_written_chain(text):
+    regs = [m.group(1) for m in LW_CHAIN.finditer(text)]
+    if not all(r in regs for r in ("t0", "t1", "t2", "t3")):
+        return False
+    return regs.index("t0") < regs.index("t1") < regs.index("t2") < regs.index("t3")
 SCALED = re.compile(r"\bsll\s+\$[a-z0-9]+,\s*\$[a-z0-9]+,\s*[1234]\b")
 BODY = re.compile(r"func_([0-9A-Fa-f]{8})")
 
 
 def bodies():
     """(insn count, name, asm text) for every unmatched, clean game body."""
-    merged = {p.stem for p in (ROOT / "src" / "funcs").glob("func_*.c")}
+    merged = drafts.merged_bodies()  # committed units only: a scratch copy in src/funcs is not a unit
     for row in csv.DictReader(open(ROOT / "config" / "functions.us.csv")):
         addr = int(row["addr"], 16)
         if addr > 0x80058633:
@@ -39,19 +77,16 @@ def bodies():
         if not asm.exists():
             continue
         text = asm.read_text()
-        if "glabel" not in text or "Handwritten" in text or GTE.search(text):
+        if ("glabel" not in text or "Handwritten" in text or GTE.search(text)
+                or SP_SWAP.search(text) or GP_SWAP.search(text) or RA_T7.search(text)
+                or AT_VALUE.search(text) or MULT_NOPS.search(text) or hand_written_chain(text)):
             continue
         yield len(PAT.findall(text)), name, text
 
 
 def drafted():
-    out = set()
-    for d in (ROOT / "work" / "near-miss", ROOT / "work" / "best"):
-        for f in d.glob("*.c"):
-            hit = BODY.search(f.name)
-            if hit:
-                out.add("func_" + hit.group(1).upper())
-    return out
+    """Bodies that already have a draft somewhere, from the one owner of that fact."""
+    return set(drafts.by_body())
 
 
 def main():
