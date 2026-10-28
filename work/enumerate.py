@@ -37,6 +37,28 @@ GP_SWAP = re.compile(r"\*/\s+(lw|sw|addu|or)\s+\$gp,")
 # gcc always spills $ra to its own frame, so the pair (func_80032E94, func_80033268) is hand-written and
 # func_80032E94 also keeps the return address in D_80032C20.  Both are outside the C class.
 RA_T7 = re.compile(r"\*/\s+addu\s+\$t7,\s+\$ra,")
+# `$at` as a data temporary (`slt $at, ...`, `addu $at, ...`): the assembler only produces that from
+# its own hand-written macros never from gcc, and none of the 653 merged units contains it, so the
+# body is hand-written asm and not a C target.  The *other* `$at` form -- `lui $at, %hi(sym)` plus a
+# `mem ... %lo(sym)($at)` -- is compiler output under the allowed `-mno-split-addresses` flag
+# (func_80011BD4, func_80011C40, func_8003ED28 and two more merged units carry it), so it must NOT
+# be filtered: those bodies are C work with a per-file cflag.
+AT_VALUE = re.compile(r"\*/\s+(slt|sltu|slti|sltiu|addu|or|and|xor|subu|negu)\s+\$at,")
+# `mult` followed by two or more `nop`s: manual HI/LO hazard padding. gcc emits `mult` immediately
+# before `mflo` (see func_800331FC); func_80032C28 hand-schedules the delay.
+MULT_NOPS = re.compile(r"\*/\s+mult\s+[^\n]*\n(?:\s*/\*[^\n]*\*/\s+nop\n){2,}")
+# ordered `lw $t0` ... `lw $t1` ... `lw $t2` ... `lw $t3` in one listing: the hand-written register
+# walk (t0-t9, then v0/v1) that the 0x80033xxx copy/vector bodies use. gcc fills low registers first
+# -- a C 12-word copy compiles to `$2,$3,$6..$14,$5` (proved with a synthetic through tools/cc.py) --
+# and none of the 653 merged units contains this chain, so the body is not a C target.
+LW_CHAIN = re.compile(r"\*/\s+lw\s+\$(t\d|v0|v1|a\d)\b")
+
+
+def hand_written_chain(text):
+    regs = [m.group(1) for m in LW_CHAIN.finditer(text)]
+    if not all(r in regs for r in ("t0", "t1", "t2", "t3")):
+        return False
+    return regs.index("t0") < regs.index("t1") < regs.index("t2") < regs.index("t3")
 SCALED = re.compile(r"\bsll\s+\$[a-z0-9]+,\s*\$[a-z0-9]+,\s*[1234]\b")
 BODY = re.compile(r"func_([0-9A-Fa-f]{8})")
 
@@ -56,7 +78,8 @@ def bodies():
             continue
         text = asm.read_text()
         if ("glabel" not in text or "Handwritten" in text or GTE.search(text)
-                or SP_SWAP.search(text) or GP_SWAP.search(text) or RA_T7.search(text)):
+                or SP_SWAP.search(text) or GP_SWAP.search(text) or RA_T7.search(text)
+                or AT_VALUE.search(text) or MULT_NOPS.search(text) or hand_written_chain(text)):
             continue
         yield len(PAT.findall(text)), name, text
 
