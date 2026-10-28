@@ -176,6 +176,7 @@ func_8002F730	open	0/0	work/census-corrected.md
 func_8002FE80	merged	2/24	work/band-oct28/pass-park-sweep-note.md
 func_8002FEE0	open	57/63	work/census-corrected.md
 func_8002FFDC	open	64/84	work/pass-oct28/func_8002FFDC.c
+func_8003012C	open	120/124	work/best/func_8003012C.c
 func_80030518	open	8/55	work/best/func_80030518.c
 func_8003062C	open	84/230	work/near-miss/func_8003062C-157of230.c
 func_80032400	open	6/27	work/census-corrected.md
@@ -293,6 +294,7 @@ func_80049A14	open	90/101	work/census-corrected.md
 func_8004A094	open	40/39	work/census-corrected.md
 func_8004A130	open	11/80	work/census-corrected.md
 func_8004AC1C	merged	86/98	work/pass-oct28/func_8004AC1C-park.c
+func_8004ADA4	open	96/119	work/best/func_8004ADA4.c
 func_8004AF80	open	34/66	work/census-corrected.md
 func_8004B088	open	unrecorded	work/pass-oct28/func_8004B088.c
 func_8004B1D4	merged	7/79	work/layout-sweep-oct28.md
