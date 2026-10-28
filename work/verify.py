@@ -32,6 +32,7 @@ import json
 import os
 import re
 import shutil
+import subprocess
 import sys
 from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor
@@ -40,8 +41,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 
+import drafts  # noqa: E402  the one owner of which bodies have drafts
 import match as m  # noqa: E402
-from common import BUILD, FUNCTIONS_CSV, SRC_FUNCS, load_functions  # noqa: E402
+from common import BUILD, FUNCTIONS_CSV, load_functions  # noqa: E402
 
 WORK = ROOT / "work"
 DRAFTS = WORK / "near-miss"
@@ -89,18 +91,24 @@ def digest(path):
 
 
 def drafted_bodies():
-    """body -> [draft paths], from the corpus directory only."""
-    out = defaultdict(list)
-    for f in sorted(DRAFTS.glob("*.c")):
-        hit = re.search(r"func_[0-9A-F]{8}", f.name)
-        if hit:
-            out[hit.group(0)].append(f)
-    return out
+    """body -> [draft paths], from the one owner of which drafts exist."""
+    return drafts.by_body()
+
+
+def merged_bodies():
+    """Unit files committed here or on origin/main, from the one owner of that fact.
+
+    The remote side is asked because a working branch behind origin reports bodies another lane
+    already shipped as `ready`, which is how drafts for already-merged bodies stayed on the close list
+    for several passes. Untracked copies do not count: one left in src/funcs/ while measuring a draft
+    would otherwise hide that draft's row (pass 31 did this to func_800212BC).
+    """
+    return drafts.merged_bodies()
 
 
 def corpus():
     """Unmatched code bodies, split into drafted and undrafted."""
-    merged = {f.stem for f in SRC_FUNCS.glob("func_*.c")}
+    merged = merged_bodies()
     unmatched = [r["name"] for r in load_functions()
                  if r["kind"] == "func" and r["segment"] == "game" and r["name"] not in merged]
     drafts = drafted_bodies()
@@ -203,7 +211,7 @@ def main():
                 rows[key] = rec
         CACHE.write_text(json.dumps(cache, indent=0, sort_keys=True) + "\n")
 
-    merged = {f.stem for f in SRC_FUNCS.glob("func_*.c")}
+    merged = merged_bodies()
     table, stale = [], []
     for body in bodies:
         if body in merged:

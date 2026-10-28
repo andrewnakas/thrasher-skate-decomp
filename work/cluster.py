@@ -25,6 +25,9 @@ Usage: .venv/bin/python work/cluster.py [--json out.json] [--thresh T]
 """
 import csv, os, re, glob, collections, sys, json, difflib
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import drafts  # noqa: E402  one owner of which drafts exist and which units are merged
+
 INS = re.compile(r'/\* [0-9A-F]+ [0-9A-F]{8} [0-9A-F]{8} \*/\s+(\S+)\s*(.*)')
 BR = re.compile(r'^(b|beq|bne|beqz|bnez|bgez|bgtz|blez|bltz|bal|j|jal|jalr|jr)$')
 REG = re.compile(r'^\$[a-z0-9]+$')
@@ -34,18 +37,15 @@ THRESH = 0.80
 
 def bodies():
     rows = list(csv.DictReader(open('config/functions.us.csv')))
-    drafted = set()
-    for f in glob.glob('work/*.c') + glob.glob('work/near-miss/*.c'):
-        m = re.search(r'func_([0-9A-Fa-f]{8})', os.path.basename(f))
-        if m:
-            drafted.add('func_' + m.group(1).upper())
+    merged = drafts.merged_bodies()
+    drafted = set(drafts.by_body())
     out = []
     for r in rows:
         a = int(r['addr'], 16)
         if a > 0x80058633:
             continue
         n = 'func_%08X' % a
-        if os.path.exists('src/funcs/%s.c' % n) or n in drafted:
+        if n in merged or n in drafted:
             continue
         p = 'asm/nonmatchings/game/%s.s' % n
         if not os.path.exists(p):
@@ -93,13 +93,15 @@ def shape(path, mask_imm=False, opcode_only=False):
 
 
 def corpus():
-    """Every game body with a listing, tagged matched / drafted / unopened / skipped."""
+    """Every game body with a listing, tagged matched / drafted / unopened / skipped.
+
+    `matched` is the committed unit set (git-tracked here or on origin/main), not a file that
+    happens to sit in src/funcs: a scratch copy left there for measurement used to make a body
+    look merged and drop it from every family.
+    """
     rows = list(csv.DictReader(open('config/functions.us.csv')))
-    drafted = {}
-    for f in glob.glob('work/*.c') + glob.glob('work/near-miss/*.c'):
-        m = re.search(r'func_([0-9A-Fa-f]{8})', os.path.basename(f))
-        if m:
-            drafted['func_' + m.group(1).upper()] = f
+    merged = drafts.merged_bodies()
+    drafted = drafts.by_body()
     out = []
     for r in rows:
         a = int(r['addr'], 16)
@@ -112,7 +114,7 @@ def corpus():
         txt = open(p).read()
         if 'glabel' not in txt:
             continue
-        if os.path.exists('src/funcs/%s.c' % n):
+        if n in merged:
             tag = 'matched'
         elif re.search(r'\b(mtc2|mfc2|ctc2|cfc2|lwc2|swc2|gpf|gpl)\b', txt) or 'Handwritten' in txt:
             tag = 'skipped'

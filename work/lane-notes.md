@@ -633,3 +633,738 @@ parameter that belongs in the lower register first instead of reordering declara
 
 Neither tell needs a new shape family: they are one line each on top of an already-correct instruction
 stream, which is what the `register-role` class is.
+
+## The queue was over-counting by 66 bodies: drafts for bodies already merged upstream
+`verify.py` decided "merged" from the working tree alone, so on a branch behind `origin/main` every
+draft whose body another lane had already shipped still read `ready` or `parked`. Unioning the working
+tree with `git ls-tree origin/main src/funcs/` pruned **66 rows in one run** (`func_8002C818`,
+`func_8002D904`, `func_8001F3D4`, `func_80022308`, `func_8004CCA0`, `func_8001DB74`, ...). That is the
+answer to a question several passes asked and could not answer: why a park kept re-measuring at two or
+three words and never shipped. It was converted on main while this lane kept re-testing its old draft.
+Before any close-list work, re-run `verify.py` against a fetched `origin/main`; a stale base invents
+work.
+
+## Every draft directory, one owner: `work/drafts.py`
+`enumerate.py`, `extern_audit.py` and `verify.py` each globbed `work/near-miss/` (and `best/`) on their
+own. `work/shapes/` — 200 drafts from the batching passes, written in four different filename
+conventions — was in none of them, so the enumerator reported already-drafted bodies as unopened ground
+and the measure script never compiled a shapes draft. `work/drafts.py` now resolves a filename to its
+body (`func_80019C0C-w1.c`, `c1db74-a.c`, `n159D8-b.c`, `v19c4-a.c`) against the corpus and refuses to
+guess when the match is ambiguous, and all three scripts import it. Measuring the shapes corpus was the
+pass's biggest find: three drafts in it were already exact matches.
+
+## Two lerp tells, both from func_80013A98 / func_80013BA8
+The bodies are a 3-component `s16` lerp written as three component statements in a `do { } while (--n)`
+over `a++`/`b++`/`out++`; gcc's loop optimizer then splits one induction variable per pointer, which is
+why components 1 and 2 come out as `-0x2($t1)` / `0x0($t1)` instead of offsets off `$a0`.
+
+- **A promoted `u16` sum defeats the unsigned shift.** `(u16)x + (u16)y` is an `int`, so `>> 1` compiles
+  to `sra` and both arms of the guard collapse into one. `(u32)(u16)x + (u32)(u16)y` keeps the game's
+  separate `lhu; lhu; addu; srl` arm. Any body whose wide path shifts with `srl` needs the cast.
+- **The inverted guard spelling.** A test that reads `slt $t4, K, $v0` + `bnez` is the *then-first*
+  spelling `if (d <= K) a else b`; writing `if (d > K) b else a` makes gcc lay the arms out the other
+  way round and loses the sum that the game hoists into the branch delay slot.
+- **Add order is source order.** `(a + b + b * 2)` gives `addu; sll; addu` (the game), while `(a + b * 3)`
+  gives `sll; addu; addu`. Same value, two words different.
+
+## The 21-40 band is closed, and what is left in it is not C
+Five undrafted bodies remain there and none is a target: three scratchpad-`sp` switchers
+(`func_80027538`, `func_800262E8`, `func_80023B1C`) and two `$gp` stubs (`func_80045828` reloads `$gp`
+into it; `func_80045838` stores it to `D_8008B398` and returns `$sp`). The band's 27% rate was spent on
+the bodies that were C.
+
+## Parked at 24/79: func_80038610 (char-table decoder)
+The if-chain and both table arms reproduce; what does not is which register the table value is born in
+(the game keeps it in `$v1` with the high byte in `$v0`; every spelling tried hands it `$v0`) and the
+frame, which is `0x20` in the game against `0x18` here — an eight-byte live-set difference, not a
+statement. Shapes tried: separate `v0`/`v1` locals with the `r >> 8` computed per arm (24 words), one
+`u32 r` with a single return (24, and it hoists `r << 8` into the jump delay slot), `u8 sub` for the
+masked test (30, one word longer). The `andi` the game spends on `sub` before `beqz` is optimised away
+when `sub` is an `s32` — a narrow local keeps it but costs a word elsewhere.
+
+## `func_80034D4C` was a plain body sitting in a band declared closed
+The 21-40 band was recorded as closed and non-C. It is not: `func_80034D4C` (39 words, an
+alignment-selecting copy of 4/2/1-byte units) had no draft and no exclusion idiom, and it matched on
+the second shape. Corrected census of the band: 10 genuinely undrafted bodies, of which 6 are
+handwritten or GTE (invisible to the enumerator), 3 are the scratchpad-`sp` switchers
+(`func_80027538`, `func_800262E8`, `func_80023B1C`) and 1 is the 64-bit `mult` class
+(`func_80032E94`). So the band has exactly one C body left in it and it is now converted; the "closed"
+label was right about the count and wrong about the reason.
+
+**The tell.** The guard is written negatively and the arms in word → half → byte order:
+`if (!(t & 3)) { word } else if (!(t & 1)) { half } else { byte }`, where `t = (u32)dst | (u32)src | (u32)n`.
+Written positively (`if (t & 3) { ... }` first) gcc lays the byte block out first and the body misses by
+thirty words on an otherwise identical prologue. Returning `dst - n` from the walked pointer is what
+puts `subu $v0, $a0, $a2` in the `jr` delay slot.
+
+## Parked at 42/70: func_8003453C (fixed-point decimal formatter)
+The arithmetic reproduces — `ip = value >> (shift & 0xFFFF)`, `fp = (u32)value << (32 - (shift & 0xFFFF))`,
+the `fp * 9999` constant multiply expanding to gcc's shift/add chain, and the rounding
+`(fp * 9999 + (1 << (k - 1))) >> k`. What does not is the allocation and one word: `$s2`/`$s3` come out
+swapped (the game keeps `dst` in `$s3` and `shift` in `$s2`), and the body is 71 words against 70 —
+the strlen walk after the first `func_80034654` call emits one `addiu` too many. Three shapes tried:
+a `k` local with the shifts inlined (56 of 70), `shift & 0xFFFF` inline with `p` assigned first
+(42 of 70, one word long), and a `do { p++; } while (*p)` walk (identical). Residue is a live-set
+difference, not a statement one.
+
+## Harvest sweep: 574 drafts, one unmerged match, and it cannot ship
+Every draft in the corpus was measured against fresh `origin/main` (`verify.py --write`, 256 bodies,
+574 files, 189 unmerged rows). Exactly **one** unmerged body has a matching draft:
+`func_80034B98` at 0/16, and it is blocked for a reason that has changed since issue #101 was filed.
+The game computes the constant as a literal — `lui $v0, 0x801F` + `ori $v0, 0xC000` — while the
+symbol spelling `extern u8 D_801FC000[]; ... = (u32)D_801FC000;` emits `lui %hi` + `addiu %lo` and
+misses by three words (it still passes `scan.py`, which is why the spelling is worth recording).
+So the config symbol #101 asks for would **not** deliver the body: only a literal reproduces `ori`,
+and a literal in `0x80010000`-`0x801FFFFF` is what the scan gate forbids. That is a maintainer call,
+not a tooling gap.
+
+The 67 prunable rows in the same run are bodies whose drafts are for units that already exist on
+`origin/main`; those are the pass's stale list, not harvest.
+
+## `func_8002921C`: the count is re-loaded, and field 1 is copied before field 0
+A 16-byte record copy (7 halfwords, then 2 bytes) that reads as a struct assignment and is not one —
+a struct assignment emits four word copies. Two source facts decide the body: the loop bound is
+re-loaded from the source object (`*(u16 *)(p + 0xA)`) instead of kept in a local, because a local
+costs a third callee-saved register and a word of frame (63 of 65 words wrong with it, 6 with it
+gone); and the copy statements start at field 1 then field 0, which is what reproduces both the copy
+order and the loop-tail `addiu` schedule (6 -> 0).
+
+## Two parks from the ordered queue, both at the same wall
+Worked lowest-word first off the corrected enumerator with the tells as pre-checks; both bodies below
+stopped at the three-shape box with the shape right and the allocation wrong.
+
+**func_8001CE98 (67 words) — 29/67, one word long.** A 12-byte record table: fill 0x140 records' `+4`
+halfword with 0xFFFF descending from `base + 0xEF4`, then walk a rodata table of 4-byte entries writing
+a rotated bit byte into each record's first word plus three bytes and a 0xC stride. Fixed on the way:
+the record's halfword is at **+4, not +8** (a `u8 pad` before a `u16` pushed it to 8 and the whole fill
+loop was off by four), and the three byte stores must go through the global (`((u8 *)D_8008AE44)[1]`)
+so gcc reloads it between stores — with a local record pointer it emits one load instead of three and
+lands three words short. Residue: with the loop bound as a named local gcc spills it to `$s0` and the
+body is one word long (68 vs 67); with the literal it is 67 words but materialises `$a2 = 0` before
+`$t2 = 0x23` and 44 words differ. Neither is a statement problem.
+
+**func_8001C810 (72 words) — 35/72, one register and one word over.** A flag translator: five
+`if (src & BIT) out |= CONST;` steps on a word at `entry + 0xC`, then `out |= src & 0x06000000`, a table
+lookup through `D_8008AE70[entry->f4]`, a five-argument call whose stack slot is `out`, then a 0xFFFF
+sentinel test that writes id/result/flags back. Every step reproduces; mine keeps six callee-saved
+registers against the game's five (`$s5` appears, frame 0x38 against 0x30) because `src`, `out`, `r`
+and `entry` are all live across the two calls in the C I wrote. Nothing in the tells touches that.
+
+## Leaf population: 7 bodies, 5 worth working — and leaves park too
+Filtering the undrafted plain-C set to functions with no `jal` anywhere gives **7** bodies total, of
+which two are the `$gp` stubs (`func_80045828` 4 words, `func_80045838` 5 words) that are not C at all.
+The real leaf population is **5**: `func_8001C930` (81), `func_80055FC4` (92), `func_8002E68C` (111),
+`func_80056104` (117), `func_80020608` (135). That is the honest size of the population this pass was
+asked to work; it is not a band, it is a handful.
+
+**func_8001C930 (81 words) — 34/81, no size delta.** A fixed-slot record allocator over a 12-byte
+record table between `D_8008AE40` and `D_8008AE44`, keyed by a 16-byte source object at
+`D_8008AE5C + (id << 4)`. Two structural fixes were needed and both are reusable:
+
+- the source object is 16 bytes with its flag word at **+0xC** and its key at **+4**; a 12-byte record
+  type shared with the table gives the wrong offsets;
+- the address must be **written inline twice** (`((E *)((id << 4) + D_8008AE5C))->fC` at the flag,
+  again at the key compare) rather than hoisted into a local. Inline: 35 words differ; with a local
+  `E *e`: 77. gcc CSEs the two occurrences into one base and copies it, which is exactly the game's
+  `addu $a3` … `addu $t3, $a3, $zero` pair.
+
+Residue after the three-shape box: the remaining 34 words are the loop's derived base (`addiu $a3,
+$a2, 0x8` against `0xC` — a GIV split), the `sltu` hoisted above the flag load, and the identity
+compare's operand order (`bne $a0, $v0` against `bne $v0, $a0`). **This body makes no calls at all**,
+so the residue here is *not* the live-set-across-calls wall: it is loop-GIV splitting and compare
+operand order, which no banked tell reaches. Narrowing the population to leaves moved the failure but
+did not remove it.
+
+## The GIV split was a layout error; the last 10 words were a parameter width
+
+`func_8001C930` is **MATCH** (was 34/81). The `base+8` against `base+0xC` residue that this lane recorded as
+induction-variable splitting is not a compiler decision at all: six spellings compiled through `tools/cc.py`
+(`work/giv/probe.c`) show that every typed pointer walk reading +0 on the walker and +4/+8 on a copy derives
+`+8`, and that the parked draft derived `+0xC` because its record type was 16 bytes with the key at +8. Fixing
+the layout reproduced the game's pointer split in one edit. Subscript forms emit no second pointer at all.
+
+Three more source facts finished it, all in the tail rather than the loop:
+
+- the flags word is written through a **bitfield** (`flag = 0; id = id`), which is why the game has two masks
+  (`-0x81`, `-0x80`) where a folded C expression produces one `-0x100`;
+- the byte copy is `if (found == 0) {0xFF arm} else {copy arm}` — else-first is what puts the copy out of line
+  behind `bnez`;
+- `u16 arg` as the parameter, not `u32 arg` plus a local `arg & 0xFFFF`. That last one took 10 words out to
+  MATCH by removing a pseudo and renumbering two temps.
+
+## The parks were already type-checked; statement order and shared returns are what is left
+
+Thirteen parks at 1-5 words re-read layout-first and width-second: **one converted** (`func_8004BF94`, 2/52 →
+MATCH, from putting `i = 0;` before `one = 1;`) and **one improved by four words** (`func_80056FF4`, 5 → 2, size
+exact). Not one park had a record-size or field-offset error, and not one had a parameter or local that should
+have been narrower — the two tells that closed `func_8001C930` were one-body findings, because that draft had
+never been checked against its listing while these have.
+
+The remaining twelve are single-register homes and split addresses: `$a1` vs `$v0` for a loaded halfword
+(`func_8002BCB0`, `func_80042E9C`), `$v1` vs `$v0` for a second counter (`func_8002C9B8`), `$a1` vs `$v0` for a
+stack address (`func_8002FE80`), `lui $a0` vs `lui $v0` for a `%hi` (`func_8003BF7C`, `func_80056C90`,
+`func_80056FF4`), and one commutative `addu` whose accumulator is always in `rs` (`func_800382C0`). Ten spellings
+across those bodies moved none of them; the ones that did move the code cost the whole body.
+
+The new tell, banked: **adjacent `return`s of the same value are tail-merged**. `func_80056FF4`'s extra two words
+were a duplicated `return 7` epilogue, and writing the guard and the failing test as two consecutive
+`if (...) return 7;` statements — rather than `if (ok) { ...; return 0; } return 7;` — produced the game's single
+early return block and the exact size.
+
+## Cluster pass: the dispatch family's template is now banked; the parks are one block each
+
+Picked the cluster by callee set (`work/cluster.py`'s "callee-set families" section), because that is the
+only place a group of undrafted bodies provably shares a template. Largest such group with an unopened
+member: `func_80020D74` (drafted lead) + `func_80020E10` (139w), `func_800212BC` (101w), `func_800219E8`
+(99w), `func_80021B74` (114w) — all four call `GetSp`-family helpers through the same 6-argument
+`func_80020C34(id_hi, id_mid, D_8008A2AC, &v0, &v1, &v2)` dispatch and then walk the same two globals
+(`D_8008A2A4` counting up, `D_8008A2A8` counting down) over `D_8009C0A4` / `D_8009C6D4` / `D_800AB794`.
+
+Attempted four bodies (three from family H first, then the cluster's smallest):
+
+| body | words | verdict | residue |
+|---|---|---|---|
+| `func_80027BA0` | 77 | 62 differ | gcc re-bases the walking slot pointer to `a1+0x48`; game keeps the raw `a1` with `0x48/0x50` displacements. Copy-loop shape matched exactly. |
+| `func_800294FC` | 90 | 29 differ | instruction-identical except the `kind` setter: game materialises `0x70` in *both* true arms and jumps the false arm; gcc merges ours to one materialisation. Size 2 words short. |
+| `func_800219E8` | 99 | 60 differ | head matches; removal loop swaps `i`/`p` register homes and carries one extra `nop`. |
+| `func_800212BC` | 101 | 28 differ, size exact | only the `e+8`/`s1+4` double-load block: game reloads, gcc CSEs. Branch displacements follow. |
+
+Zero conversions. The cluster did carry two real tells, both new:
+
+1. **The id parameter is `u32`.** `(a0 >> 16) & 0xFF` needs `srl`; with `s32` it is `sra`. And the middle byte
+   is spelled **mask-then-shift**: `(a0 & 0xFF00) >> 8` gives `andi`+`srl`, while `(a0 >> 8) & 0xFF` gives
+   `sra`+`andi` — same value, different instruction stream.
+2. **The bounds check appears twice, and the dead one is the tell.** The game's second test is an unreachable
+   `if (lo < 0) return 1;` after `if ((u32) lo >= (u32) v[1]) return 1;`. Dropping the dead test removes eight
+   words (the `bgez`, its delay-slot `-1`, the `j` and the delay-slot `1`); writing it puts the `-1` constant
+   in the branch delay slot exactly where the game has it. `lo` must be `s32` — with `u32` the front end folds
+   the dead test away.
+
+Also measured, and *not* convertible: the two smallest undrafted bodies, `func_80027538` (27w) and its shape
+twin `func_800262E8` (29w), are **scratchpad stack-swap trampolines** — they store `$sp` into `0x1F8003F8`,
+set `sp = 0x1F8003E4`, call the real body, then rebuild `$sp` from the saved word. Not expressible in plain C,
+and the enumerator does not filter them because they carry neither a GTE op nor a `Handwritten` marker. They
+should be added to the non-C exclusion set rather than drafted.
+
+**Harvest check, corrected.** The regenerated table's only `match` + `ready` row was `func_8004BF94`
+(`work/near-miss/func_8004BF94-match.c`, 0/52). It is *already merged* — PR #152 (`d2f8981`) landed the same
+body while this pass was running; the row read "ready" only because the local `origin/main` ref predated the
+fetch. The other `match` row, `func_80034B98`, is the known scan-blocked one (issue #101). So the pass ships
+nothing: **0 conversions from 4 attempted bodies**, and the table now stands at 444 unmatched / 195 drafted and
+measured with `func_8004BF94` counted as merged.
+
+Closest live bodies after the refresh (`within five words`): `func_80034B98` 0/16 (blocked), `func_8004BF94`
+0/52 (merged), `func_800382C0` 1/12, `func_80055820` 1/34, `func_8002BCB0` 2/17, `func_8002FE80` 2/24,
+`func_8002C9B8` 2/36, `func_80056C90` 2/36, `func_80056FF4` 2/39, `func_8003BF7C` 2/79, `func_80042E9C` 2/58,
+`func_8002050C` 4/25, `func_80035C14` 4/34, `func_80057090` 5/92.
+
+**`func_800382C0` re-tested (1/12).** Three more spellings of the one commuted `addu`: `t = t + a0`, assigning
+the sum back into the parameter, and pulling the shift into its own local (`d = (a0 + 4) >> 7; t = a0 + d;`).
+All still emit `addu $v0,$v0,$a0` where the game has `addu $v0,$a0,$v0`, and every "single expression" form
+(`t = a0 + ((a0 + 4) >> 7) + 0x205;`) costs a word by hoisting the `lui/ori 0x1E000` constant early. That is
+gcc's commutative-operand canonicalisation, not a source shape: the destination and the shifted temp are the
+same pseudo, so the operand order is the compiler's. Park stays, class named.
+
+## `func_800212BC` second look; scratchpad class closed in the enumerator (pass 31)
+
+**`func_800212BC` (101w, parked 28/101, size exact).** The block the last pass blamed on CSE is real: with the
+plain transcription gcc emits one `lhu $v0,0x8(a0)` and reuses it for both stores (`sh $v0,0x10(a0)` then
+`sh $v0,0x20(a0)`), where the game reloads `0x8($a0)` between them. Forcing the load through `volatile` does
+produce the second load, but takes the body *backwards*: `volatile` on the second read measures 50/101
+(0x198 vs 0x194) and on the first read 47/101 (0x198) — both schedule the two loads *adjacent* (`lhu/lhu`
+before either `sh`) where the game's second load sits after the first store, and both carry one extra word: a
+`nop` in the `beqz` delay slot of the removal loop, a slot the game fills with `addu $a0,$a1,$zero`. So the
+reload and the interleave are one decision in this compiler: breaking the CSE buys the load, loses the
+interleave *and* adds a word. The plain shape stays best and is kept as `work/best/func_800212BC.c`; the two
+volatile shapes are kept beside it (`-read1-volatile.c` 47/101, `-read2-volatile.c` 50/101) as the measurement
+that closes the question. Remaining residue: that block's schedule plus the `v0`/`v1` home rotation it causes,
+then every branch displacement behind it.
+
+**Scratchpad stack-swap class: four bodies, now excluded.** Last pass recorded two (`func_80027538`,
+`func_800262E8`). The class is four: `func_80023B1C`, `func_800262E8`, `func_80027538`, `func_8003B068` — each
+materialises the scratchpad page (`0x1F8003FC`, or `D_8008A2B4` for `func_80023B1C`), saves `$sp` at `+0x10`,
+does `addu $sp, $t0, $zero`, runs the real body on the scratchpad stack and rebuilds it with
+`lw $sp, 0x10($sp)`. gcc never assigns `$sp` in a body, so none of them is writable in plain C.
+`work/enumerate.py` now filters them by `SP_SWAP` (`*/ addu|lw|or $sp,`), which takes the queue from 398 to
+394 bodies; `func_8003B068` is the large one (0x364) and was still being offered as work.
+
+**Table hygiene (correction, same pass).** The first regeneration ran while a scratch copy of the
+`func_800212BC` draft sat in `src/funcs/` for measurement, and every corpus check trusted any file present
+there: `verify.py` read the body as already merged, pruned its row as stale and wrote the summary as 194
+drafted / 71 prunable. The merged set now has one owner — `work/drafts.py:merged_bodies()`, which reads
+`git ls-files src/funcs/` plus the `origin/main` tree and never an untracked copy — and `verify.py` and
+`enumerate.py` import it. Regenerated on the clean tree the table reads 443 unmatched, **195 drafted and
+measured** with the `func_800212BC` row back at 28/101 register-role, and 70 prunable; the queue is 398 clean
+bodies before the `SP_SWAP` filter and 394 after, so the exclusion's 398→394 claim holds. The remote half of
+the union is carrying weight too: `func_8004BF94` merged on main as #152 after this branch's last merge, and
+a working-tree-only check would offer it as fresh ground again.
+
+## Near-miss sweep: one conversion, three classes measured (pass 32)
+
+**`func_8002C9B8` converted (36w, was 2/36) — the in-place-update tell.** The two words were the inner walk's
+byte counter: the game loads it straight into the counter register and decrements it there
+(`lhu $v1,-2($a2)` / `addiu $v1,$v1,-1`), while the draft's `for (b = *(u16 *)(q + 2) - 1; b != -1; b--)`
+makes gcc load into a fresh temp and subtract into a second pseudo (`lhu $v0` / `addiu $v1,$v0,-1`). Loading
+the field into the variable and decrementing it as its own statement —
+
+    b = *(u16 *)(q + 2);
+    b--;
+
+— reuses the load's register and matches exactly. This is the general form of the rule: when the game
+**modifies the value it just loaded**, the C has to load into that variable and then update the variable, not
+fold the update into the load expression. Shipped as PR #157 with `scan.py` 644 files 0 problems,
+`gate.py` 644/644, `build.py` SLUS_009.35 OK (16829afb, objdiff 100%).
+
+**The single-register `lui`+`%lo` class is colouring, not spelling (three bodies).** `func_80056C90` (2/36),
+`func_80056FF4` (2/39) and `func_8003BF7C` (2/79) each differ only in which register holds the `%hi` half of an
+absolute global address: the game uses one register for both halves and folds `%lo` into the following load
+(`lui $a0,%hi` / `lw $a0,%lo($a0)`), ours materialises the address in a temp (`lui $v0` / `lw $a0,%lo($v0)`).
+Measured, not assumed:
+
+| shape | 80056C90 | 80056FF4 | 8003BF7C |
+|---|---|---|---|
+| current draft | 2/36 | 2/39 | 2/79 |
+| `-mno-split-addresses` | 31/36 | 22/39 | 78/79 |
+| cast-deref `*(u32 *)D` instead of `D[0]` | 2/36 | 5/39 (adds a word) | 2/79 |
+| pointer local `u32 *q = (u32 *)D; *q` | — | — | 2/79 |
+| `((u32 *)D)[0]` | — | — | 2/79 |
+
+A synthetic file (`work/scratch/reg-choice.c`) shows this compiler materialises a symbol address into `$2` for
+every one of those spellings on a bare body (`k1`..`k4`, plus `extern u8 A[0x40]`, `extern u8 B[]`,
+`extern u32 C[8]`). The game's single-register form is gcc reusing one colour for the high temp and the load's
+destination because their live ranges do not overlap — an allocator outcome, not something the source can ask
+for. `-mno-split-addresses` is far too broad (it changes every other address in the body). All three parks stay
+with the residue named "hi-temp colouring".
+
+**A branch-only load is `$v0` in this compiler (two bodies).** `func_8002BCB0` (2/17) and `func_80042E9C`
+(2/58) differ only in the home of a value used by one `beqz`/`beq`: the game keeps it in `$a1`, ours in `$v0`.
+Five synthetic spellings of the same test (`h1`..`h5`: direct field, named local, `s32` return with `return 0`,
+negated condition, `if (f)` block form) **all** emit `lhu $2,36($4)`, and giving `func_8002BCB0` a `s32` return
+type with bare `return;` still emits `lhu $v0`. For `func_80042E9C` the cause is visible in the delay slot: the
+game materialises `lui $v0,0x2710` *in the `beqz` slot*, which occupies `$v0` at the following load and pushes
+it to `$a1`; ours materialises the constant after the branch. That is the scheduler, not the source — the
+named-constant variant (`s32 r = 0x27100000;` before the loop) measures the same 2/58.
+
+**Two shapes that must not be repeated.** `func_8002050C` (4/25): giving the loop end a named local
+(`s32 end = -1;` used by the loop test) collapses the early exit and measures 17/25 with the body one word
+short (0x60 vs 0x64). `func_80035C14` (4/34): inlining the byte pair into one expression measures 28/34 and
+declaring the two loads in reverse order 8/34; the declared-locals order in `work/best/` is the best of the
+three. `func_8002FE80` (2/24): a named pointer local for the buffer measures the same 2/24 — the game's `$a1`
+there is the parameter register being reused after it dies, another colouring outcome.
+
+**Not chased.** `func_80055820` (1/34) is an unfilled `jal` delay slot in the game where ours fills it, and
+`func_800382C0` (1/12) has now had seven spellings across two passes for its commuted `addu`; both are the
+compiler's decision and are parked with the class named.
+
+## Family-first pass on the `func_80020C34` callers (pass 33)
+
+**Family chosen.** `work/cluster.py`'s callee-set view (now reading `drafts.merged_bodies()` for the
+matched set and `drafts.by_body()` for drafts, so a scratch file in `src/funcs` and a `work/shapes/`
+batch both count correctly) reports one family with a merged template and unopened members that is worth
+working: nine bodies that all call `func_80020C34` with three out-parameters on the stack —
+
+    80020D74 (39) 80020E10 (139, unopened) 800212BC (101, merged template) 80021894 (85)
+    800219E8 (99) 80021B74 (114, unopened) 8002103C (160) 80021450 (127) 8002164C (146)
+
+and the three largest additionally call `80020D74`. The template is the merged `func_800212BC`: mask the
+packed id into `(hi, mid)` for the call, index a 0x30-byte record off `v[0]`, patch fields, drop the id
+from `D_8009C6D4` (copy-down, counter decremented), append to `D_8009C0A4`.
+
+**`func_80020D74` 22/39 → 4/39, size exact.** The draft was missing the whole loop-bound shape, not a
+register. Four source facts, measured one at a time:
+
+| shape | words |
+|---|---|
+| starting draft (`r = ((s32) a0 << 16) | ...`, `while (i < v[1])`, s32 counters) | 22/39, 0x98 |
+| guard tests `v[1]` directly, then `n = (u32) v[1]` after it (forces the `addu $a1,$v0,$zero` copy) | 22/39, 0x98 |
+| `i = 0` before `n = v[1]`, `p` assigned last | 6/39, size exact |
+| same, with `i` declared before `n` (`i = 0; n = (u32) v[1]; p = v[0];`) | **4/39, size exact** |
+
+The `i`/`p` ordering is what produces the game's hazard `nop` at the loop head: the `lw $a0,0x18($sp)` is
+immediately followed by `lbu ...($a0)`, and the game fills that load delay with the `nop` instead of
+scheduling `addu $v1,$zero,$zero` into it. Remaining residue: the game computes the packed return
+(`or $s1,$s1,$s0`) *before* the `lw` of the count and leaves `i = 0` in the `beqz` delay slot; our
+scheduler sinks the `or` into that slot and swaps the two copies. `-fno-schedule-insns` 11/39,
+`-fno-schedule-insns2` 17/39 — worse, so this is the scheduler class, not a source shape. Parked at 4/39
+with the class named.
+
+**`func_80021B74` first transcription 93/114 → 83/114.** Written straight off the family template; the
+first draft hoisted the record pointer out of the loop because it used a fixed `idx`. The loop's `arg0`
+changes at the bottom (`arg0 = rec->f2C`), so the game rebuilds `andi/sll/addu/sll/addu` every iteration —
+writing `rec = (Rec *) ((arg0 & 0xFF) * 0x30 + sp18);` inline inside the loop cut the size gap from 6
+words to 4 and took the body to 83/114. The `D_8009C6D4` copy-down loop and the `D_8009C0A4` append are
+byte-for-byte the merged `func_800212BC` code, which is the family payoff: no guessing on that block.
+Residue: the game rematerialises the record address before the `next` load (`andi/sll/addu/sll/addu/lw`)
+where our CSE reuses the body's pointer — four words, allocation; plus the `$a1`/`$a2` parameter pair
+mapping to `$s2`/`$s1` instead of `$s1`/`$s2`, and the last two field stores interleaving differently.
+
+**Pass verdict.** 3 bodies attempted (one re-drafted from 22/39, one opened from nothing, one family
+census), **0 conversions**. The family template is real — the call block, the record patch and the
+`D_8009C6D4`/`D_8009C0A4` block transfer verbatim — but its smallest member is scheduler-bound at four
+words, so the siblings should be attempted next with `80020D74` as the C skeleton rather than with
+`800212BC`.
+
+**`func_8002028C` (67w, unopened, the smallest body left in the queue).** Straight transcription off the
+listing (u16 string length from `strlen`, u16 char index, nested scan of a 0x10-byte table for the first
+entry whose byte 0 matches, `total += 1 + width * n` on a hit) measures **56/67, size 0xfc vs 0x10c**. The
+shape is understood — the outer test `i < len` and the inner `j < count` both use `andi`-masked u16
+counters with `sltu`, and the game hoists `0 < t->count` into a flag before the outer loop — but two
+structural details are still wrong: the game tests the inner bound through the hoisted flag (`beqz $t4`)
+rather than re-loading `count`, and it carries the matched index in a second variable that survives the
+break. Parked as a first draft, not a near miss.
+
+## Closing the two near-miss bodies: one to 4/39, one to 6/114 (pass 34)
+
+**`func_80020D74` is scheduler-bound, and the synthetic says so.** The remaining four words are the
+placement of the packed return: the game builds it (`or $s1,$s1,$s0`) *before* the `lw` of the count and
+leaves `addu $v1,$zero,$zero` (`i = 0`) in the `beqz` delay slot; our compile sinks the `or` into that slot
+and the two copies swap behind it. `work/scratch/sched-or.c` mirrors the block exactly (masked params, the
+6-argument helper with three stack out-params, the packed value, the count test, the do-while) in four
+spellings — `(a0 << 16) | (a1 << 8)`, split `hi`/`lo` locals, a nested block scope, and `+` instead of `|`.
+Every one emits `sll, sll, lw, nop, beq, or` (the `or` in the delay slot); none emits the game's
+`sll, sll, or, lw, nop, beq`. Per-file scheduling flags do not reach it either: `-fno-schedule-insns`
+11/39, `-fno-schedule-insns2` 17/39, `-O1`/`-O0` worse. So the class is closed: **delay-slot filling**, not
+a source shape. The body stays parked at 4/39, size exact.
+
+**`func_80021B74` 83/114 → 6/114, two source facts.** The four-word size gap was the record address: the
+game rematerialises `(arg0 & 0xFF) * 0x30 + v[0]` before the `next` load (`andi, sll, addu, sll, addu, lw`)
+where our C reused the loop's `rec` pointer. Writing the tail as the expression itself —
+
+    arg0 = ((Rec_80021B74 *) ((arg0 & 0xFF) * 0x30 + sp18))->next;
+
+— forces the same recomputation and closes the size gap (0x1b8 → 0x1c8). Then the eight field adds were
+using the wrong saved registers: with `s16` deltas the `$a1`/`$a2` pair mapped to `$s2`/`$s1`, and declaring
+them `s32` (which the listing's bare `addu` already implies — no sign-extension) fixed the mapping and took
+the diff from 17 words to **6**.
+
+What is left is *only* the prologue save order:
+
+| | slot | order |
+|---|---|---|
+| game | 0x2C, 0x30, 0x28 | `$s1`, `$s2`, `$s0` (`$a1`, `$a2`, `$a0`) |
+| ours | 0x28, 0x2C, 0x30 | `$s0`, `$s1`, `$s2` |
+
+All 114 other words match. Shapes tried and rejected: explicit `dx`/`dy` copies (17), `u32` deltas (6),
+`s32` first parameter (7), the call's first two arguments precomputed in a block (6), `u32 idx` (101), the
+guard inlined without the `idx` local (6), `-fno-schedule-insns` (101), `-fno-schedule-insns2` (54),
+`-O1` (125), `-O0` (223). The save order is `assign_parms`' emission order after `sched1`, so this is the
+**scheduler/allocation** class too — one rotation, no source lever found in nine spellings.
+
+**Skeleton for the siblings.** `work/near-miss/func_80021B74-6of114.c` now carries the full shape: the
+6-argument `func_80020C34` call with `sp18/sp1C/sp20`, the guard pair (`(u32) idx >= v[1]`, `idx < 0`), the
+record patch at `0x8/0xA/0x10/0x12/0x18/0x1A/0x20/0x22`, the `D_8009C6D4` copy-down and the `D_8009C0A4`
+append copied from the merged `func_800212BC`, and the `arg0 = rec->next` walk. `func_80020E10` (139),
+`func_80021450` (127) and `func_8002164C` (146) share this block; derive from this file, not from
+`func_800212BC`.
+
+**Pass count: 0 conversions.** Two bodies closed to 4/39 and 6/114 with their classes proven, no unit
+shipped.
+
+## Siblings off the `func_80021B74` skeleton (pass 33): the template carries, the homes do not
+
+The pass stopped pushing the parent's prologue and derived its remaining members from
+`work/near-miss/func_80021B74-6of114.c` (kept, unchanged: 6/114, only the save-order rotation left).
+The shared block — the six-argument `func_80020C34` call with `sp18/sp1C/sp20`, the record patch, the
+`D_8009C6D4` removal loop and the `D_8009C0A4` append — transferred into both siblings without a single
+wording change, so the skeleton is the right carrier. What did not transfer is the save strategy, and
+it is the same wall in every member:
+
+**`func_80021450` (127 words) — 127/127, frame `0x1d8` vs `0x1fc`.** The whole body is one block: no
+instruction is out of order, the frame is nine words short and those nine words are exactly the saved
+set. The game loads all five incoming stack parameters into callee-saved registers at entry
+(`lw $s4,0x64` … `lw $s7,0x70`, plus `$a1/$a2/$a3` into `$s1/$s2/$fp`) and keeps `$s0-$s7 + $fp`; ours
+spills the five incoming slots to its own frame at entry (`sw $a1,0x30` …) and reloads them after each
+call, so it needs `$s0-$s4` only. Three spellings: plain parameters *after* the calls (127/127), the
+four stack parameters copied into locals at the top (`p5..p8`, 127/127), and all eight copied at the top
+(127/127). The allocation is decided in `global_alloc`, not in the statements — the same conclusion the
+parent's prologue reached from the other side.
+
+**`func_80020E10` (139 words) — 93/139 at best, size `0x234` vs `0x22c`.** Its own listing is a
+different body, not a copy of the parent: `if (arg1)` wraps a six-case jump table on `rec->f28`
+(`jtbl_80010244`, read from the table: 0→tail, 1→tail, 2→`f3=9,f7=0x2C`, 3→`f3=5,f7=0x28`,
+4→`f3=8,f7=0x38`, 5→tail, with 3 and 4 sharing a `f7` store and the `f29` flag test) and the `arg1 == 0`
+arm stores `f3 = 0` after the switch, not before it. Five shapes: `rec` local for the switch (136/139,
+`0x1a4` — the local kills the case-body rematerialisation the game does), the expression recomputed per
+statement (120/139, `0x234`), the same with the `if (arg1)` arm inverted so the zero case sits last (93/139),
+`rec` local per arm (104/139), and the expr form with the shared `f7` tail. The game recomputes
+`(id & 0xFF) * 0x30 + sp18` at the head of every case and reloads `sp18` between the two stores of a
+case; no spelling reproduces that and the case-body block layout at the same time in this compiler.
+
+**Zero conversions from two siblings**: the family's remaining residue is saved-register placement, so
+drafting `func_8002164C` (146) from the same skeleton would meet the same wall; it stays queued.
+
+## Two non-C classes the enumerator was still listing (queue 387 → 383)
+
+Found by starting at the top of the corrected list: `func_80045828` (4 words) and `func_80045838`
+(5 words), the two smallest bodies left, are a **gp-reload trampoline pair** — `lui $gp,0x8009` /
+`lw $gp,-0x4C68($gp)` / `jr $ra`, and its twin `sw $gp,D_8008B398` / `addu $v0,$sp,$zero` /
+`jr $ra`. gcc never assigns `$gp` or returns `$sp` in a body, so neither can be C.
+
+The next two on the list, `func_80032E94` (40) and `func_80033268` (49), are the **`$ra`-in-`$t7`**
+class: no frame at all, `addu $t7,$ra,$zero` before each `jal` and `addu $ra,$t7,$zero` before the
+`jr`; `func_80032E94` additionally keeps the return address in `D_80032C20` (`sw $ra,%lo(...)` at
+entry). The natural `long long` sum-of-squares transcription of `func_80032E94` compiles to a frame
+with `sw $ra,0x18($sp)` and the multiply/carry chain in the right order (4 words right out of 40) — the
+sequence is C, the return-address home is not: gcc always spills `$ra` to the frame, so these are
+hand-written.
+
+Both classes are now in `work/enumerate.py` (`GP_SWAP`, `RA_T7`), which drops the queue from 387 to
+**383 bodies, smallest 71 words** — the queue no longer advertises four bodies that cannot be written.
+
+## `func_80034B98` (the proven match the scanner refuses): no non-protected spelling exists
+
+Checked rather than assumed. The body needs `D_8008B0F4 = 0x801FC000` as a literal: the game emits
+`lui $v0,0x801F` + `ori $v0,0xC000`, and only a *value* produces `ori` — an address expression
+(`extern u8 D_801FC000[]; ... = (u32)D_801FC000;`) goes through `%hi`/`%lo` and emits `lui` + `addiu`,
+three words off, which is why that spelling passes `scan.py` but does not match. There is no symbol for
+`0x801FC000` in `config/` (`grep` over `*.csv`, `*.h`, `src/`), and `tools/scan.py` rejects any
+`0x80010000..0x801FFFFF` literal in a unit file, `include/` is protected outside `include/game/`, and a
+macro in `include/game/` would only move the same literal into a header — an evasion of the rule, not a
+symbol. **Hand-off, for the maintainer:** allow a scan exemption for an address literal that is only
+ever *stored as data* (never dereferenced), or accept that `func_80034B98` stays unmatched. No config
+symbol fixes it.
+
+## The parent landed: `func_80021B74` MATCH (114 words), and the tell is a copy at the top
+
+The skeleton was six words out on the prologue save order (`$s1,$s2,$s0` against our `$s0,$s1,$s2`)
+for four passes. The lever is one statement:
+
+    u32 id = arg0;          /* then use `id` everywhere, including the walk */
+
+Copying the walked id into a fresh local keeps `$a0`'s pseudo dead after the copy, so the value the
+function actually walks is a *later* pseudo and `assign_parms`/`global_alloc` emit its save last. Body
+and frame were already exact; with the copy it is byte-exact. 0 → **MATCH**, shipped as PR #159
+(`src/funcs/func_80021B74.c`) from fresh `origin/main`, gate 646/646, build sha1
+`16829afba66533e2645bf87af2774671b06ff36b`, objdiff 100%.
+
+**Banked tell: when a body is exact except for the order of its prologue saves, copy the parameter or
+call result that the game saves last into a fresh local at the top and use that local throughout.**
+
+Retested on the other two members of the family with the same move: `func_80021450` stays 127/127
+(its residue is the *count* of saves, not their order — the incoming stack parameters), and
+`func_80020E10` goes 93 → 97 of 139, so the copy is not a general fix, only a save-order one.
+
+**`func_8003453C` retested (42/70, one word long).** The `$s2`/`$s3` swap is real and the copies drive
+it: `char *d = dst; p = d;` measures 41/70 and mirrors the roles (`$s3` gets `shift`), while an explicit
+`p = dst;` statement measures 42/70 unchanged. Register choice follows the copy order, but no obvious
+pairing puts `dst` in `$s3` and `shift` in `$s2`; three shapes spent, parked with the swap named.
+
+## The copy lever swept across the parked corpus (pass 34): 36 bodies, two moves, no conversions
+
+The lever from `func_80021B74` (`T v = p;` at entry, then use `v` throughout, so the parameter's
+pseudo dies and the copy's live range is the one the allocator colours) was applied mechanically to
+every parked body whose recorded class is `register-role` or `operand`, plus the `save-order` residue
+of `func_8003453C`. The probe is `work/scratch/lever.py`: it parses the signature, emits one variant
+per parameter (skipping only `&p`), and runs `tools/match.py` on each.
+
+**The mechanism is narrower than the win suggested: gcc copy-propagates the copy away.** For
+`func_80029488` the base and the `copy self` variant compile to *identical* assembly (`tools/cc.py
+--print-asm`, `diff` prints nothing), and 34 of the 36 bodies measure the same word count under every
+variant. The copy only survives when the value's live range actually changes — it crosses a call
+(`func_80021B74`, whose `id` is live across both calls and the loop) or is reassigned inside a loop.
+A read-only parameter used in one block is coalesced back into its own pseudo, and the variant is a
+no-op by construction.
+
+**Two bodies moved, neither to a match:**
+
+| Body | Base | Best variant | Residue after the copy |
+|---|---|---|---|
+| `func_8001C2F0` (49) | 26/49 | **20/49** (`a2` copied) | the game saves `$s1` *after* the loop's `blez` pre-check; ours saves it first, and the `a2+i` arm should fall through to the call instead of the `0xFFFF` arm. Pairs `a1+a2` measure the same 20; `a1` alone 22, `a3` 26. |
+| `func_8004669C` (104) | 37/104 | **28/104** (`a3` copied) | nine words better, still 28 out; parked unchanged otherwise. |
+
+Unchanged under every variant (36 bodies probed: `800382C0`, `8002BCB0`, `8002FE80`, `8003BF7C`,
+`80042E9C`, `80056C90`, `80056FF4`, `80035C14`, `8003BDB8`, `80043294`, `8002BA64`, `80034758`,
+`80011B48`, `80032FF4`, `80033818`, `80032644`, `8003C220`, `80056D20`, `80047A44`, `80029488`,
+`8004F1E0`, `80032CF4`, `8002C3C0`, `800159D8`, `80033E14`, `80021894`, `800484B4`, `80048598`,
+`80058448`, `8002AD6C`, `8002A0F8`, `8002C8B8`, `8002FEE0`, `8001CE98`), including every body whose
+class is already recorded as closed (`lui`+`%lo` colouring, the commuted `addu`, the branch-only load).
+
+**`func_80032644` (63w) was re-derived from the listing and is not a copy problem.** The game keeps
+`$s3 = a1`, `$s0 = a2`, `$s2 = a3`, `$s1 = a4`; ours swaps `$s2`/`$s3`. Copies of `a1` (before and
+after the first call) and of `out2` all measure 12/63 — the same colouring class as `func_8003453C`,
+where `char *d = dst; p = d;` reaches 41/70 and mirrors the roles without matching.
+
+**Conversions: 0 from 36 bodies probed.** The queue is unchanged except for the two improved parks;
+the lever's population is bodies with a loop-carried value crossing a call, and `func_80021B74` was
+the only one in the corpus.
+
+**Merge confirmed during the sweep.** PR #159 landed (`976cb77` on `origin/main`): 646 unit files, and
+the queue is now **382 bodies**. `func_80021B74` is the pass-33 conversion; this pass's own sweep added
+none, so the lane's shipped total is unchanged by it and the record above stands at 0 new units from 36
+bodies probed.
+
+## Allocation priority, tested synthetically (pass 35): the saved register follows pseudo order, not priority
+
+The copy lever is a liveness lever; this pass tested the other axis — does *allocation priority* decide
+which of two call-crossing values wins the earlier saved register? Nine synthetic functions through
+`tools/cc.py --print-asm` (`work/scratch/alloc_order.c` → `.s`, `work/scratch/alloc_prio.c` → `.s`):
+
+| Variant | Result |
+|---|---|
+| two call-crossing parameters, used in declaration order | `$a0 → $s0`, `$a1 → $s2`, `$a2 → $s1` |
+| `q` copied into a local at entry, local used throughout | identical mapping |
+| `p` copied into a local at entry, local used throughout | identical mapping |
+| local created *after* the guard (`rc = r;`) | identical mapping |
+| `register int *qr = q;` (storage class) | identical mapping; **assembly byte-identical** (diff 0 lines) |
+| first value stored 5×, second 1× across the call | `$a0 → $s0`, `$a1 → $s1` (unchanged) |
+| counts swapped between the two | same mapping, still in parameter order |
+
+So in this toolchain the assignment is parameter/pseudo order, and neither the storage class, the
+declaration order, a copy at entry, nor a 6:1 reference-count asymmetry moves it. That is the mechanism
+behind the swapped pairs: to flip one, the source would have to make the *later* parameter's pseudo
+older, and the only copies that survive to do that are the liveness-changing ones — which also change
+the code. **The colouring class is compiler-bound for source purposes; the path is closed.**
+
+**Two target bodies retested on this axis, both unchanged.** `func_80032644` (63w, `$s2`/`$s3`
+swapped): `register` on `a1` and on `out2`, a copy of `a1` before the first call, a copy of `a1` after
+it, and a copy of `out2` before/after it — every one measures **12/63**, and the `register` variants
+are byte-identical to the base. `func_8003453C` (70w, same pair): `register dst`, `register shift`,
+`p = dst;` as a statement, `char *d = dst; p = d;` — best stays **41/70**, one word long.
+
+**Fresh re-derivation of `func_8002050C` (25w, 4/25) on the allocation axis.** The listing is a
+16-byte reverse record scan whose sentinel `-1` is materialised once in `$v0` and *copied* to `$a3`
+(`addu $a3,$v0,$zero`), ours materialises it twice (`addiu $a3,$zero,-1`). Four shapes: a named
+`end = -1` local before the loop (17/25, `0x60` — one word short, the constant goes straight into
+`$a3`), the same with `end` declared first (17/25), `return i & 0xFF` / `return (u8) i` (4/25, moves
+the `andi` to the epilogue instead of the branch delay slot), and the add order swapped
+(`i * 16 + arr`) to get `addu $v1,$v0,$v1` (no change — the compiler canonicalises commutative
+operands). Best stays 4/25; parked in the `move-vs-materialise` class.
+
+**Conversions: 0 from 3 bodies attempted (2 retests + 1 fresh re-derivation), 13 shapes measured.**
+Queue unchanged at 382 bodies.
+
+## Template-similarity probe (pass 36): `work/similar.py`, and four pairs measured
+
+The probe scores every unmatched listing against the merged units by instruction-sequence similarity
+with immediates, displacements and branch targets normalised away (`mnemonic` plus a `+sp`/`+gp`
+marker only, so constant churn does not matter). Merged sequences come from the compiled objects the
+gate cache already holds (`build/match/<unit>.o`, disassembled with the pinned `objdump`), unmatched
+ones from `asm/nonmatchings/game/`. Prefilter is mnemonic-bigram overlap, ranking is
+`difflib.SequenceMatcher`; a full run is ~4 s.
+
+Top of the table (`python work/similar.py`):
+
+| score | unmatched | len | merged twin | len |
+|---|---|---|---|---|
+| 0.759 | `func_80043294` | 17 | `func_80042300` | 12 |
+| 0.700 | `func_8001D804` | 23 | `func_800465CC` | 17 |
+| 0.645 | `func_8004584C` | 38 | `func_80039FF4` | 24 |
+| 0.600 | `func_80033818` | 13 | `func_800465CC` | 17 |
+| 0.588 | `func_8002DE18` | 18 | `func_800367F4` | 16 |
+| 0.579 | `func_8002DD88` | 22 | `func_800367F4` | 16 |
+| 0.571 | `func_80032FF4` | 14 | `func_80034D30` | 7 |
+
+**`func_80043294` / `func_80042300` (descending pointer fill) — ten shapes, best 6/17.** The twin
+supplies the loop exactly (`do { *o = p; o--; i--; p -= 0x3C0; } while (i >= 0);` plus the sentinel
+store). What remains is address materialisation and the two forms are mutually exclusive in this
+compiler: without `-mno-split-addresses` the `la` is emitted as `lui $v0,%hi` + `addiu $v1,$v0,%lo`
+(the game wants both in `$v1`), and with the flag the `la` is right but `p += 0x780` folds into
+`%lo(D_800AAB94+0x780)`, losing the game's separate `addiu`. Shapes tried: the twin verbatim, the
+struct-member store, `-mno-split-addresses` on five spellings, `u32` base variables, reversed add
+order, array-index stores, and a `(u32)` cast chain. Best stays `work/near-miss/func_80043294-g8.c`
+at 6/17 with the exact size.
+
+**`func_80033818` / `func_800465CC` — not an adaptation.** The twin is a 4-word struct copy; the body
+is a three-pair field permutation (4↔0xC, 8↔0x18, 0x14↔0x1C) unrolled into six loads and six stores.
+Same mnemonic shape, different semantics: parked without drafting.
+
+**`func_80032FF4` / `func_80034D30` — twin unrelated.** The body is a three-component vector add
+(`a[i] += b[i]`), and the twin is a bump-accounting helper. Three shapes on the body itself: field
+locals (12/13, unchanged), struct-by-value copies (costs a frame), sum-into-locals-then-store (still
+sinks the stores per field). The game keeps all six loads, then three adds, then three stores; gcc 2.8.1
+sinks each store to its field. Parked.
+
+**`func_8002DE18` (18 w) re-derived from its twin's shape — 0 of 18 words measured clean, 8 lines out.**
+A bump allocator: `p = D_8008B060; D_8008B060 = p + 0xC; p[0] = a0; p[1] = 0;
+p[2] = D_8006F834[a0->f3].f8;` — the whole body is in place and the only residue is that the game keeps
+a *copy* of the old pointer (`addu $a1,$v0,$zero`) where gcc reuses the load register, plus the
+`%lo` fold on the table base. Two shapes (struct-pointer and `u8 *` spellings).
+
+**Banked fact.** `lui $at, %hi(X); sb/sw %lo(X)($at)` — the direct symbolic store — is produced by an
+*incomplete-array* extern storing a constant (`extern u8 X[]; X[0] = 1;`, merged `func_80011BD4`).
+When the stored value is a register, gcc materialises the address in a temp instead, so the `$at`
+form is not reachable for a store of a computed pointer.
+
+**Conversions: 0 from 4 bodies attempted, 16 shapes measured.**
+
+## Pass 20 — address-materialisation sweep, 1 conversion
+
+Full detail in `work/address-sweep-oct27.md`. Headline: the incomplete-array extern (holding the
+symbol, stride taken from the emitted `sll` chain, field at its true struct offset) removed the
+`%lo(S+N)` fold and the `$at` round-trip on `func_8002DE18` in one step, and the body then needed its
+*last* word from a second, new lever: **advance the pointer in place and write through a named copy**
+
+```c
+Rec *cur = (Rec *) D_8008B060;
+Rec *old = cur;
+cur = (Rec *) ((u8 *) cur + 0xC);
+D_8008B060 = (u8 *) cur;
+old->f00 = (u32) p;
+```
+
+which forces the `addu $a1,$v0,$zero` copy the game keeps (writing it the obvious way makes gcc reuse
+the load register and the body comes out one word short, 0x44 vs 0x48). This is the inverse of the
+copy lever: there a copy killed a pseudo, here it keeps one alive so the allocator must split the load.
+
+`-mno-split-addresses` swept across all 187 parked drafts (`work/scratch/flag_sweep.py`): 22 improve,
+best 3 words, none under ten, none matching — the flag trades one address form for another and is not
+a converter. `work/scratch/at_scan.py` names the 132 drafts that still emit `$at`.
+
+Seven other bodies retested against the tell: `func_8001D804` 10/23, `func_8002FE80` 2/24,
+`func_8002DDE0` size 0x48 vs 0x38 (loop never rotated), `func_8002050C` 4/25, `func_8003B3CC` 11/19,
+`func_8003BDB8` 6/31. All residues are register choice or schedule — no address spelling left.
+
+**Conversions: 1 from 8 bodies attempted (PR #160, merged).**
+
+Retested `func_8002DD88` (22 w) against the same family: the ternary return (`return fn ? fn(self) : 0;`)
+took it from 17/22 (size 0x54) to **3/22**, and the three remaining words are one register — the
+parameter copy lands in `$a1` where the game keeps `$a2`. Parked as register-role, draft in
+`work/near-miss/func_8002DD88-ternary.c`.
+
+Note for the next pass: `asm/nonmatchings/game/*.s` exists for merged bodies too, so grepping asm for a
+symbol is not a queue. `func_8002DC70` was already merged (`8d6d408`); the enumerator is right, the grep
+was wrong.
+
+
+## Pass 21 — 13 retested, 0 converted; the residue is scratch-register choice
+
+The 1-6 word population was worked body by body with only the lever each residue suggested (incomplete
+array for symbol addresses, stride off the shift chain, advance-in-place copy, fresh-local copy). Full
+table in `work/address-sweep-oct27.md`. Every one of the 13 lands on the same thing: **which scratch
+register a value gets**, and no C spelling tested reaches it —
+
+- `func_800382C0` (1/12): `addu v0,$a0,$v0` vs `addu v0,$v0,$a0`; both C operand orders canonicalise
+  identically, so this one is not a spelling question at all.
+- `func_80056C90` / `func_80056FF4` / `func_8003BF7C` (2 words each): the `la` temp lands in `$v1`/`$v0`
+  where the game loads through the destination register. Incomplete-array forms fix the %lo *fold* but
+  not this; the flag makes them far worse (31/22/74).
+- `func_8002BCB0`, `func_8002FE80`, `func_8002DD88`, `func_80035C14`: one register apart each, including
+  with the short-circuit-guard and declaration-order variants.
+
+`func_80034B98`: the handoff in `work/handoff-80034B98.md` corrects an earlier wrong note. The match is
+real (16 words, `-mno-split-addresses`) but the encoding is `lui`+`ori` for a full 32-bit constant, and
+**the symbol the scanner wants produces different code** (`addiu $v0,$gp,%gp_rel` for a 1-byte object,
+`lui`/`addiu` for an array). So adding `D_801FC000` to `config/symbol_addrs.us.txt` would not unblock it;
+the decision is either a named constant for the address or accepting `(0x801F << 16) | 0xC000`, which
+matches and passes the scanner but is plainly spelled to dodge the literal rule. Not shipped.
+
+**Conversions: 0 from 9 attempts this pass** (13 bodies across the population) (1 from 9 last pass, PR #160).
+
+## Pass 22 — layout extractor built; batch of four scored, two drafted, 0 converted
+
+`work/layout.py` now reads a listing's operand pattern mechanically: frame and save order, every
+access with base/displacement/width, strides derived from the emitted `sll`/`addu`/`sll` chain, masks
+and constants in materialisation order, register copies, and how each symbol is reached
+(`direct-pair`, `symbolic-load`, `folded+0xN`, `$at`, `gp_rel`). It reproduces the `func_8002DE18`
+pattern that matched last pass, which is the regression test for it. `--scan` reports **100 unmerged,
+undrafted bodies that materialise a symbol as a direct pair**.
+
+Batch scored with `similar.py` (0.26-0.32, no template twins available), drafted in confidence order.
+`func_8004E330` (76 w) reached 54/76 with size `0x12c` vs `0x130`: layout read correctly (5th argument
+is a byte at `0x38($sp)`, table stride 2 then record stride `0x4C`), epilogue fixed to a single return,
+and the only residue is the counter store sitting in the `jal` delay slot where the game retires it
+first — the recorded scheduler class. `func_80057E9C` decoded in full (unsigned `/1000` magic, three
+`sprintf` paths, thresholds 1000 and 999999) but not drafted. `func_8001B238` owns rodata;
+`func_8003599C` is 137 words with the worst twin score of the batch.
+
+**Conversions: 0 from 2 drafted (4 in the batch).** Full detail in `work/layout-sweep-oct28.md`.
