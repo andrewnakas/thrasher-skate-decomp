@@ -37,3 +37,11 @@ Neither converted. Both are fresh ground now recorded, with the exact register t
 **Conversions 0, bodies attempted 2** this pass (two more reconciled as already merged). Pipeline:
 scan 687 files 0 problems, gate pass, build `SLUS_009.35: OK`, tree `f41520e5`, 687 local = 687
 upstream.
+
+## Where the fix lives
+
+`lane/select.py` is tracked on `main`, so the reconcile code is a worktree change here, not a shipped
+unit. It is committed to the records branch as `lane/select.py` alongside `work/attempts.tsv` so it
+cannot be lost if the worktree is reset; landing it on `main` is a maintainer call, since this lane's
+PRs are unit-file-only. Until then, any pass that runs `select.py sync` from this checkout gets the
+reconcile; a pass from a fresh clone gets the refusal but not the published table.
