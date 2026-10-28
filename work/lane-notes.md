@@ -1348,4 +1348,4 @@ real (16 words, `-mno-split-addresses`) but the encoding is `lui`+`ori` for a fu
 the decision is either a named constant for the address or accepting `(0x801F << 16) | 0xC000`, which
 matches and passes the scanner but is plainly spelled to dodge the literal rule. Not shipped.
 
-**Conversions: 0 from 13 attempts** (1 from 9 last pass, PR #160).
+**Conversions: 0 from 9 attempts this pass** (13 bodies across the population) (1 from 9 last pass, PR #160).

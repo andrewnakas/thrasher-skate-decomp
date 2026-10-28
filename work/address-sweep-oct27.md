@@ -131,7 +131,10 @@ fetched `origin/main` (`7f30e1c`) before the first shape and the list re-checked
 | `func_8003BDB8` | 31 | 6 | 6 | constant hoist, chained stores, shifted literal | `0xFFFF0000` hoisted in the game, sunk by us |
 | `func_8002DDE0` | 21 | 0x48 | 0x44 with `goto` | explicit `goto test` rotation | gcc still emits the entry test; the game's build rotated the loop |
 
-**0 converted from 13 retested.** The three `la`-temp bodies (`80056C90`, `80056FF4`, `8003BF7C`) are
+**0 converted. Nine bodies were retested this pass** (`800382C0`, `8002BCB0`, `80056C90`,
+`80056FF4`, `8003BF7C`, `8002050C`, `80035C14`, `8002DDE0`, `80034B98`); the four remaining rows are
+last pass's measurements, re-checked against the current toolchain and unchanged. `80020D74` and
+`80055820` were skipped on purpose: both are recorded scheduler-class on issue #17. The three `la`-temp bodies (`80056C90`, `80056FF4`, `8003BF7C`) are
 the clearest result of the pass: identical residue in three unrelated functions — `lui $v0,%hi(S)` then
 `lw $a0,%lo($v0)`, where the game reuses the destination register for the address
 (`lui $a0,%hi(S)` / `lw $a0,%lo($a0)`). The incomplete-array spellings that fix the *fold* do not move
