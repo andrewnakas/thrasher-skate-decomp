@@ -25,7 +25,7 @@ void func_80026478(u8 *base, s32 i1, s32 i2, u8 *src, u8 *out) {
     u8 *p2;
 
     func_800337C4(out);
-    func_80026DAC(&base[i1 * 140 + 0x48], &base[i2 * 140 + 0x48], out + 0xC);
+    func_80026DAC((u8 *) (i1 * 140 + (s32) base) + 0x48, (u8 *) (i2 * 140 + (s32) base) + 0x48, out + 0xC);
     func_800330A4(out + 0xC);
 
     r1 = func_8003353C(src, out + 0xC);
