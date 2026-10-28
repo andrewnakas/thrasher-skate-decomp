@@ -85,3 +85,48 @@ Drafts kept: `work/best-294FC-v3.c` (+ the for-init move), `work/best-8001B238-v
    that makes the shared tail a `bne` + two constant loads rather than `xor`/`sltu`.
 2. Apply the two new levers on the next band members *during* the first transcription: for-init walking
    pointers, and store-before-call for any parameter that reaches memory.
+
+---
+
+# Second half — the finishing pass
+
+## func_8001B238: 47 -> 45, size 0x174 -> 0x170 (2 words over). Parked.
+
+Shapes measured this pass, all with the rodata section spelling in place:
+
+| shape | result |
+|---|---|
+| guard operand swap (`D_8008A088 == mode`) | 47 / 0x174 |
+| case-1 body wrapped in `if (mode != …)` | 66 / 0x174 |
+| tail `if (have == want) return 0; return 1;` | 47 / 0x174 |
+| tail `return have == want ? 0 : 1;` | 47 / 0x174 |
+| tail `switch (have != want)` / `switch (have == want)` | 47 / 0x174 |
+| tail arms assigning a local, single return | 47 / 0x174 |
+| `have`/`want` as `u32 *`, pointer compare | 45 / 0x170 (same as best) |
+| **both guards `goto ret0`, label before the tail's `return 0`** | **45 / 0x170, best** |
+| `-fno-schedule-insns2` | 52 / 0x170 |
+| `-fno-schedule-insns` | 69 / 0x16c (1 word over, everything else wrecked) |
+| `-fno-strength-reduce` | 45 / 0x170 (no change) |
+
+**Lever found here: guards that return the same constant belong on a shared `goto` label.**
+Writing both early exits as `goto ret0;` with `ret0:` on the tail's `return 0;` is what turned the case-1
+guard from `bne` + `nop` + `j` + `addu` (6 words) into `beq $v0,$a3` with the zero in its delay slot
+(4 words), and took the body 0x174 -> 0x170.
+
+**Residue, exact (2 words):** the tail's `return 1` constant is pulled into *each* incoming jump's delay slot
+(`j …` / `addiu $v0,$zero,1` at 0x1B30C in case 0), which pushes that case's `addiu $v0,$v0,%lo(D_800B9390)`
+into the stream. The game has the address `addiu` in the jump's delay slot and materialises the `1` once, in
+the tail's `bne` delay slot (0x1B388). Our `bne` delay slot holds a `nop`. That is `reorg`'s delay-slot fill
+choice, the same class as the record's existing "a `jal` slot filled where the game leaves `nop`" note.
+
+## func_8002AEF4: MATCH, first transcription — PR #184
+
+91-word band member, seven calls, frame 0x38 with `ra` + `s0` (s0 = the single argument). Prologue-first, then
+the whole body off the listing: two early returns, three `(s32)(s16)` halfword-shifted stack words built
+before the first call, a three-word copy for the second, three `andi`-guarded flag writes through a pointer
+returned by a call, and a final guarded call. It matched as written — no shape iteration.
+
+Verified: `scan: 668 files, 0 problems`; `gate: 668/668, GATE PASS`; `build: SLUS_009.35: OK
+(16829afba66533e2645bf87af2774671b06ff36b)`, objdiff reports every unit file a 100% match.
+
+Queue after #184 lands: **668 merged / 414 unmatched** of 1082 (this lane 223 of 590).
