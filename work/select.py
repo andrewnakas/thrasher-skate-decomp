@@ -131,7 +131,14 @@ def cmd_draft(a):
     dest = ROOT / UNITS / f"{name}.c"
     if dest.exists():
         sys.exit(f"select: REFUSED {name}: {dest.relative_to(ROOT)} already exists, not overwriting")
-    dest.write_text(Path(a.src).read_text())
+    src = Path(a.src)
+    if not src.is_file():
+        sys.exit(f"select: REFUSED {name}: draft source {src} does not exist — nothing written")
+    try:
+        body = src.read_text()
+    except OSError as e:
+        sys.exit(f"select: REFUSED {name}: cannot read {src}: {e.strerror} — nothing written")
+    dest.write_text(body)
     print(f"drafted {dest.relative_to(ROOT)} ({words(name)} words target, main@{sha[:8]})")
     if not a.no_measure:
         m = subprocess.run([sys.executable, "tools/match.py", name, "--show"], cwd=ROOT)
