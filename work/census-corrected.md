@@ -67,7 +67,7 @@ journal sections further down keep the reasoning that led to them and their hand
 counts are history, not authority. Best drafts live at `work/best/<body>.c`, a path with no
 number in it, so a measurement cannot go stale in a filename.
 
-438 unmatched bodies in the corpus; **194 drafted and measured here** (compile-error 3, instruction-stream 14, match 2, move-vs-materialise 1, operand 14, register-role 29, scheduling 1, size 130); 73 drafts predate a merge and are prunable.
+438 unmatched bodies in the corpus; **194 drafted and measured here** (compile-error 3, instruction-stream 14, match 2, move-vs-materialise 1, operand 15, register-role 29, scheduling 1, size 129); 73 drafts predate a merge and are prunable.
 
 | body | best draft | words | size | class | status | class verdict |
 |---|---|---|---|---|---|---|
@@ -85,6 +85,7 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_80020D74` | `work/near-miss/func_80020D74-4of39.c` | 4/39 | +0 | instruction-stream | parked | - |
 | `func_80035C14` | `work/near-miss/func_80035C14-subscript.c` | 4/34 | +0 | register-role | parked | - |
 | `func_80057090` | `work/near-miss/func_80057090-near-miss.c` | 5/92 | +0 | instruction-stream | parked | - |
+| `func_80021B74` | `work/near-miss/func_80021B74-6of114.c` | 6/114 | +0 | operand | parked | - |
 | `func_800257A0` | `work/near-miss/func_800257A0-fresh.c` | 6/21 | +0 | instruction-stream | parked | - |
 | `func_8003BDB8` | `work/near-miss/func_8003BDB8-sweep.c` | 6/31 | +0 | register-role | parked | - |
 | `func_80043294` | `work/near-miss/func_80043294-g8.c` | 6/17 | +0 | register-role | parked | - |
@@ -249,7 +250,6 @@ number in it, so a measurement cannot go stale in a filename.
 | `func_8001C540` | `work/shapes/func_8001C540-a.c` | 70/59 | +11 | size | parked | - |
 | `func_80020C34` | `work/shapes/func_80020C34-a.c` | 76/80 | -3 | size | parked | - |
 | `func_8004E528` | `work/near-miss/func_8004E528-sched-park.c` | 82/105 | -1 | size | parked | - |
-| `func_80021B74` | `work/near-miss/func_80021B74-first-draft.c` | 83/114 | -4 | size | parked | - |
 | `func_80011D60` | `work/shapes/func_80011D60-v2.c` | 87/101 | +2 | size | parked | - |
 | `func_80049A14` | `work/shapes/func_80049A14-s.c` | 90/101 | -53 | size | parked | - |
 | `func_800568C0` | `work/near-miss/func_800568C0-sweep.c` | 90/95 | -11 | size | parked | - |

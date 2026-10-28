@@ -1012,3 +1012,50 @@ counters with `sltu`, and the game hoists `0 < t->count` into a flag before the 
 structural details are still wrong: the game tests the inner bound through the hoisted flag (`beqz $t4`)
 rather than re-loading `count`, and it carries the matched index in a second variable that survives the
 break. Parked as a first draft, not a near miss.
+
+## Closing the two near-miss bodies: one to 4/39, one to 6/114 (pass 34)
+
+**`func_80020D74` is scheduler-bound, and the synthetic says so.** The remaining four words are the
+placement of the packed return: the game builds it (`or $s1,$s1,$s0`) *before* the `lw` of the count and
+leaves `addu $v1,$zero,$zero` (`i = 0`) in the `beqz` delay slot; our compile sinks the `or` into that slot
+and the two copies swap behind it. `work/scratch/sched-or.c` mirrors the block exactly (masked params, the
+6-argument helper with three stack out-params, the packed value, the count test, the do-while) in four
+spellings — `(a0 << 16) | (a1 << 8)`, split `hi`/`lo` locals, a nested block scope, and `+` instead of `|`.
+Every one emits `sll, sll, lw, nop, beq, or` (the `or` in the delay slot); none emits the game's
+`sll, sll, or, lw, nop, beq`. Per-file scheduling flags do not reach it either: `-fno-schedule-insns`
+11/39, `-fno-schedule-insns2` 17/39, `-O1`/`-O0` worse. So the class is closed: **delay-slot filling**, not
+a source shape. The body stays parked at 4/39, size exact.
+
+**`func_80021B74` 83/114 → 6/114, two source facts.** The four-word size gap was the record address: the
+game rematerialises `(arg0 & 0xFF) * 0x30 + v[0]` before the `next` load (`andi, sll, addu, sll, addu, lw`)
+where our C reused the loop's `rec` pointer. Writing the tail as the expression itself —
+
+    arg0 = ((Rec_80021B74 *) ((arg0 & 0xFF) * 0x30 + sp18))->next;
+
+— forces the same recomputation and closes the size gap (0x1b8 → 0x1c8). Then the eight field adds were
+using the wrong saved registers: with `s16` deltas the `$a1`/`$a2` pair mapped to `$s2`/`$s1`, and declaring
+them `s32` (which the listing's bare `addu` already implies — no sign-extension) fixed the mapping and took
+the diff from 17 words to **6**.
+
+What is left is *only* the prologue save order:
+
+| | slot | order |
+|---|---|---|
+| game | 0x2C, 0x30, 0x28 | `$s1`, `$s2`, `$s0` (`$a1`, `$a2`, `$a0`) |
+| ours | 0x28, 0x2C, 0x30 | `$s0`, `$s1`, `$s2` |
+
+All 114 other words match. Shapes tried and rejected: explicit `dx`/`dy` copies (17), `u32` deltas (6),
+`s32` first parameter (7), the call's first two arguments precomputed in a block (6), `u32 idx` (101), the
+guard inlined without the `idx` local (6), `-fno-schedule-insns` (101), `-fno-schedule-insns2` (54),
+`-O1` (125), `-O0` (223). The save order is `assign_parms`' emission order after `sched1`, so this is the
+**scheduler/allocation** class too — one rotation, no source lever found in nine spellings.
+
+**Skeleton for the siblings.** `work/near-miss/func_80021B74-6of114.c` now carries the full shape: the
+6-argument `func_80020C34` call with `sp18/sp1C/sp20`, the guard pair (`(u32) idx >= v[1]`, `idx < 0`), the
+record patch at `0x8/0xA/0x10/0x12/0x18/0x1A/0x20/0x22`, the `D_8009C6D4` copy-down and the `D_8009C0A4`
+append copied from the merged `func_800212BC`, and the `arg0 = rec->next` walk. `func_80020E10` (139),
+`func_80021450` (127) and `func_8002164C` (146) share this block; derive from this file, not from
+`func_800212BC`.
+
+**Pass count: 0 conversions.** Two bodies closed to 4/39 and 6/114 with their classes proven, no unit
+shipped.
