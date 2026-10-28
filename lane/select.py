@@ -72,14 +72,36 @@ def have_listings():
 
 
 def dirty_units():
+    """Tracked unit files that differ from HEAD. Untracked drafts are expected work, not edits."""
     out = git("status", "--porcelain", "--", str(UNITS)).stdout.strip()
-    return [l for l in out.splitlines() if l.strip()]
+    return [l for l in out.splitlines() if l.strip() and not l.startswith("??")]
 
 
 def ahead_only_lane(sha):
     """True when HEAD is origin/main plus lane/ tooling that has not merged yet."""
     changed = git("diff", "--name-only", sha, "HEAD").stdout.split()
     return bool(changed) and all(p.startswith("lane/") for p in changed)
+
+
+def lost_units(ref="origin/main"):
+    """Merged unit files that are missing from the worktree, or edited in place.
+
+    Branch gymnastics can drop a tracked file and leave the tree looking clean on the branch you
+    land on; a merged unit vanishing that way costs a restore by hand and, worse, a build that
+    silently loses a unit. This is the assertion that catches it before a draft is written.
+    """
+    ls = git("ls-tree", "-r", "--name-only", ref, "--", str(UNITS))
+    upstream = {p for p in ls.stdout.splitlines() if p.endswith(".c")}
+    on_disk = {f"{UNITS}/{p.name}" for p in (ROOT / UNITS).glob("*.c")}
+    missing = sorted(upstream - on_disk)
+    changed = []
+    st = git("status", "--porcelain", "--", str(UNITS)).stdout.splitlines()
+    for line in st:
+        code = line[:2]
+        path = line[3:].strip()
+        if code[0] in "MD" or code[1] == "M":
+            changed.append(f"{code} {path}")
+    return missing, changed
 
 
 def require_fresh():
@@ -94,6 +116,10 @@ def require_fresh():
     if bad:
         sys.exit("select: src/funcs has local edits, selection would be unsound:\n  "
                  + "\n  ".join(bad[:10]))
+    missing, changed = lost_units()
+    if missing or changed:
+        sys.exit("select: the worktree no longer matches upstream in src/funcs — run "
+                 "`lane/select.py verify` for the list, restore the files, then sync again")
     return sha
 
 
@@ -155,7 +181,8 @@ def attempt_state(ref):
             if not m:
                 continue
             if path.endswith(".md") and not ("work/" in line or RESIDUE.search(line)
-                                            or "not C" in line):
+                                            or "not C" in line or "MATCH" in line
+                                            or "PR #" in line or "shipped" in line):
                 continue
             name = "func_" + m.group(1)
             prev = state.get(name, (None, path))
@@ -181,6 +208,22 @@ def classify(name, state):
         res, path = state[name]
         return "attempted", f"best {fmt(res)} — {path}"
     return "fresh", ""
+
+
+def cmd_verify(a):
+    """Assert the unit directory matches upstream exactly: nothing merged is missing or edited."""
+    ref = a.ref or "origin/main"
+    missing, changed = lost_units(ref)
+    n = len(list((ROOT / UNITS).glob("*.c")))
+    if not missing and not changed:
+        print(f"verify: {n} unit files, every merged body from {ref} present and unedited")
+        return 0
+    for p in missing:
+        print(f"MISSING {p}: merged on {ref} but absent from the worktree")
+    for p in changed:
+        print(f"EDITED  {p}: differs from {ref}")
+    print(f"verify: REFUSED — {len(missing)} missing, {len(changed)} edited")
+    return 1
 
 
 def cmd_sync(a):
@@ -275,6 +318,10 @@ def cmd_list(a):
 
 def cmd_draft(a):
     sha = require_fresh()
+    missing, changed = lost_units()
+    if missing or changed:
+        sys.exit("select: REFUSED — the worktree lost %d merged unit file(s); run `lane/select.py "
+                 "verify` and restore them before drafting" % len(missing))
     name = a.name if a.name.startswith("func_") else f"func_{a.name}"
     ref = records_ref()
     kind, detail = classify(name, attempt_state(ref))
@@ -309,6 +356,9 @@ def main():
     s = sub.add_parser("sync")
     s.add_argument("--branch", default="lane/work")
     s.set_defaults(fn=cmd_sync)
+    v = sub.add_parser("verify")
+    v.add_argument("--ref", default=None, help="upstream ref to compare against (default origin/main)")
+    v.set_defaults(fn=cmd_verify)
     for name, fn in (("check", cmd_check), ("list", cmd_list), ("draft", cmd_draft)):
         p = sub.add_parser(name)
         p.add_argument("--records", default=None, help="records ref to read attempt state from")
@@ -327,7 +377,7 @@ def main():
             p.add_argument("--allow-attempted", action="store_true")
             p.add_argument("--no-measure", action="store_true")
     a = ap.parse_args()
-    if getattr(a, "records", None):
+    if getattr(a, "records", None):  # only the subcommands that take --records"
         os.environ["LANE_RECORDS_REF"] = a.records
     sys.exit(a.fn(a) or 0)
 
