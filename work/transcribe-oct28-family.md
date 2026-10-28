@@ -59,11 +59,20 @@ Lever 3 is the generalisation of the copy lever: the CSE temporary's home is dec
 value has a name. Where a park's residue is "our value is in `$aN`, the game's is in `$vN`" and the value
 is a single load read once per arm, try removing the local before trying anything else.
 
-## Queue
+## Queue, and a counting defect that bit this pass
 
-361 at pass start; three units shipped as #170, #171, #172 → **358** unmatched bodies once they merge
-(pipeline green on each branch: `scan.py` 0 problems, `gate.py` 657/657, `build.py`
-`SLUS_009.35: OK (16829afba66533e2645bf87af2774671b06ff36b)`).
+361 at pass start. #170 and #172 merged during the pass (`c84bc0b`, `d06cb36`); #171 is still open.
+Measured on the records branch after fetching: **360** unmatched bodies now, **359** when #171 lands.
+`scan.py` 0 problems, `gate.py` 657/657, `build.py`
+`SLUS_009.35: OK (16829afba66533e2645bf87af2774671b06ff36b)` on every branch that was shipped.
+
+**The count is not reproducible from `origin/main`.** `work/drafts.py` and the rewritten
+`enumerate.py`/`verify.py` are tracked only on `freebuff/records-oct26` (PR #148, still open). `git switch
+-c <lane> origin/main` deletes `work/drafts.py` from the working tree, so `work/enumerate.py` run on a
+fresh-main branch either dies on the import or silently reports a different queue (379 in one run here,
+against 360 with the tooling present). That is the same defect the mission has flagged for several passes
+and it cannot be fixed from this lane: it needs #148 merged, or `work/*.py` added to main by the
+maintainer. Until then every pass must count from the records branch and say so.
 
 ## Second sweep: the leaf sibling next door
 
