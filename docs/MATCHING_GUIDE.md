@@ -25,6 +25,21 @@ label or a load from the wrong table is a real difference: nothing is masked.
   were built with `/* cflags: -mno-split-addresses */` (func_80011BD4, func_80011C40).
 - **Address of a big object in two registers** (`lui $v0; addiu $t1, $v0, %lo(D_x)`) is gcc's own split:
   default flags.
+- **Scalar extern vs array extern decides gp-relative or absolute.** A scalar `extern s32 D_x;` has an unknown
+  size, so the assembler treats it as small data and emits `lw $v0, %gp_rel(D_x)($gp)` even where the game uses
+  `lui`/`lw`. Declaring it as an **unsized array** (`extern u8 D_x[];`, then `*(s32 *) D_x` or
+  `*(s32 *)(D_x + off)`) makes it a big object and restores the absolute `lui`/`lo` form. func_800494A4 turned on
+  exactly this: the scalar form shifted every word by the missing `lui` at three load sites (0x74 vs 0x80 bytes).
+- **A symbol `lui` that the game re-emits at each use**: gcc hoists it into one register (sometimes a
+  callee-saved one) when the address outlives a call. `/* cflags: -mno-split-addresses */` stops the hoist and
+  took func_800494A4 from 24 differing words to 9. It also changes block-move addressing, so re-check copy
+  loops in the same unit (func_80056C90 went from 2 to 31 differing words with it on).
+- **Global table base before the index**: when the listing builds `lui`/`addiu` for the table *first* and the
+  index arithmetic after, keep a hoisted base pointer (`base = Table; e = &base[i];`) instead of `&Table[i]`,
+  which folds the base into the store address. func_80035BC0 closed on that spelling.
+- **A constant offset that lands in the store** (`sh $a3, 0x20($a0)` instead of `addiu` then `addu`): give the
+  offset its own local (`off = i * 6 + 0x20; p = (T *)(base + off);`). func_8003571C matched as soon as the
+  index literal stopped folding into the base.
 - **Division** expands with `break 7` and overflow checks (`--expand-div`). Write a plain `/`.
 - **Epilogue:** gcc 2.8.1 fills the `jr $ra` delay slot with the stack restore. If the game leaves `nop` there,
   look for a different statement order first, not different flags.
@@ -34,6 +49,12 @@ label or a load from the wrong table is a real difference: nothing is masked.
 - Unknown struct? Declare a local one with padding: `typedef struct { u8 pad[0x24]; s16 unk24; } Foo;`. When two
   functions agree on a layout, move it to `include/game/` (shared, unprotected; changes re-check every unit).
 - `s16`/`u8` parameters cause `sll/sra` or `andi` at first use; the game's choice tells you the type.
+- A redundant `andi $v0, $v0, 0xFF` right after an `lbu` means the source promoted a `u8` **local** (or
+  parameter): declare the temporary `u8`, not `u16`, or gcc folds the mask away. func_80035BC0 needed both
+  bytes as `u8` locals to keep the two masks.
+- A `nor` chain often means a bitwise-not of a promoted pair; the order of the operands decides where the two
+  masks land (`(b | (a << 8))` versus `((a << 8) | b)` — the second-order spelling was worth 5 words in
+  func_80035BC0).
 - A call that leaves an argument register untouched: declare the callee with fewer parameters.
 - The game copies `$s0` to `$v0` and stores through it: the previous call **returns** that pointer.
 - Constructors returning `this` ($v0 = $a0 throughout): end with `return arg0;`.
@@ -59,6 +80,12 @@ label or a load from the wrong table is a real difference: nothing is masked.
 - Re-reading a field instead of caching it often fixes an unfilled delay slot.
 - gcc folds or reorders a constant: put it in a local at entry (`mask = ~1;`).
 - Base/index swapped: use an explicit element pointer (`E *e = &a[i];`).
+- A `la` whose `lui` lands in a different register than the `addiu` target (`lui $v1; addiu $t0, $v1, %lo`
+  where the game has both in one register) is allocation, not typing: try a struct-typed object instead of an
+  array, or a bigger object type, before spending more attempts (func_80056C90 sat at 2 of 36 words on it).
+- An unaligned 8-byte copy (`lwl`/`lwr` pairs) is gcc's block move for an alignment-1 struct: declare
+  `typedef struct { u8 b[8]; }` and assign through it. A 16-byte-chunked `lw`/`sw` loop with a 12-byte tail is
+  the same move for a `u32`-aligned struct whose size is not a multiple of 16 (func_80056C90).
 - `arr[i].field` instead of pointer stepping moves the loop's address setup.
 - `&local` passed to calls: wrap each such call in its own `{ }` to control stack-slot reuse.
 - Scalar locals instead of an array/struct change alias analysis (loads hoisted, exit tests duplicated).
