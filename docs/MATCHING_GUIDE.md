@@ -52,6 +52,10 @@ label or a load from the wrong table is a real difference: nothing is masked.
 - A redundant `andi $v0, $v0, 0xFF` right after an `lbu` means the source promoted a `u8` **local** (or
   parameter): declare the temporary `u8`, not `u16`, or gcc folds the mask away. func_80035BC0 needed both
   bytes as `u8` locals to keep the two masks.
+- A store of `0xFF` that the game materialises as `-1` (`addiu $r, $zero, -1` then `sb`) means the field is
+  **signed**: declare it `s8` and write `-1`. With a `u8` field the same source materialses `0xFF`, and the
+  word differs even though the byte stored is identical (func_80034DE8, 43 -> 41 of 67 words on that one
+  change).
 - A `nor` chain often means a bitwise-not of a promoted pair; the order of the operands decides where the two
   masks land (`(b | (a << 8))` versus `((a << 8) | b)` — the second-order spelling was worth 5 words in
   func_80035BC0).
