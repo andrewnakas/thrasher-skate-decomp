@@ -1349,3 +1349,22 @@ the decision is either a named constant for the address or accepting `(0x801F <<
 matches and passes the scanner but is plainly spelled to dodge the literal rule. Not shipped.
 
 **Conversions: 0 from 9 attempts this pass** (13 bodies across the population) (1 from 9 last pass, PR #160).
+
+## Pass 22 — layout extractor built; batch of four scored, two drafted, 0 converted
+
+`work/layout.py` now reads a listing's operand pattern mechanically: frame and save order, every
+access with base/displacement/width, strides derived from the emitted `sll`/`addu`/`sll` chain, masks
+and constants in materialisation order, register copies, and how each symbol is reached
+(`direct-pair`, `symbolic-load`, `folded+0xN`, `$at`, `gp_rel`). It reproduces the `func_8002DE18`
+pattern that matched last pass, which is the regression test for it. `--scan` reports **100 unmerged,
+undrafted bodies that materialise a symbol as a direct pair**.
+
+Batch scored with `similar.py` (0.26-0.32, no template twins available), drafted in confidence order.
+`func_8004E330` (76 w) reached 54/76 with size `0x12c` vs `0x130`: layout read correctly (5th argument
+is a byte at `0x38($sp)`, table stride 2 then record stride `0x4C`), epilogue fixed to a single return,
+and the only residue is the counter store sitting in the `jal` delay slot where the game retires it
+first — the recorded scheduler class. `func_80057E9C` decoded in full (unsigned `/1000` magic, three
+`sprintf` paths, thresholds 1000 and 999999) but not drafted. `func_8001B238` owns rodata;
+`func_8003599C` is 137 words with the worst twin score of the batch.
+
+**Conversions: 0 from 2 drafted (4 in the batch).** Full detail in `work/layout-sweep-oct28.md`.
