@@ -1366,3 +1366,40 @@ Read the two matches as proof that the class is **partly** source-shaped: when t
 constant's materialisation point or one saved-register pair, a single line converts it. When the residue is a
 value gcc insists on homing in `$v0` where the game used `$a1`, no spelling tested moves it — that half of the
 class stays allocator-bound and should not be re-attacked with more shapes.
+
+### Pass: the never-opened tail, first four bodies (census correction)
+
+The premise that every remaining game body had been opened was wrong: 144 unmatched game bodies had no
+draft and no note anywhere under `work/` (103,076 bytes, 46% of the remaining bytes, all >= 0x10C,
+median 568). This pass opened four of them, smallest first, and this section is the journal entry for
+those four (the generated table above is unchanged; `work/verify.py --write` owns its numbers).
+
+| body | words | best | class | note |
+|---|---|---|---|---|
+| `func_80023494` | 83 | **MATCH, first draft** | — | straight-line, no branches: three distance triples over 0x8C-stride records, each component folded through `func_80032C28(x, 0x8000)`, then `func_800330A4` x2, `func_80032FE0`, `func_800335B4`. Shipped in PR #183. |
+| `func_80034DE8` | 67 | 41 of 67 | register-role | controller init: 10 records of 0x2C, `PadInitMtap`, four zero-fill loops. The loop body is instruction-for-instruction right except that the game gives the counter `$v1` and the cursor `$a0`, this cc1 the other way round. Two typing findings landed on the way: the loop is `i = 0; do { i++; ... } while (i < 0xA);` (increment first), and `pad->f1 = -1` needs an `s8` field (a `u8` field materialises `0xFF`). Declaration order and an array-index spelling both leave the role swap. |
+| `func_8001CE98` | 67 | 37 of 67 | register-role + stream | allocator init: 0x140 entries of stride 0xC from `+0xEF4` filled with 0xFFFF, then 0x23 four-byte source records folded into 0xC-byte records (bit 7 of the low byte from bit 0 of the source, low seven bits from `source >> 1`). First 12 words exact, including the `memset` size reloaded from the global. Loop 1 has the same counter/value role swap as above; loop 2 wants the destination read back from `D_8008AE44` per store, which the draft does, but the source-table base is split into two registers (a word base and a `+3` byte base). |
+| `func_80013D98` | 77 | 64 of 77 | stream | copies three s32 and three u16 out of a `+0x38` sub-object into gp globals, signs a `u16` angle either way on a flag, folds three components, returns `&D_8008ACD4`. The game runs the three stores *before* loading its flag global and sets the call's first argument before the branch; the draft is 0x2C short. The untried spelling is the ternary argument (`f(&D_8008ACD4, FLAG ? -ANGLE : (s16) ANGLE)`), which is what the pre-branch `addiu $a0, $gp, %gp_rel(...)` plus two separate load forms suggests. |
+
+Opened/unopened split after this pass: 140 unopened, 279 opened (of 419 unmatched), one of the four now
+merged. Both parked
+bodies were stopped after the role/stream residue was confirmed to survive the spellings above, per the
+park-after-one-confirmation rule.
+
+### Pass: the never-opened tail, wider sweep (eight bodies)
+
+Eight further never-opened plain-C bodies, smallest first, each typed from its listing. Two matched and both
+shipped in one PR; the other six were stopped after one confirmation of their residue, per the park rule.
+
+| body | words | best | class | note |
+|---|---|---|---|---|
+| `func_80029BBC` | 68 | **MATCH** | — | two biased 12-byte table selectors (0 selects nothing) copied as 8.16 angles, four words, one word and a u16. Took 16 -> 0 words on one change: `rec->sel0` used twice in the ternary instead of a hoisted local. |
+| `func_80026C88` | 73 | **MATCH** | — | rotation from record arg2's frame to arg1's (0x8C stride, heading at +0x48), axis folded in, sign picked by arg5. 12 -> 2 words on duplicating `d = dir;` into both arms; 2 -> 0 by writing the record pointer as offset-first `(u8 *)(i * 0x8C) + (u32) arg0 + 0x48`. |
+| `func_8002028C` | 67 | 58 of 67 | register-role / init order | string scorer: for each character, scan a 0x10-stride table for a match, then fold `entry->fC * strength + 1` into a running total. The body is right; the entry sequence emits `i = 0` before `total = 0` where the game has `t3 = 0; t0 = t3`, and everything after is one word out of phase. An early `if (len == 0) return` made it 0x118; letting the loop's own entry test do it brought it back to 0x108 vs 0x10C. |
+| `func_80027BA0` | 77 | 72 of 77 | addressing + allocation | 'VERT' loader: allocates `count * 0xC`, repacks 16-byte source records (three u16 at +0/+4/+8, word at +0xC) into 12-byte ones, tracks `D_8008B084` as a maximum and `D_8008AFE4` as a running count. `*(u8 **)(rec + 0x48)` folds to `base + 0x48` here where the game keeps `0x48($s1)`, and the copy wants four live pointers; 0x12C vs 0x134. |
+| `func_8001C810` | 72 | 67 of 72 | allocation (prologue save order) | draws one entry: four flag tests into a 32-bit attribute word, `D_8008AE70[entry->f4]` selected, `func_80046EFC` called and its u16 result stored back on success. 31 -> 67 of 72 with the right extern forms and an unmasked `arg1`; the rest is save order and one s0/s1 role swap, 0x11C vs 0x120. |
+| `func_80034F14` | 83 | 32 of 83 | scheduling (tail order) | slot allocator: first free of four `D_800A6244` entries (stride 20), first free of ten `D_800A6084` slots (stride 0x2C), then fill, `memset(0x10)`, register and `func_800358A8`. Everything matches but the tail: the game loads `D_8008B128` before the two stores and stores it after. |
+| `func_80020078` | 77 | 75 of 77 | structure | sprite setup: scans the 0x10-stride record table for a byte key, fills the `D_8006F818` primitive (u16 at +2..+0x10), calls `func_80045D78` with the two s16 coordinates and arg5 twice, returns `entry->fC * arg5` masked. The draft is 0x110 vs 0x134, so the scan or the call's argument set is still wrong. |
+| `func_8003453C` | 70 | 42 of 70 | arithmetic spelling | fixed-point decimal formatter: `ip = v >> fracbits`, `frac = v << (32 - fracbits)`, sign handling that emits '-' only when the integer part rounds to zero, `func_80034654` for the integer, '.' then `func_80034698` with `(frac * 9999 + (1 << (bits-1))) >> bits`. 64 -> 42 by masking `arg2` at each use instead of once. |
+
+Opened/unopened split after this pass: 130 unopened, 282 opened (of 412 unmatched).
