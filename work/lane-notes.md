@@ -1192,3 +1192,43 @@ the only one in the corpus.
 the queue is now **382 bodies**. `func_80021B74` is the pass-33 conversion; this pass's own sweep added
 none, so the lane's shipped total is unchanged by it and the record above stands at 0 new units from 36
 bodies probed.
+
+## Allocation priority, tested synthetically (pass 35): the saved register follows pseudo order, not priority
+
+The copy lever is a liveness lever; this pass tested the other axis — does *allocation priority* decide
+which of two call-crossing values wins the earlier saved register? Nine synthetic functions through
+`tools/cc.py --print-asm` (`work/scratch/alloc_order.c` → `.s`, `work/scratch/alloc_prio.c` → `.s`):
+
+| Variant | Result |
+|---|---|
+| two call-crossing parameters, used in declaration order | `$a0 → $s0`, `$a1 → $s2`, `$a2 → $s1` |
+| `q` copied into a local at entry, local used throughout | identical mapping |
+| `p` copied into a local at entry, local used throughout | identical mapping |
+| local created *after* the guard (`rc = r;`) | identical mapping |
+| `register int *qr = q;` (storage class) | identical mapping; **assembly byte-identical** (diff 0 lines) |
+| first value stored 5×, second 1× across the call | `$a0 → $s0`, `$a1 → $s1` (unchanged) |
+| counts swapped between the two | same mapping, still in parameter order |
+
+So in this toolchain the assignment is parameter/pseudo order, and neither the storage class, the
+declaration order, a copy at entry, nor a 6:1 reference-count asymmetry moves it. That is the mechanism
+behind the swapped pairs: to flip one, the source would have to make the *later* parameter's pseudo
+older, and the only copies that survive to do that are the liveness-changing ones — which also change
+the code. **The colouring class is compiler-bound for source purposes; the path is closed.**
+
+**Two target bodies retested on this axis, both unchanged.** `func_80032644` (63w, `$s2`/`$s3`
+swapped): `register` on `a1` and on `out2`, a copy of `a1` before the first call, a copy of `a1` after
+it, and a copy of `out2` before/after it — every one measures **12/63**, and the `register` variants
+are byte-identical to the base. `func_8003453C` (70w, same pair): `register dst`, `register shift`,
+`p = dst;` as a statement, `char *d = dst; p = d;` — best stays **41/70**, one word long.
+
+**Fresh re-derivation of `func_8002050C` (25w, 4/25) on the allocation axis.** The listing is a
+16-byte reverse record scan whose sentinel `-1` is materialised once in `$v0` and *copied* to `$a3`
+(`addu $a3,$v0,$zero`), ours materialises it twice (`addiu $a3,$zero,-1`). Four shapes: a named
+`end = -1` local before the loop (17/25, `0x60` — one word short, the constant goes straight into
+`$a3`), the same with `end` declared first (17/25), `return i & 0xFF` / `return (u8) i` (4/25, moves
+the `andi` to the epilogue instead of the branch delay slot), and the add order swapped
+(`i * 16 + arr`) to get `addu $v1,$v0,$v1` (no change — the compiler canonicalises commutative
+operands). Best stays 4/25; parked in the `move-vs-materialise` class.
+
+**Conversions: 0 from 3 bodies attempted (2 retests + 1 fresh re-derivation), 13 shapes measured.**
+Queue unchanged at 382 bodies.
