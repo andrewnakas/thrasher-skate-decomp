@@ -1085,7 +1085,7 @@ different body, not a copy of the parent: `if (arg1)` wraps a six-case jump tabl
 4→`f3=8,f7=0x38`, 5→tail, with 3 and 4 sharing a `f7` store and the `f29` flag test) and the `arg1 == 0`
 arm stores `f3 = 0` after the switch, not before it. Five shapes: `rec` local for the switch (136/139,
 `0x1a4` — the local kills the case-body rematerialisation the game does), the expression recomputed per
-statement (`90/139`), the same with the `if (arg1)` arm inverted so the zero case sits last (93/139),
+statement (120/139, `0x234`), the same with the `if (arg1)` arm inverted so the zero case sits last (93/139),
 `rec` local per arm (104/139), and the expr form with the shared `f7` tail. The game recomputes
 `(id & 0xFF) * 0x30 + sp18` at the head of every case and reloads `sp18` between the two stores of a
 case; no spelling reproduces that and the case-body block layout at the same time in this compiler.
