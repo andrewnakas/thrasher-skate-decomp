@@ -1366,3 +1366,24 @@ Read the two matches as proof that the class is **partly** source-shaped: when t
 constant's materialisation point or one saved-register pair, a single line converts it. When the residue is a
 value gcc insists on homing in `$v0` where the game used `$a1`, no spelling tested moves it — that half of the
 class stays allocator-bound and should not be re-attacked with more shapes.
+
+### Pass: the never-opened tail by shape (eight bodies, straight-line only)
+
+The previous batch settled the selection rule: bodies with no backward branch convert, loop bodies do not. Of
+the 130 never-opened bodies, 32 have no back edge at all (96 are loop-shaped), and this pass opened the eight
+smallest of those 32. Three matched.
+
+| body | words | best | class | note |
+|---|---|---|---|---|
+| `func_8002673C` | 77 | **MATCH, first draft** | — | aims one record's frame at another: `func_80026DAC` over the two 0x8C-stride headings, `func_800330A4`, `func_8003353C` against `arg3+0xC`, clamp to +-0x10000, `func_80032D88`, wrap by `-0x8000 - v` when negative, then `func_8003384C` / `func_80033E14` / `func_80032B1C` / `func_80033E14`. |
+| `func_8001E3A0` | 84 | **MATCH** | — | applies an object's rotation and translation to a point. 79 -> 75 of 84 by putting the non-null path first with the null copy last; then MATCH when the early-exit call arm became the `if` and the long arm the `else`. |
+| `func_8004B1D4` | 79 | **MATCH** | — | releases node slot `arg0 & 0xFF` from `D_800AEA24`: two printf/exit asserts, `func_8004B41C`, a `switch (f0 & 3)` whose case 0 sweeps the `+0x38` list, `| 0x4000` in the default, then `f2 = 2` at the join and the gp guard decremented. 1 of 79 until the bound test was made unsigned (`sltiu`). |
+| `func_8004DA90` | 88 | 2 of 88 | register role | distance fade: `func_80011EF4` fills a 4-word buffer, the three s16 at +2/+6/+A are squared and summed, then `127 * sum / D_8008B430` drives `0x7F - q`, and a second division by `D_8008B42C` drives the step, with `func_80032DCC`/`func_800333C8` folding the middle component. Every word matches but one `lw` into `$a1` where the draft uses `$v0` for `buf[2]`. |
+| `func_80048208` | 89 | 45 of 89 | register role / switch | script loader: `func_800363F8(arg0, 1, 0)`, `func_800367F4`, `func_80034C20`, `func_8003663C`, `func_80036758`, `func_8004813C` tag, then a 4-way `case` over `func_80047C94`/`func_80047B28`/`func_80047EF0` with `D_8008A8B4` set on the first two, `func_80034BD8`, return. Declaration order (`size` before `buf`) and the early-return form both fail to move it. |
+| `func_8002FFDC` | 84 | 64 of 84 | store forwarding | distance + unit direction into a 0x1C struct: two `u16` triples stored, differences taken from the *struct* (the game reloads `lh 0x8(s3)` right after `sh`), squares summed, `func_80032D3C` for the length, three `func_80032C54(d << 16, len << 16)`, then `| 1` / `| 2` from the sign of arg4. This cc1 forwards the stored value instead of reloading, and casting the store through `(u16 *)((u8 *) arg0 + 8)` does not stop it; 0x144 vs 0x150. |
+| `func_80023D2C` | 102 | 0x16C vs 0x198 | structure | advances two 0x8C-stride objects along their heading: `func_8003353C` on `f14+0x10` / `f18+4`, `func_80032C28(f1C, -angle)` folded into the step when the angle is positive, two `func_800330A4`/`func_800331FC`/`func_80032FF4` pairs and both `+0x38` heights raised by the step. Eleven words short, so the two vector blocks are still not the game's. |
+| `func_8002E4B4` | 118 | 104 of 118 | structure | closest point on segment arg0..arg1 to arg2: differences shifted up 16, `func_800330A4`, a dot product against arg0 and, when negative, against arg1; positive dot interpolates through three `func_80032C28(v[i], t) >> 16`, otherwise a 6-byte struct copy (`lwl`/`lwr` + `sh`). Nine words short. |
+
+Opened/unopened split after this pass: 122 never-opened, 287 opened (of 409 unmatched). Of the 122 remaining
+never-opened bodies, 24 have no back edge and 98 are loop-shaped, so the straight-line tail is close to dry
+and the next batch will have to take loop bodies or stop.

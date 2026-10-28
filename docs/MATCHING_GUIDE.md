@@ -95,6 +95,16 @@ label or a load from the wrong table is a real difference: nothing is masked.
 - Scalar locals instead of an array/struct change alias analysis (loads hoisted, exit tests duplicated).
 - Declare an argument as a struct with named fields instead of `*(T *)((u8 *)p + off)` casts; gcc then
   treats globals and fields as non-aliasing and schedules like the game.
+- A masked index compared against a bound uses `sltiu` when the comparison is unsigned and `slti` when it is
+  signed: `if ((u32) (idx & 0xFF) >= 0x20)` is what emits `sltiu` when `idx` is an `s32` parameter
+  (func_8004B1D4, the last word of 79).
+- Branch-arm layout is part of the source shape. When the game's null guard jumps *forward to the epilogue*,
+  write the non-null path first and put the guard's arm last; inside it, put the early-exit call arm first so
+  the long arm lands in the `else` and the call falls through (func_8001E3A0: 75 of 84 that way, MATCH).
+- Sum products in one expression, not as `sum = a; sum += b; sum += c;`: the game keeps three separate
+  `mflo` results and adds them once (func_8004DA90, 18 -> 4 of 88).
+- If the game passes a value to a callee, that callee has a parameter for it: declaring `func_80032DCC()`
+  instead of `func_80032DCC(buf[1])` left two words of role noise on the same unit (4 -> 2 of 88).
 
 ## Flags
 
