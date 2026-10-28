@@ -74,3 +74,28 @@ re-derived this pass, so compare it to the previous record rather than to 435.
 
 Pipeline green on this branch: `scan.py` 0 problems / 647 files, `gate.py` GATE PASS,
 `build.py` BUILD PASS, `SLUS_009.35: OK (16829afba66533e2645bf87af2774671b06ff36b)`.
+
+## Conversion this pass: func_8002C284 (71 words, 0x11C)
+
+PR #180, branch `freebuff/8002C284`, from `origin/main` (`7e24509`).
+Measured 23 → 16 → **MATCH** in three shapes on top of the old near-miss (which was 20 at a
+wrong control-flow shape).
+
+The shape that closed it — two source facts, both read off the listing:
+
+1. the range test is on the **shifted** value, two-sided:
+   `v = (tbl[n->idx] + n->off) << 16; if (v < -0x100) … else if (v >= 0x101) … else …`
+   This is what puts the second `slti` in the first branch's delay slot (game 0x2E0). Writing
+   the test as `(s16)…` instead makes gcc sign-extend (`sra`) and use `bgez`/`blez` (16 diffs).
+2. every arm is a **positive** test with the emit as the `else`:
+   `if (n->a) func(n->a); else *D_8008B048++ = n->val;`
+   The inverted form (`if (!n->a) { emit; return; } call;`) is only equivalent for the first
+   two arms; for the middle arm's second test it lays the emit before the call and the whole
+   tail shifts by 8 words.
+
+Verified on the PR branch from `origin/main`: `scan.py` 0 problems / 664 files, `gate.py`
+GATE PASS (664/664), `build.py` BUILD PASS,
+`SLUS_009.35: OK (16829afba66533e2645bf87af2774671b06ff36b)`.
+
+Queue after this pass: 1082 game functions, **665 merged once #180 lands, 417 unmatched**.
+Raw config count on `origin/main` today: 664 merged / 418 unmatched.
