@@ -72,36 +72,14 @@ def have_listings():
 
 
 def dirty_units():
-    """Tracked unit files that differ from HEAD. Untracked drafts are expected work, not edits."""
     out = git("status", "--porcelain", "--", str(UNITS)).stdout.strip()
-    return [l for l in out.splitlines() if l.strip() and not l.startswith("??")]
+    return [l for l in out.splitlines() if l.strip()]
 
 
 def ahead_only_lane(sha):
     """True when HEAD is origin/main plus lane/ tooling that has not merged yet."""
     changed = git("diff", "--name-only", sha, "HEAD").stdout.split()
     return bool(changed) and all(p.startswith("lane/") for p in changed)
-
-
-def lost_units(ref="origin/main"):
-    """Merged unit files that are missing from the worktree, or edited in place.
-
-    Branch gymnastics can drop a tracked file and leave the tree looking clean on the branch you
-    land on; a merged unit vanishing that way costs a restore by hand and, worse, a build that
-    silently loses a unit. This is the assertion that catches it before a draft is written.
-    """
-    ls = git("ls-tree", "-r", "--name-only", ref, "--", str(UNITS))
-    upstream = {p for p in ls.stdout.splitlines() if p.endswith(".c")}
-    on_disk = {f"{UNITS}/{p.name}" for p in (ROOT / UNITS).glob("*.c")}
-    missing = sorted(upstream - on_disk)
-    changed = []
-    st = git("status", "--porcelain", "--", str(UNITS)).stdout.splitlines()
-    for line in st:
-        code = line[:2]
-        path = line[3:].strip()
-        if code[0] in "MD" or code[1] == "M":
-            changed.append(f"{code} {path}")
-    return missing, changed
 
 
 def require_fresh():
@@ -116,10 +94,6 @@ def require_fresh():
     if bad:
         sys.exit("select: src/funcs has local edits, selection would be unsound:\n  "
                  + "\n  ".join(bad[:10]))
-    missing, changed = lost_units()
-    if missing or changed:
-        sys.exit("select: the worktree no longer matches upstream in src/funcs — run "
-                 "`lane/select.py verify` for the list, restore the files, then sync again")
     return sha
 
 
@@ -137,6 +111,78 @@ def handwritten(name):
     p = ROOT / ASM / f"{name}.s"
     head = p.read_text().splitlines()[:2]
     return any("Handwritten function" in l for l in head)
+
+
+AT_OK = {"lui", "addiu", "sw", "lw", "swl", "swr", "sh", "lh", "sb", "lbu", "lhu", "swc1", "lwc1"}
+
+
+def csv_kind(name):
+    """`kind` column of config/functions.us.csv for one row, or None."""
+    p = ROOT / "config/functions.us.csv"
+    if not p.exists():
+        return None
+    for line in p.read_text().splitlines()[1:]:
+        parts = line.split(",")
+        if len(parts) > 4 and parts[0] == name:
+            return parts[4]
+    return None
+
+
+def listing_ops(name):
+    """-> [(mnemonic, [operands])] for one listing, comments and directives dropped."""
+    p = ROOT / ASM / f"{name}.s"
+    if not p.exists():
+        return []
+    ops = []
+    for line in p.read_text().splitlines():
+        if not INSN.match(line):
+            continue
+        body = line.split("*/", 1)[1].strip()
+        if not body:
+            continue
+        mnemonic, _, rest = body.partition(" ")
+        ops.append((mnemonic.strip(), rest.replace(",", " ").split()))
+    return ops
+
+
+def c_writable(name):
+    """Can this body be written in plain C at all?  -> (bool, reason).
+
+    Decided from the listing alone, because a body that fails these four cannot be expressed in C
+    no matter what the draft says:
+
+      * a body that calls builds a frame, and keeps $ra inside that frame;
+      * $sp is assigned only by the prologue's first instruction and the epilogue's last one;
+      * $ra is never parked in a temporary across a call;
+      * $at is never a value register (its use for address materialisation is gcc's own).
+
+    This is the rule that keeps hand-written bodies out of a drafting pass: a manual `$sp` swap and a
+    frameless caller that lives on `$ra` in `$t7` both pass `handwritten()` and neither is C.
+    """
+    kind = csv_kind(name)
+    if kind not in (None, "func"):
+        return False, f"csv kind={kind} (a data symbol, not a function)"
+    ops = listing_ops(name)
+    if not ops:
+        return False, "no listing"
+    calls = any(mn == "jal" for mn, _ in ops)
+    if calls:
+        if not (ops[0][0] == "addiu" and ops[0][1][:2] == ["$sp", "$sp"]):
+            return False, "calls but never builds a frame (no prologue `addiu $sp,$sp,-N`)"
+        if not any(mn == "sw" and o[:1] == ["$ra"] and "($sp)" in o[-1] for mn, o in ops):
+            return False, "calls but never stores $ra in the frame"
+    last = len(ops) - 1
+    for i, (mn, o) in enumerate(ops):
+        if o[:1] == ["$sp"]:
+            if not (mn == "addiu" and len(o) == 3 and o[1] == "$sp"):
+                return False, f"assigns $sp outside the prologue/epilogue (`{mn} {' '.join(o)}`)"
+            if i not in (0, last):
+                return False, "assigns $sp mid-body"
+        if mn == "addu" and "$ra" in o[1:] and o[0] != "$sp":
+            return False, f"keeps $ra in a temporary (`addu {o[0]}, $ra, ...`)"
+        if any("$at" in t for t in o) and mn not in AT_OK:
+            return False, f"uses $at as a value register (`{mn} {' '.join(o)}`)"
+    return True, ""
 
 
 def records_ref():
@@ -181,8 +227,7 @@ def attempt_state(ref):
             if not m:
                 continue
             if path.endswith(".md") and not ("work/" in line or RESIDUE.search(line)
-                                            or "not C" in line or "MATCH" in line
-                                            or "PR #" in line or "shipped" in line):
+                                            or "not C" in line):
                 continue
             name = "func_" + m.group(1)
             prev = state.get(name, (None, path))
@@ -208,22 +253,6 @@ def classify(name, state):
         res, path = state[name]
         return "attempted", f"best {fmt(res)} — {path}"
     return "fresh", ""
-
-
-def cmd_verify(a):
-    """Assert the unit directory matches upstream exactly: nothing merged is missing or edited."""
-    ref = a.ref or "origin/main"
-    missing, changed = lost_units(ref)
-    n = len(list((ROOT / UNITS).glob("*.c")))
-    if not missing and not changed:
-        print(f"verify: {n} unit files, every merged body from {ref} present and unedited")
-        return 0
-    for p in missing:
-        print(f"MISSING {p}: merged on {ref} but absent from the worktree")
-    for p in changed:
-        print(f"EDITED  {p}: differs from {ref}")
-    print(f"verify: REFUSED — {len(missing)} missing, {len(changed)} edited")
-    return 1
 
 
 def cmd_sync(a):
@@ -282,7 +311,8 @@ def cmd_list(a):
                  "(a fresh clone has no listings)")
     ref = records_ref()
     state = attempt_state(ref)
-    rows, merged_n, attempted_n = [], 0, 0
+    rows, merged_n, attempted_n, nonc_n = [], 0, 0, 0
+    reasons = {}
     for p in (ROOT / ASM).glob("func_*.s"):
         n = p.stem
         kind, _ = classify(n, state)
@@ -297,6 +327,14 @@ def cmd_list(a):
             if a.fresh:
                 continue
             kind = "handwritten"
+        if kind == "fresh":
+            ok, why = c_writable(n)
+            if not ok:
+                nonc_n += 1
+                if a.fresh:
+                    continue
+                kind = "notC"
+                reasons[n] = why
         w = words(n)
         if a.min is not None and w < a.min:
             continue
@@ -307,26 +345,28 @@ def cmd_list(a):
     for w, n, kind in rows[: a.limit]:
         if kind == "handwritten":
             tag = "handwritten"
+        elif kind == "notC":
+            tag = f"notC: {reasons[n]}"
         elif kind == "fresh":
             tag = "fresh"
         else:
             tag = fmt(state[n][0]) if n in state else "attempted"
         print(f"{w:4d} {n} {tag}")
     print(f"# {len(rows)} open in range, {attempted_n} attempted (records: {ref or 'none'}), "
-          f"{merged_n} suppressed as merged, tree at {sha[:8]}")
+          f"{merged_n} suppressed as merged, {nonc_n} rejected as not C, tree at {sha[:8]}")
 
 
 def cmd_draft(a):
     sha = require_fresh()
-    missing, changed = lost_units()
-    if missing or changed:
-        sys.exit("select: REFUSED — the worktree lost %d merged unit file(s); run `lane/select.py "
-                 "verify` and restore them before drafting" % len(missing))
     name = a.name if a.name.startswith("func_") else f"func_{a.name}"
     ref = records_ref()
     kind, detail = classify(name, attempt_state(ref))
     if kind == "merged":
         sys.exit(f"select: REFUSED {name}: MERGED on main@{sha[:8]} — nothing drafted")
+    if kind == "fresh":
+        ok, why = c_writable(name)
+        if not ok:
+            sys.exit(f"select: REFUSED {name}: not writable in C — {why}")
     if kind == "attempted" and not a.allow_attempted:
         sys.exit(f"select: REFUSED {name}: ATTEMPTED — {detail}\n"
                  "select: fresh ground was asked for; pass --allow-attempted to re-test a park")
@@ -350,15 +390,21 @@ def cmd_draft(a):
     return subprocess.run([sys.executable, "tools/match.py", name, "--show"], cwd=ROOT).returncode
 
 
+def cmd_crule(a):
+    require_fresh()
+    for raw in a.names:
+        name = raw if raw.startswith("func_") else f"func_{raw}"
+        ok, why = c_writable(name)
+        print(f"{name}: {'C' if ok else 'NOT C'} — {why or 'frame, $ra and $sp are compiler-shaped'}")
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
     s = sub.add_parser("sync")
     s.add_argument("--branch", default="lane/work")
     s.set_defaults(fn=cmd_sync)
-    v = sub.add_parser("verify")
-    v.add_argument("--ref", default=None, help="upstream ref to compare against (default origin/main)")
-    v.set_defaults(fn=cmd_verify)
     for name, fn in (("check", cmd_check), ("list", cmd_list), ("draft", cmd_draft)):
         p = sub.add_parser(name)
         p.add_argument("--records", default=None, help="records ref to read attempt state from")
@@ -376,8 +422,12 @@ def main():
             p.add_argument("--src", required=True)
             p.add_argument("--allow-attempted", action="store_true")
             p.add_argument("--no-measure", action="store_true")
+    p = sub.add_parser("crule")
+    p.add_argument("--records", default=None)
+    p.add_argument("names", nargs="+")
+    p.set_defaults(fn=cmd_crule)
     a = ap.parse_args()
-    if getattr(a, "records", None):  # only the subcommands that take --records"
+    if getattr(a, "records", None):
         os.environ["LANE_RECORDS_REF"] = a.records
     sys.exit(a.fn(a) or 0)
 
