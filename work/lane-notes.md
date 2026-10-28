@@ -898,3 +898,60 @@ measured** with the `func_800212BC` row back at 28/101 register-role, and 70 pru
 bodies before the `SP_SWAP` filter and 394 after, so the exclusion's 398→394 claim holds. The remote half of
 the union is carrying weight too: `func_8004BF94` merged on main as #152 after this branch's last merge, and
 a working-tree-only check would offer it as fresh ground again.
+
+## Near-miss sweep: one conversion, three classes measured (pass 32)
+
+**`func_8002C9B8` converted (36w, was 2/36) — the in-place-update tell.** The two words were the inner walk's
+byte counter: the game loads it straight into the counter register and decrements it there
+(`lhu $v1,-2($a2)` / `addiu $v1,$v1,-1`), while the draft's `for (b = *(u16 *)(q + 2) - 1; b != -1; b--)`
+makes gcc load into a fresh temp and subtract into a second pseudo (`lhu $v0` / `addiu $v1,$v0,-1`). Loading
+the field into the variable and decrementing it as its own statement —
+
+    b = *(u16 *)(q + 2);
+    b--;
+
+— reuses the load's register and matches exactly. This is the general form of the rule: when the game
+**modifies the value it just loaded**, the C has to load into that variable and then update the variable, not
+fold the update into the load expression. Shipped as PR #157 with `scan.py` 644 files 0 problems,
+`gate.py` 644/644, `build.py` SLUS_009.35 OK (16829afb, objdiff 100%).
+
+**The single-register `lui`+`%lo` class is colouring, not spelling (three bodies).** `func_80056C90` (2/36),
+`func_80056FF4` (2/39) and `func_8003BF7C` (2/79) each differ only in which register holds the `%hi` half of an
+absolute global address: the game uses one register for both halves and folds `%lo` into the following load
+(`lui $a0,%hi` / `lw $a0,%lo($a0)`), ours materialises the address in a temp (`lui $v0` / `lw $a0,%lo($v0)`).
+Measured, not assumed:
+
+| shape | 80056C90 | 80056FF4 | 8003BF7C |
+|---|---|---|---|
+| current draft | 2/36 | 2/39 | 2/79 |
+| `-mno-split-addresses` | 31/36 | 22/39 | 78/79 |
+| cast-deref `*(u32 *)D` instead of `D[0]` | 2/36 | 5/39 (adds a word) | 2/79 |
+| pointer local `u32 *q = (u32 *)D; *q` | — | — | 2/79 |
+| `((u32 *)D)[0]` | — | — | 2/79 |
+
+A synthetic file (`work/scratch/reg-choice.c`) shows this compiler materialises a symbol address into `$2` for
+every one of those spellings on a bare body (`k1`..`k4`, plus `extern u8 A[0x40]`, `extern u8 B[]`,
+`extern u32 C[8]`). The game's single-register form is gcc reusing one colour for the high temp and the load's
+destination because their live ranges do not overlap — an allocator outcome, not something the source can ask
+for. `-mno-split-addresses` is far too broad (it changes every other address in the body). All three parks stay
+with the residue named "hi-temp colouring".
+
+**A branch-only load is `$v0` in this compiler (two bodies).** `func_8002BCB0` (2/17) and `func_80042E9C`
+(2/58) differ only in the home of a value used by one `beqz`/`beq`: the game keeps it in `$a1`, ours in `$v0`.
+Five synthetic spellings of the same test (`h1`..`h5`: direct field, named local, `s32` return with `return 0`,
+negated condition, `if (f)` block form) **all** emit `lhu $2,36($4)`, and giving `func_8002BCB0` a `s32` return
+type with bare `return;` still emits `lhu $v0`. For `func_80042E9C` the cause is visible in the delay slot: the
+game materialises `lui $v0,0x2710` *in the `beqz` slot*, which occupies `$v0` at the following load and pushes
+it to `$a1`; ours materialises the constant after the branch. That is the scheduler, not the source — the
+named-constant variant (`s32 r = 0x27100000;` before the loop) measures the same 2/58.
+
+**Two shapes that must not be repeated.** `func_8002050C` (4/25): giving the loop end a named local
+(`s32 end = -1;` used by the loop test) collapses the early exit and measures 17/25 with the body one word
+short (0x60 vs 0x64). `func_80035C14` (4/34): inlining the byte pair into one expression measures 28/34 and
+declaring the two loads in reverse order 8/34; the declared-locals order in `work/best/` is the best of the
+three. `func_8002FE80` (2/24): a named pointer local for the buffer measures the same 2/24 — the game's `$a1`
+there is the parameter register being reused after it dies, another colouring outcome.
+
+**Not chased.** `func_80055820` (1/34) is an unfilled `jal` delay slot in the game where ours fills it, and
+`func_800382C0` (1/12) has now had seven spellings across two passes for its commuted `addu`; both are the
+compiler's decision and are parked with the class named.
