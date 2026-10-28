@@ -63,7 +63,9 @@ set. The address-form `$at` is deliberately **not** filtered.
 flag gives the same 12-word diff (`-O0` gives 63), so per-file flags do not move register choice
 for a body whose instruction sequence already agrees.
 
-## Conversions
+## Conversions and queue
 
-**0 from 12 bodies attempted** this pass. The two units from last pass ([#167], [#168]) are still
-open and unmerged.
+**0 from 12 bodies attempted** this pass. Last pass's two units merged (#167 `func_8001D804`,
+#168 `func_8002BA64`), so current `origin/main` is 655 units, gate green, sha1
+`16829afba66533e2645bf87af2774671b06ff36b`, objdiff 100%. With the new filters the queue is
+**362 unmatched bodies** (was 376 before them).
