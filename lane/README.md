@@ -52,3 +52,17 @@ it could not measure. `draft` then runs `tools/match.py`, which needs a full bui
 
 This directory is not `tools/`: `tools/` is the repository's own toolchain and stays untouched by lane
 work.
+
+## The worktree assertion
+
+Branch gymnastics dropped a merged unit file from the worktree once and it had to be restored by
+hand. `verify` compares `src/funcs` against `origin/main` in both directions and names anything that
+went missing or was edited in place:
+
+```sh
+python lane/select.py verify                 # 676 unit files, every merged body present and unedited
+```
+
+`sync` and `draft` call the same assertion, so a tree that lost a merged unit cannot be used to
+choose or start a body. Untracked drafts are expected and are not a problem; a missing or modified
+merged file is a refusal.
