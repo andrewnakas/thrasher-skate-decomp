@@ -64,3 +64,24 @@ is a single load read once per arm, try removing the local before trying anythin
 361 at pass start; three units shipped as #170, #171, #172 → **358** unmatched bodies once they merge
 (pipeline green on each branch: `scan.py` 0 problems, `gate.py` 657/657, `build.py`
 `SLUS_009.35: OK (16829afba66533e2645bf87af2774671b06ff36b)`).
+
+## Second sweep: the leaf sibling next door
+
+`func_80056F4C` (42 words, no frame, no call) has a draft in `work/best`; re-measured it rather than
+redrafting. `work/best` base: 18/42, 0xa0 vs 0xa8. With `/* cflags: -mno-split-addresses */` it reaches
+19/42 at 0xa4 — the copy loop (four `lw`/four `sw` per 0x10, `bne` on the end pointer) matches word for
+word, so the struct assignment `*dst = D_800B2428[D_8008B4DC[0]]` is confirmed as the source shape.
+
+Residue, named: the game materialises the flags word as `lui %hi(D_800B29DC)`, `addiu %lo`,
+`addiu v1,v1,-0x4D4`, then `lw/sw 0x4D0(v1)` — i.e. `D_800B29DC - 4`, split across two statements. Every
+spelling tried (`Tbl *t = (Tbl *)((u8 *)D_800B29DC - 0x4D4); t->flags`, a `u8 *fl` intermediate, the
+plain folded form) makes gcc fold `-0x4D4 + 0x4D0` into one `%lo` of `0x800B2508`, which also costs the
+word. Remaining diff is that fold plus the `lui` of the copy base sitting after the slot guard instead of
+in its delay slot, plus `andi $a0` vs `andi $v1` on the slot mask. Parked as address-fold + slot fill.
+
+## Next batch
+
+The family's other members are all heavier (saved-register frames, 45-102 call sites): func_8005458C,
+func_80054BF4, func_800558A8, func_80055D64, func_800566FC (2 calls, 9 s-reg uses — the closest),
+func_800568C0, func_80056A64, func_80057FC4. func_800566FC is the one to open next: two calls and a
+9-use saved set is small enough to keep the prologue readable.
