@@ -1,0 +1,252 @@
+func_80011B48|work/best/func_80011B48.c|func_80011B48: 12 of 17 words differ
+func_80011D60|work/best/func_80011D60.c|func_80011D60: 87 of 101 words differ (size 0x19c, want 0x194)
+func_80011F84|work/best/func_80011F84.c|func_80011F84: 28 of 30 words differ (size 0x80, want 0x78)
+func_800120B8|work/best/func_800120B8.c|func_800120B8: 10 of 76 words differ
+func_80013D98|work/best/func_80013D98-s1.c|func_80013D98: 52 of 77 words differ (size 0x128, want 0x134)
+func_80013EEC|work/best/func_80013EEC.c|func_80013EEC: 2 of 57 words differ
+func_80014170|work/best/func_80014170.c|func_80014170: 30 of 46 words differ (size 0xb0, want 0xb8)
+func_80015684|work/best/func_80015684.c|func_80015684: 25 of 44 words differ (size 0xb8, want 0xb0)
+func_800159D8|work/best/func_800159D8.c|func_800159D8: 26 of 47 words differ
+func_80015D38|work/best/func_80015D38.c|func_80015D38: 3 of 20 words differ
+func_80015D88|work/best/func_80015D88.c|func_80015D88: 59 of 65 words differ (size 0xfc, want 0x104)
+func_80017140|work/best/func_80017140.c|func_80017140: 113 of 153 words differ (size 0x23c, want 0x264)
+func_80018FBC|work/best/func_80018FBC.c|func_80018FBC: 68 of 73 words differ (size 0x12c, want 0x124)
+func_80019570|work/best/func_80019570.c|func_80019570: 4 of 48 words differ
+func_80019670|work/best/func_80019670.c|func_80019670: 48 of 55 words differ
+func_80019F10|work/best/func_80019F10.c|func_80019F10: 45 of 47 words differ (size 0xa8, want 0xbc)
+func_8001A108|work/best/func_8001A108.c|func_8001A108: 45 of 57 words differ
+func_8001BD0C|work/best/func_8001BD0C.c|func_8001BD0C: 53 of 56 words differ (size 0xcc, want 0xe0)
+func_8001C0AC|work/best/func_8001C0AC.c|func_8001C0AC: 50 of 50 words differ (size 0xbc, want 0xc8)
+func_8001C2F0|work/best/func_8001C2F0.c|func_8001C2F0: 20 of 49 words differ
+func_8001C4BC|work/best/func_8001C4BC.c|func_8001C4BC: 32 of 33 words differ (size 0x80, want 0x84)
+func_8001C540|work/best/func_8001C540.c|func_8001C540: 70 of 59 words differ (size 0x118, want 0xec)
+func_8001C810|work/best/func_8001C810.c|func_8001C810: 35 of 72 words differ (size 0x124, want 0x120)
+func_8001C930|work/best/func_8001C930.c|func_8001C930: MATCH
+func_8001CC5C|work/best/func_8001CC5C-s1.c|func_8001CC5C: 68 of 72 words differ (size 0x114, want 0x120)
+func_8001CE98|work/best/func_8001CE98.c|func_8001CE98: 29 of 67 words differ (size 0x110, want 0x10c)
+func_8001D1E8|work/best/func_8001D1E8.c|func_8001D1E8: 69 of 71 words differ (size 0x130, want 0x11c)
+func_8001D340|work/best/func_8001D340.c|func_8001D340: 18 of 16 words differ (size 0x48, want 0x40)
+func_8001D3B4|work/best/func_8001D3B4.c|func_8001D3B4: 11 of 29 words differ
+func_8001D428|work/best/func_8001D428.c|func_8001D428: 40 of 43 words differ (size 0x8c, want 0xac)
+func_8001D4DC|work/best/func_8001D4DC.c|func_8001D4DC: 21 of 21 words differ (size 0x48, want 0x54)
+func_8001D540|work/best/func_8001D540-s1.c|func_8001D540: 27 of 28 words differ (size 0x60, want 0x70)
+func_8001D620|work/best/func_8001D620.c|func_8001D620: 16 of 46 words differ (size 0xb4, want 0xb8)
+func_8001D804|work/best/func_8001D804.c|func_8001D804: MATCH
+func_8001D88C|work/best/func_8001D88C.c|func_8001D88C: 60 of 58 words differ (size 0xfc, want 0xe8)
+func_8001DB74|work/best/func_8001DB74.c|func_8001DB74: 2 of 26 words differ
+func_8001DCF8|work/best/func_8001DCF8.c|func_8001DCF8: 11 of 24 words differ (size 0x64, want 0x60)
+func_8001F3D4|work/best/func_8001F3D4.c|func_8001F3D4: 17 of 37 words differ
+func_8001F4E8|work/best/func_8001F4E8.c|func_8001F4E8: 2 of 26 words differ
+func_8001F9D0|work/best/func_8001F9D0.c|func_8001F9D0: 50 of 59 words differ (size 0xf4, want 0xec)
+func_8001FCB0|work/best/func_8001FCB0.c|func_8001FCB0: 11 of 25 words differ
+func_8001FFB4|work/best/func_8001FFB4.c|func_8001FFB4: 34 of 35 words differ (size 0x88, want 0x8c)
+func_80020078|work/best/func_80020078-s1.c|func_80020078: 76 of 77 words differ (size 0xf0, want 0x134)
+func_800201AC|work/best/func_800201AC.c|func_800201AC: 47 of 56 words differ (size 0xd8, want 0xe0)
+func_8002028C|work/best/func_8002028C.c|func_8002028C: 56 of 67 words differ (size 0xfc, want 0x10c)
+func_8002050C|work/best/func_8002050C.c|func_8002050C: 4 of 25 words differ
+func_80020570|work/best/func_80020570.c|func_80020570: 30 of 38 words differ (size 0x94, want 0x98)
+func_80020C34|work/best/func_80020C34.c|func_80020C34: 76 of 80 words differ (size 0x134, want 0x140)
+func_80020D74|work/best/func_80020D74.c|func_80020D74: 4 of 39 words differ
+func_800212BC|work/best/func_800212BC.c|func_800212BC: 28 of 101 words differ
+func_80021894|work/best/func_80021894.c|func_80021894: 46 of 85 words differ
+func_800219E8|work/best/func_800219E8.c|func_800219E8: 60 of 99 words differ (size 0x190, want 0x18c)
+func_80021B74|work/best/func_80021B74.c|func_80021B74: 6 of 114 words differ
+func_80022148|work/best/func_80022148.c|func_80022148: 37 of 53 words differ
+func_8002221C|work/best/func_8002221C.c|func_8002221C: 56 of 59 words differ (size 0xd8, want 0xec)
+func_80022308|work/best/func_80022308.c|func_80022308: 31 of 41 words differ (size 0x98, want 0xa4)
+func_800223AC|work/best/func_800223AC.c|func_800223AC: 42 of 42 words differ (size 0x98, want 0xa8)
+func_80022F24|work/best/func_80022F24.c|func_80022F24: 45 of 56 words differ (size 0xe8, want 0xe0)
+func_80024F3C|work/best/func_80024F3C.c|func_80024F3C: MATCH
+func_80025004|work/best/func_80025004.c|func_80025004: 42 of 44 words differ (size 0xc0, want 0xb0)
+func_80025544|work/best/func_80025544.c|func_80025544: ERROR cc1 failed (33):
+func_800257A0|work/best/func_800257A0.c|func_800257A0: 6 of 21 words differ
+func_80025898|work/best/func_80025898.c|func_80025898: MATCH
+func_8002635C|work/best/func_8002635C.c|func_8002635C: 41 of 71 words differ (size 0xe4, want 0x11c)
+func_80026E88|work/best/func_80026E88.c|func_80026E88: 19 of 16 words differ (size 0x4c, want 0x40)
+func_80026EC8|work/best/func_80026EC8.c|func_80026EC8: 60 of 61 words differ (size 0xfc, want 0xf4)
+func_80027124|work/best/func_80027124.c|func_80027124: MATCH
+func_80027798|work/best/func_80027798.c|func_80027798: MATCH
+func_80027BA0|work/best/func_80027BA0.c|func_80027BA0: 62 of 77 words differ (size 0x130, want 0x134)
+func_8002921C|work/best/func_8002921C.c|func_8002921C: MATCH
+func_80029320|work/best/func_80029320.c|func_80029320: 71 of 64 words differ (size 0x11c, want 0x100)
+func_80029488|work/best/func_80029488.c|func_80029488: 15 of 29 words differ
+func_800294FC|work/best/func_800294FC.c|func_800294FC: 29 of 90 words differ (size 0x160, want 0x168)
+func_80029BBC|work/best/func_80029BBC.c|func_80029BBC: 16 of 68 words differ
+func_80029CCC|work/best/func_80029CCC.c|func_80029CCC: 58 of 56 words differ (size 0xe8, want 0xe0)
+func_8002A044|work/best/func_8002A044.c|func_8002A044: 42 of 45 words differ (size 0xc4, want 0xb4)
+func_8002A0F8|work/best/func_8002A0F8.c|func_8002A0F8: 35 of 40 words differ
+func_8002A198|work/best/func_8002A198.c|func_8002A198: 30 of 51 words differ (size 0xbc, want 0xcc)
+func_8002A9E0|work/best/func_8002A9E0.c|func_8002A9E0: 54 of 50 words differ (size 0xd8, want 0xc8)
+func_8002AB64|work/best/func_8002AB64-s1.c|func_8002AB64: 47 of 44 words differ (size 0xc0, want 0xb0)
+func_8002AD6C|work/best/func_8002AD6C.c|func_8002AD6C: 43 of 48 words differ
+func_8002B060|work/best/func_8002B060.c|func_8002B060: 9 of 32 words differ
+func_8002B194|work/best/func_8002B194.c|func_8002B194: 28 of 31 words differ (size 0x70, want 0x7c)
+func_8002B2B0|work/best/func_8002B2B0.c|func_8002B2B0: 43 of 44 words differ (size 0xa8, want 0xb0)
+func_8002B360|work/best/func_8002B360.c|func_8002B360: 41 of 39 words differ (size 0xa4, want 0x9c)
+func_8002B5DC|work/best/func_8002B5DC.c|func_8002B5DC: 37 of 38 words differ (size 0x9c, want 0x98)
+func_8002B674|work/best/func_8002B674.c|func_8002B674: 37 of 37 words differ (size 0x9c, want 0x94)
+func_8002BA64|work/best/func_8002BA64.c|func_8002BA64: MATCH
+func_8002BCB0|work/best/func_8002BCB0.c|func_8002BCB0: 2 of 17 words differ
+func_8002BCF4|work/best/func_8002BCF4.c|func_8002BCF4: 16 of 28 words differ
+func_8002BF9C|work/best/func_8002BF9C.c|func_8002BF9C: 9 of 24 words differ (size 0x64, want 0x60)
+func_8002BFFC|work/best/func_8002BFFC.c|func_8002BFFC: 21 of 47 words differ (size 0xc0, want 0xbc)
+func_8002C0B8|work/best/func_8002C0B8.c|func_8002C0B8: 29 of 36 words differ (size 0x9c, want 0x90)
+func_8002C148|work/best/func_8002C148-s2.c|func_8002C148: 22 of 27 words differ (size 0x70, want 0x6c)
+func_8002C1B4|work/best/func_8002C1B4.c|func_8002C1B4: 38 of 52 words differ (size 0xd8, want 0xd0)
+func_8002C284|work/best/func_8002C284-s2.c|func_8002C284: 20 of 71 words differ
+func_8002C3C0|work/best/func_8002C3C0.c|func_8002C3C0: 22 of 37 words differ
+func_8002C490|work/best/func_8002C490.c|func_8002C490: 13 of 21 words differ (size 0x58, want 0x54)
+func_8002C5FC|work/best/func_8002C5FC.c|func_8002C5FC: 33 of 35 words differ (size 0x98, want 0x8c)
+func_8002C688|work/best/func_8002C688.c|func_8002C688: 46 of 61 words differ (size 0x110, want 0xf4)
+func_8002C77C|work/best/func_8002C77C.c|func_8002C77C: 29 of 39 words differ (size 0xa4, want 0x9c)
+func_8002C818|work/best/func_8002C818.c|func_8002C818: 9 of 40 words differ
+func_8002C8B8|work/best/func_8002C8B8.c|func_8002C8B8: 44 of 64 words differ
+func_8002C9B8|work/best/func_8002C9B8.c|func_8002C9B8: MATCH
+func_8002CF94|work/best/func_8002CF94.c|func_8002CF94: 34 of 41 words differ (size 0xac, want 0xa4)
+func_8002D0B0|work/best/func_8002D0B0.c|func_8002D0B0: 61 of 58 words differ (size 0x114, want 0xe8)
+func_8002D734|work/best/func_8002D734.c|func_8002D734: 32 of 58 words differ
+func_8002D81C|work/best/func_8002D81C.c|func_8002D81C: 32 of 58 words differ
+func_8002D904|work/best/func_8002D904.c|func_8002D904: 7 of 46 words differ
+func_8002DA40|work/best/func_8002DA40-s2.c|func_8002DA40: 31 of 33 words differ (size 0x80, want 0x84)
+func_8002DAE8|work/best/func_8002DAE8.c|func_8002DAE8: 94 of 98 words differ (size 0x13c, want 0x188)
+func_8002DD88|work/best/func_8002DD88.c|func_8002DD88: 17 of 22 words differ (size 0x54, want 0x58)
+func_8002DDE0|work/best/func_8002DDE0.c|func_8002DDE0: 15 of 14 words differ (size 0x48, want 0x38)
+func_8002DE18|work/best/func_8002DE18.c|func_8002DE18: MATCH
+func_8002DE60|work/best/func_8002DE60.c|func_8002DE60: 40 of 39 words differ (size 0xa8, want 0x9c)
+func_8002DF04|work/best/func_8002DF04.c|func_8002DF04: 54 of 61 words differ (size 0xf8, want 0xf4)
+func_8002DFF8|work/best/func_8002DFF8.c|func_8002DFF8: 35 of 55 words differ (size 0xd8, want 0xdc)
+func_8002EC14|work/best/func_8002EC14.c|func_8002EC14: 43 of 41 words differ (size 0xac, want 0xa4)
+func_8002EE94|work/best/func_8002EE94.c|func_8002EE94: 66 of 78 words differ (size 0x12c, want 0x138)
+func_8002F4C0|work/best/func_8002F4C0.c|func_8002F4C0: 26 of 27 words differ (size 0x68, want 0x6c)
+func_8002F730|work/best/func_8002F730.c|func_8002F730: 60 of 56 words differ (size 0xf0, want 0xe0)
+func_8002FE80|work/best/func_8002FE80.c|func_8002FE80: 2 of 24 words differ
+func_8002FEE0|work/best/func_8002FEE0.c|func_8002FEE0: 57 of 63 words differ
+func_80030518|work/best/func_80030518.c|func_80030518: 21 of 55 words differ (size 0xd8, want 0xdc)
+func_80032400|work/best/func_80032400.c|func_80032400: 26 of 27 words differ (size 0x68, want 0x6c)
+func_80032644|work/best/func_80032644.c|func_80032644: 12 of 63 words differ
+func_80032B1C|work/best/func_80032B1C.c|func_80032B1C: 62 of 64 words differ (size 0x104, want 0x100)
+func_80032C28|work/best/func_80032C28.c|func_80032C28: 10 of 11 words differ (size 0x20, want 0x2c)
+func_80032CF4|work/best/func_80032CF4.c|func_80032CF4: 16 of 18 words differ
+func_80032D3C|work/best/func_80032D3C.c|func_80032D3C: 18 of 19 words differ (size 0x48, want 0x4c)
+func_80032D88|work/best/func_80032D88.c|func_80032D88: 17 of 17 words differ (size 0x3c, want 0x44)
+func_80032FF4|work/best/func_80032FF4.c|func_80032FF4: 12 of 13 words differ
+func_8003302C|work/best/func_8003302C-s1.c|func_8003302C: 34 of 29 words differ (size 0x88, want 0x74)
+func_800331FC|work/best/func_800331FC-s1.c|func_800331FC: 35 of 27 words differ (size 0x8c, want 0x6c)
+func_800333C8|work/best/func_800333C8.c|func_800333C8: 26 of 23 words differ (size 0x68, want 0x5c)
+func_80033428|work/best/func_80033428.c|func_80033428: 25 of 22 words differ (size 0x68, want 0x58)
+func_80033480|work/best/func_80033480.c|func_80033480: 25 of 22 words differ (size 0x68, want 0x58)
+func_800334D8|work/best/func_800334D8.c|func_800334D8: 25 of 25 words differ (size 0x5c, want 0x64)
+func_8003353C|work/best/func_8003353C.c|func_8003353C: 33 of 30 words differ (size 0x84, want 0x78)
+func_80033714|work/best/func_80033714.c|func_80033714: 24 of 21 words differ (size 0x60, want 0x54)
+func_800337C4|work/best/func_800337C4.c|func_800337C4: 16 of 16 words differ (size 0x3c, want 0x40)
+func_80033818|work/best/func_80033818.c|func_80033818: 12 of 13 words differ
+func_80033DB0|work/best/func_80033DB0.c|func_80033DB0: 25 of 25 words differ (size 0x60, want 0x64)
+func_80033E14|work/best/func_80033E14.c|func_80033E14: 24 of 25 words differ
+func_80034004|work/best/func_80034004.c|func_80034004: 17 of 23 words differ (size 0x60, want 0x5c)
+func_8003453C|work/best/func_8003453C.c|func_8003453C: 42 of 70 words differ (size 0x11c, want 0x118)
+func_80034698|work/best/func_80034698.c|func_80034698: 28 of 48 words differ (size 0xc4, want 0xc0)
+func_80034758|work/best/func_80034758.c|func_80034758: 11 of 41 words differ
+func_80034824|work/best/func_80034824.c|func_80034824: 22 of 20 words differ (size 0x5c, want 0x50)
+func_80034A78|work/best/func_80034A78.c|func_80034A78: 42 of 60 words differ
+func_80034B98|work/best/func_80034B98.c|func_80034B98: MATCH
+func_80034C20|work/best/func_80034C20.c|func_80034C20: 22 of 23 words differ (size 0x58, want 0x5c)
+func_80034C8C|work/best/func_80034C8C.c|func_80034C8C: 3 of 25 words differ
+func_80034D4C|work/best/func_80034D4C.c|func_80034D4C: MATCH
+func_80034DE8|work/best/func_80034DE8.c|func_80034DE8: 52 of 67 words differ (size 0x108, want 0x10c)
+func_8003571C|work/best/func_8003571C.c|func_8003571C: 40 of 45 words differ (size 0xac, want 0xb4)
+func_80035810|work/best/func_80035810.c|func_80035810: 17 of 20 words differ (size 0x58, want 0x50)
+func_800358A8|work/best/func_800358A8.c|func_800358A8: 52 of 61 words differ (size 0xe8, want 0xf4)
+func_80035BC0|work/best/func_80035BC0.c|func_80035BC0: 21 of 21 words differ (size 0x50, want 0x54)
+func_80035C14|work/best/func_80035C14.c|func_80035C14: 4 of 34 words differ
+func_80035C9C|work/best/func_80035C9C.c|func_80035C9C: 32 of 36 words differ (size 0x88, want 0x90)
+func_80035D2C|work/best/func_80035D2C.c|func_80035D2C: 67 of 69 words differ (size 0x10c, want 0x114)
+func_80035F5C|work/best/func_80035F5C.c|func_80035F5C: 39 of 49 words differ (size 0xc8, want 0xc4)
+func_800363F8|work/best/func_800363F8.c|func_800363F8: ERROR cc1 failed (33):
+func_8003682C|work/best/func_8003682C.c|func_8003682C: 130 of 138 words differ (size 0x23c, want 0x228)
+func_80036F64|work/best/func_80036F64.c|func_80036F64: 53 of 67 words differ (size 0x108, want 0x10c)
+func_80037968|work/best/func_80037968.c|func_80037968: 24 of 35 words differ (size 0x7c, want 0x8c)
+func_800379F4|work/best/func_800379F4.c|func_800379F4: 11 of 26 words differ
+func_80037DC4|work/best/func_80037DC4.c|func_80037DC4: 143 of 190 words differ (size 0x2fc, want 0x2f8)
+func_800382C0|work/best/func_800382C0.c|func_800382C0: 6 of 12 words differ
+func_8003834C|work/best/func_8003834C.c|func_8003834C: 21 of 39 words differ
+func_80038610|work/best/func_80038610.c|func_80038610: 24 of 79 words differ
+func_800387C8|work/best/func_800387C8.c|func_800387C8: 31 of 37 words differ (size 0x90, want 0x94)
+func_80038864|work/best/func_80038864.c|func_80038864: 49 of 67 words differ
+func_80038970|work/best/func_80038970.c|func_80038970: 47 of 68 words differ
+func_80038A80|work/best/func_80038A80.c|func_80038A80: 41 of 49 words differ (size 0xb8, want 0xc4)
+func_8003A09C|work/best/func_8003A09C.c|func_8003A09C: 10 of 49 words differ (size 0xcc, want 0xc4)
+func_8003A1B8|work/best/func_8003A1B8.c|func_8003A1B8: 61 of 71 words differ (size 0x128, want 0x11c)
+func_8003A5A4|work/best/func_8003A5A4.c|func_8003A5A4: 144 of 144 words differ (size 0x25c, want 0x240)
+func_8003AC04|work/best/func_8003AC04.c|func_8003AC04: 8 of 30 words differ
+func_8003AF4C|work/best/func_8003AF4C.c|func_8003AF4C: 68 of 71 words differ (size 0x114, want 0x11c)
+func_8003B068|work/best/func_8003B068.c|func_8003B068: 195 of 217 words differ (size 0x1c8, want 0x364)
+func_8003B3CC|work/best/func_8003B3CC.c|func_8003B3CC: 10 of 19 words differ
+func_8003B478|work/best/func_8003B478.c|func_8003B478: 65 of 71 words differ (size 0x114, want 0x11c)
+func_8003B8F8|work/best/func_8003B8F8.c|func_8003B8F8: 4 of 46 words differ
+func_8003BA14|work/best/func_8003BA14.c|func_8003BA14: 22 of 61 words differ
+func_8003BB1C|work/best/func_8003BB1C.c|func_8003BB1C: 166 of 167 words differ (size 0x178, want 0x29c)
+func_8003BDB8|work/best/func_8003BDB8.c|func_8003BDB8: 6 of 31 words differ
+func_8003BE34|work/best/func_8003BE34.c|func_8003BE34: 66 of 82 words differ (size 0x150, want 0x148)
+func_8003BF7C|work/best/func_8003BF7C.c|func_8003BF7C: 2 of 79 words differ
+func_8003C220|work/best/func_8003C220.c|func_8003C220: 12 of 28 words differ
+func_8003ED28|work/best/func_8003ED28.c|func_8003ED28: 5 of 60 words differ
+func_80042338|work/best/func_80042338.c|func_80042338: 56 of 64 words differ (size 0xfc, want 0x100)
+func_80042E9C|work/best/func_80042E9C.c|func_80042E9C: 2 of 58 words differ
+func_80043294|work/best/func_80043294.c|func_80043294: 6 of 17 words differ
+func_800432D8|work/best/func_800432D8.c|func_800432D8: 20 of 24 words differ (size 0x5c, want 0x60)
+func_8004584C|work/best/func_8004584C.c|func_8004584C: 28 of 38 words differ (size 0x90, want 0x98)
+func_8004669C|work/best/func_8004669C.c|func_8004669C: 28 of 104 words differ
+func_80046878|work/best/func_80046878.c|func_80046878: 23 of 41 words differ (size 0xa0, want 0xa4)
+func_80046EFC|work/best/func_80046EFC.c|func_80046EFC: 56 of 70 words differ
+func_80047014|work/best/func_80047014.c|func_80047014: 42 of 62 words differ (size 0xe8, want 0xf8)
+func_80047268|work/best/func_80047268.c|func_80047268: 53 of 57 words differ (size 0xdc, want 0xe4)
+func_8004734C|work/best/func_8004734C.c|func_8004734C: 34 of 50 words differ (size 0xc0, want 0xc8)
+func_800474B4|work/best/func_800474B4.c|func_800474B4: 38 of 49 words differ (size 0xbc, want 0xc4)
+func_80047578|work/best/func_80047578.c|func_80047578: 38 of 49 words differ (size 0xc0, want 0xc4)
+func_80047A44|work/best/func_80047A44.c|func_80047A44: 14 of 34 words differ
+func_8004813C|work/best/func_8004813C.c|func_8004813C: 30 of 51 words differ (size 0xc8, want 0xcc)
+func_8004836C|work/best/func_8004836C.c|func_8004836C: 44 of 57 words differ (size 0xd0, want 0xe4)
+func_800484B4|work/best/func_800484B4.c|func_800484B4: 25 of 57 words differ
+func_80048598|work/best/func_80048598.c|func_80048598: 28 of 37 words differ
+func_8004862C|work/best/func_8004862C.c|func_8004862C: 15 of 28 words differ
+func_8004912C|work/best/func_8004912C.c|func_8004912C: 49 of 65 words differ (size 0x100, want 0x104)
+func_800494A4|work/best/func_800494A4.c|func_800494A4: 24 of 32 words differ (size 0x84, want 0x80)
+func_8004995C|work/best/func_8004995C.c|func_8004995C: 33 of 46 words differ (size 0xb4, want 0xb8)
+func_80049A14|work/best/func_80049A14.c|func_80049A14: 90 of 101 words differ (size 0xc0, want 0x194)
+func_8004A094|work/best/func_8004A094.c|func_8004A094: 48 of 39 words differ (size 0xc8, want 0x9c)
+func_8004A130|work/best/func_8004A130.c|func_8004A130: 11 of 80 words differ
+func_8004AF80|work/best/func_8004AF80.c|func_8004AF80: 66 of 66 words differ (size 0xfc, want 0x108)
+func_8004BF94|work/best/func_8004BF94.c|func_8004BF94: MATCH
+func_8004CCA0|work/best/func_8004CCA0.c|func_8004CCA0: 11 of 34 words differ
+func_8004DBF0|work/best/func_8004DBF0.c|func_8004DBF0: 60 of 82 words differ (size 0x12c, want 0x148)
+func_8004E460|work/best/func_8004E460.c|func_8004E460: 14 of 50 words differ
+func_8004E528|work/best/func_8004E528.c|func_8004E528: 82 of 105 words differ (size 0x1a0, want 0x1a4)
+func_8004E6CC|work/best/func_8004E6CC.c|func_8004E6CC: 53 of 72 words differ (size 0x118, want 0x120)
+func_8004E7EC|work/best/func_8004E7EC.c|func_8004E7EC: 51 of 81 words differ
+func_8004E930|work/best/func_8004E930.c|func_8004E930: 9 of 121 words differ
+func_8004EDF8|work/best/func_8004EDF8.c|func_8004EDF8: 29 of 53 words differ (size 0xc8, want 0xd4)
+func_8004EECC|work/best/func_8004EECC.c|func_8004EECC: 20 of 33 words differ
+func_8004F1E0|work/best/func_8004F1E0-s4.c|func_8004F1E0: 14 of 28 words differ
+func_800511C0|work/best/func_800511C0.c|func_800511C0: 61 of 101 words differ
+func_80051354|work/best/func_80051354.c|func_80051354: 131 of 136 words differ (size 0x20c, want 0x220)
+func_80051844|work/best/func_80051844.c|func_80051844: 92 of 96 words differ (size 0x16c, want 0x180)
+func_800519C4|work/best/func_800519C4.c|func_800519C4: 39 of 72 words differ (size 0x11c, want 0x120)
+func_80051E14|work/best/func_80051E14.c|func_80051E14: 30 of 74 words differ (size 0x120, want 0x128)
+func_80052380|work/best/func_80052380.c|func_80052380: 38 of 102 words differ
+func_80052518|work/best/func_80052518.c|func_80052518: 15 of 73 words differ (size 0x120, want 0x124)
+func_800535EC|work/best/func_800535EC.c|func_800535EC: 7 of 67 words differ
+func_80053A4C|work/best/func_80053A4C.c|func_80053A4C: 57 of 58 words differ (size 0xf8, want 0xe8)
+func_80053EA8|work/best/func_80053EA8.c|func_80053EA8: 32 of 39 words differ (size 0x90, want 0x9c)
+func_80055820|work/best/func_80055820.c|func_80055820: 1 of 34 words differ
+func_800568C0|work/best/func_800568C0.c|func_800568C0: 90 of 95 words differ (size 0x150, want 0x17c)
+func_80056C90|work/best/func_80056C90.c|func_80056C90: 2 of 36 words differ
+func_80056D20|work/best/func_80056D20.c|func_80056D20: 12 of 44 words differ
+func_80056F4C|work/best/func_80056F4C.c|func_80056F4C: 18 of 42 words differ (size 0xa0, want 0xa8)
+func_80056FF4|work/best/func_80056FF4.c|func_80056FF4: 2 of 39 words differ
+func_80057090|work/best/func_80057090.c|func_80057090: 5 of 92 words differ
+func_80057B94|work/best/func_80057B94.c|func_80057B94: 62 of 68 words differ (size 0x114, want 0x110)
+func_80057CA4|work/best/func_80057CA4.c|func_80057CA4: 29 of 45 words differ (size 0xc4, want 0xb4)
+func_80057E9C|work/best/func_80057E9C.c|func_80057E9C: MATCH
+func_80058448|work/best/func_80058448.c|func_80058448: 35 of 43 words differ
+func_80058598|work/best/func_80058598.c|Traceback (most recent call last):
+DONE
