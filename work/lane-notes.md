@@ -1187,3 +1187,8 @@ where `char *d = dst; p = d;` reaches 41/70 and mirrors the roles without matchi
 **Conversions: 0 from 36 bodies probed.** The queue is unchanged except for the two improved parks;
 the lever's population is bodies with a loop-carried value crossing a call, and `func_80021B74` was
 the only one in the corpus.
+
+**Merge confirmed during the sweep.** PR #159 landed (`976cb77` on `origin/main`): 646 unit files, and
+the queue is now **382 bodies**. `func_80021B74` is the pass-33 conversion; this pass's own sweep added
+none, so the lane's shipped total is unchanged by it and the record above stands at 0 new units from 36
+bodies probed.
