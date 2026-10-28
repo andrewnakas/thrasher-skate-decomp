@@ -1,13 +1,13 @@
 #include "common.h"
 
-s32 func_800382C0(u32 x) {
-    u32 limit = 0x1E000;
-    u32 v = (x + 4) >> 7;
+s32 func_800382C0(u32 a0) {
+    u32 t;
 
-    v += x;
-    v += 0x205;
-    if (limit < v) {
-        v = -1;
+    t = (a0 + 4) >> 7;
+    t = a0 + t;
+    t = t + 0x205;
+    if (t <= 0x1E000) {
+        return t;
     }
-    return (s32) v;
+    return -1;
 }
