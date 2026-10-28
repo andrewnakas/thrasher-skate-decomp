@@ -1325,3 +1325,27 @@ Note for the next pass: `asm/nonmatchings/game/*.s` exists for merged bodies too
 symbol is not a queue. `func_8002DC70` was already merged (`8d6d408`); the enumerator is right, the grep
 was wrong.
 
+
+## Pass 21 — 13 retested, 0 converted; the residue is scratch-register choice
+
+The 1-6 word population was worked body by body with only the lever each residue suggested (incomplete
+array for symbol addresses, stride off the shift chain, advance-in-place copy, fresh-local copy). Full
+table in `work/address-sweep-oct27.md`. Every one of the 13 lands on the same thing: **which scratch
+register a value gets**, and no C spelling tested reaches it —
+
+- `func_800382C0` (1/12): `addu v0,$a0,$v0` vs `addu v0,$v0,$a0`; both C operand orders canonicalise
+  identically, so this one is not a spelling question at all.
+- `func_80056C90` / `func_80056FF4` / `func_8003BF7C` (2 words each): the `la` temp lands in `$v1`/`$v0`
+  where the game loads through the destination register. Incomplete-array forms fix the %lo *fold* but
+  not this; the flag makes them far worse (31/22/74).
+- `func_8002BCB0`, `func_8002FE80`, `func_8002DD88`, `func_80035C14`: one register apart each, including
+  with the short-circuit-guard and declaration-order variants.
+
+`func_80034B98`: the handoff in `work/handoff-80034B98.md` corrects an earlier wrong note. The match is
+real (16 words, `-mno-split-addresses`) but the encoding is `lui`+`ori` for a full 32-bit constant, and
+**the symbol the scanner wants produces different code** (`addiu $v0,$gp,%gp_rel` for a 1-byte object,
+`lui`/`addiu` for an array). So adding `D_801FC000` to `config/symbol_addrs.us.txt` would not unblock it;
+the decision is either a named constant for the address or accepting `(0x801F << 16) | 0xC000`, which
+matches and passes the scanner but is plainly spelled to dodge the literal rule. Not shipped.
+
+**Conversions: 0 from 13 attempts** (1 from 9 last pass, PR #160).

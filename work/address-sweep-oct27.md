@@ -110,3 +110,34 @@ two levers that still pay are (a) the incomplete-array + true-offset spelling fo
 materialisation and (b) advance-in-place-with-copy for pointer bumps. Beyond those the
 lane's remaining near-misses need the original statement order, which the listings do not
 carry.
+
+## Pass 21 — the 1-to-6 word population, retested with the banked levers
+
+Every body in the verifier's "within five words" list that is not already recorded as closed was
+retested against **only** the lever its residue suggested. Merged status was checked against freshly
+fetched `origin/main` (`7f30e1c`) before the first shape and the list re-checked before any PR.
+
+| body | words | before | best after | lever tried | residue |
+|---|---|---|---|---|---|
+| `func_800382C0` | 12 | 1 | 1 | both `addu` operand orders, single-expression fold, separate shift local | the emitted `addu v0,$a0,$v0` operand order is not reachable: both C orders canonicalise to `addu v0,$v0,$a0` |
+| `func_8002FE80` | 24 | 2 | 2 | pointer local for the stack buffer | stack address in `$v0`, game uses `$a1` |
+| `func_8002BCB0` | 17 | 2 | 2 | `if (a == 0 || b == 0)` short-circuit guard | field value in `$v0`, game uses `$a1` |
+| `func_80056C90` | 36 | 2 | 2 (31 with flag) | `-mno-split-addresses` | `la` temp `$v1` where the game reuses `$t0` |
+| `func_80056FF4` | 39 | 2 | 3 (inline index) | remove the `slot` local | `la` temp `$v0` where the game reuses `$a0` |
+| `func_8003BF7C` | 79 | 2 | 2 (74 as `u32[]` — goes gp-relative) | incomplete array vs sized array | `la` temp `$v0` where the game reuses `$a0` |
+| `func_8002050C` | 25 | 4 | 4 (19 with a named sentinel) | named `-1` local | sentinel CSE'd into one register + `addu` order |
+| `func_80035C14` | 34 | 4 | 4 (8 with `lo` declared first) | declaration order of the two bytes | first-created pseudo gets `$a1`, game gets `$v0` |
+| `func_8002DD88` | 22 | 3 | 3 | ternary return (done last pass) | parameter copy `$a1` vs `$a2` |
+| `func_8003BDB8` | 31 | 6 | 6 | constant hoist, chained stores, shifted literal | `0xFFFF0000` hoisted in the game, sunk by us |
+| `func_8002DDE0` | 21 | 0x48 | 0x44 with `goto` | explicit `goto test` rotation | gcc still emits the entry test; the game's build rotated the loop |
+
+**0 converted from 13 retested.** The three `la`-temp bodies (`80056C90`, `80056FF4`, `8003BF7C`) are
+the clearest result of the pass: identical residue in three unrelated functions — `lui $v0,%hi(S)` then
+`lw $a0,%lo($v0)`, where the game reuses the destination register for the address
+(`lui $a0,%hi(S)` / `lw $a0,%lo($a0)`). The incomplete-array spellings that fix the *fold* do not move
+this register; `-mno-split-addresses` makes all three much worse (31/22/74). It is a liveness-splitting
+choice in this build, not an address spelling.
+
+`func_80034B98` is now blocked for a different reason than the record said; see
+`work/handoff-80034B98.md` — the symbol the scanner wants changes the encoding, so the choice is the
+maintainer's.
