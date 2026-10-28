@@ -3,6 +3,12 @@
 Conversions 0, bodies attempted 3, parks 3. All three were written whole from their listings in
 one pass each and measured at the end; none was shaped in pieces. Pipeline green on a synced tree.
 
+| function | words | best | residue |
+|---|---|---|---|
+| func_80052874 | 231 | 194/231 | transfer tail 17 words short; clamp block not hoisted |
+| func_8003062C | 230 | 157/230 | case-2 arm order; 4 words in the .L80030968 continuation |
+| func_8004F250 | 231 | 226/231 | argument-binding register homing (filed class) |
+
 ## func_80052874 (231) — the corrected decode, drafted as an if-chain
 
 The previous record's turn-on instruction was wrong in two ways and both are now settled from the
