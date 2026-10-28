@@ -43,3 +43,39 @@ game's `srl 9/andi 0x60` and `srl 12/andi 0xC00` — a `u16` bitfield struct was
 worse, `0x144`, because the field writes become read-modify-write of the stack slot), and the
 `0xFF000000`/`0xFFFFFF` link fixups. Residue: store schedule inside the header (`f4` first here, `f0`
 first in the game) and two words of register pressure around the descriptor reads.
+
+## Pass 24b — family round two: no conversions, one lever banked
+
+Base `origin/main` 44b57be (650 units). All candidates checked against freshly fetched main before
+drafting; `func_80057E9C` and `func_80021894` confirmed merged (#161, #163).
+
+**func_800219E8 (99 w) — 55 → 38/99, size exact, then parked.** The lever asked for works: copying
+the address-taken table local into a plain local before the loop (`base = tab;`) stopped the per-
+iteration `lw 0x18($sp)` and put the pointer in `$t2` like the game, taking the body from 55 to 38
+words with the size going exact (`0x18c`). It did **not** move the prologue: the game saves `$s1`
+(`extra`) before `$s0` (`id`), this build the other way round, and the loop's compaction
+index/count homes (`$a3`/`$t0` vs `$a1`/`$a0`) stay swapped. Also measured, no movement:
+explicit entry copies in both orders (38), `key = id` moved after the guard (78, size short),
+`-fno-schedule-insns2` (99/99), `-O3` (38). Class: saved-register pairing + loop live ranges,
+already recorded as compiler-bound.
+
+**func_80020D74 (39 w) — rechecked, 4/39, unchanged.** The single relocated instruction is the
+`or` that builds `r`: the game emits it before the guard's `lw`, this build lets `reorg` sink it
+into the `beqz` delay slot, which shifts the rest by one word. Delay-slot filling, issue #17. No
+shape changed it; it stays closed.
+
+**func_8002AC14 (86 w) — 76/86, 0x150 vs 0x158, parked.** Whole body decoded and present (outer
+count at `+5`, per-sector vertex count at `+1`, vertex record 8 bytes, 0x1C-stride tab through
+`D_800A4F00[1] + 156*i`, `dst = mat + 12*idx`, three `clamp(base + ((light-128) * (w<<9) >> 16))`
+stores). Residue: gcc hoists the three `-0x80` biases to function entry where the game
+re-materialises them inside the loop, and the `D_800A4F00 + 4` base folds into `%lo`. Both are
+LICM/address-fold classes.
+
+**func_80055FC4 (80 w) — 73/80, best `0xb4` and `0x16c` vs `0x140`, parked.** Jump-table body;
+a table *is* emitted (`jr $v0`, `sltiu 0xC`), so the dispatch itself is reachable. Residue: the game
+re-derives the whole `D_800B2428 + 112 * D_8008B4DC` address inside every arm (7 instructions each),
+and gcc cross-jumps the case bodies into one shared block when the record pointer is indexed afresh
+(`0x16c`) and drops the recomputation entirely when it is cached (`0xb4`); no spelling produced both
+the duplication and the table at the game's size.
+
+Queue after this pass: 650 units on main, 378 bodies unmatched. No unit PR from 24b.
