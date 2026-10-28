@@ -30,7 +30,7 @@ Residue: 4 words of backend — `addu t3,v1,zero` (address-materialisation copy)
 kind block's branch-arm layout (game 10 words with a `j` and a duplicated `0x70`; ours 8 with the false arm as
 fall-through, for eight different spellings of the same value).
 
-## 2. func_8001B238 — parked, own-rodata addressing, 58/90, size 0x164 vs 0x168
+## 2. func_8001B238 — parked, branch form, 47/90, size 0x174 vs 0x168
 
 90-word two-arm body: `mode` 0/1, each arm runs `memset` + two `func_8001B1CC` + the three PsyQ critical
 section calls, then a shared tail comparing a pointer against an expected address.
@@ -49,29 +49,39 @@ Also measured: `switch (mode) { case 0 … case 1 … default: return 1; }` (not
 makes gcc emit the default's `j` before both bodies — with the if-chain the same body came out 87/90 with a
 saved register even after the store fix landed elsewhere.
 
-**Remaining blocker, precise:** this function owns 8 bytes of rodata at `0x80010668`/`0x8001066C`
-(`config/functions.us.csv` row has `rodata_addr=80010668`). The game addresses each word absolutely:
+**The rodata spelling, found and proved (new banked fact):**
 
 ```
-8001B2C0 lui a1, %hi(D_8001066C)
-8001B2C4 lw  a1, %lo(D_8001066C)(a1)
+static const u32 __attribute__((section(".rodata"))) D_80010668 = 0x8008B4F4;
 ```
 
-Our compiler puts two 4-byte `static const u32` into small data and emits `lw a1, 0x4($gp)` (no symbol) —
-4 of the 58 differing words, and the reloc cannot even be named. `-G8` is the pinned flag and `-G0` would
-break the three `%gp_rel` data globals the game does use in this same function. A spelling that keeps small
-*data* gp-relative while forcing *rodata* absolute is the missing piece; it is a compact, self-contained
-experiment (10-line bench, two consts, emit asm) and it would likely close several bodies, since this is the
-first body seen whose own rodata is addressed absolutely while its data is gp-relative.
+Plain `static const u32` is 4 bytes and goes to small data, so the compiler emits `lw a1, 0x4($gp)` — a
+gp-relative load with no symbol, which the game never uses for rodata. Adding the explicit section makes the
+same two words absolute:
 
-The other one word is the `nop` after the case-0 guard's `nop` slot.
+```
+lui a1, %hi(D_8001066C) ; lw a1, 0x4(a1)      (ours, anchored on D_80010668)
+lui a1, %hi(D_8001066C) ; lw a1, %lo(D_8001066C)(a1)     (game)
+```
 
-Drafts kept: `work/best-294FC-v3.c` (+ the for-init move), `work/best-8001B238-v2.c`.
+This moved the body 58 -> 47 differing words. The residual reloc difference is that gcc anchors both words on
+`D_80010668` and uses `+4` for the second, where the game names each symbol; `-G0` is not the answer (it would
+break the three `%gp_rel` data globals the same function uses).
+
+**Remaining 3-word surplus and the branch forms:**
+
+- case-1 guard: game `beq v0,$a3 → tail` with `addu v0,$zero,$zero` in the delay slot (4 words); ours
+  `bne v0,$a3 → +3` + `nop` + `j` + `addu v0,$zero,$zero` (6 words). Polarity inversion.
+- shared tail: game `bne v1,v0 → epilogue` + `addiu v0,$zero,1` + `addu v0,$zero,$zero` (3 words); ours
+  compiles `return have != want` branchlessly as `xor v0,v0,v1` + `sltu v0,$zero,v0` (2 words). Writing it as
+  `if (have != want) return 1; return 0;` produced the same branchless form.
+
+Drafts kept: `work/best-294FC-v3.c` (+ the for-init move), `work/best-8001B238-v3.c` (47/90).
 
 ## Next pass should
 
-1. Run the 10-line rodata bench: `static const u32` vs `extern const u32` + definition vs a struct wrapper vs
-   `-fno-...` spellings, emit asm, find the one that gives `lui/%lo` for each word while 4-byte *data* stays
-   `%gp_rel`. Then finish func_8001B238 from `work/best-8001B238-v2.c`.
+1. Finish func_8001B238 from `work/best-8001B238-v3.c`: the rodata form is solved, what is left is 3 words of
+   branch form — invert the case-1 guard so the return-0 lands in the `beq` delay slot, and find the spelling
+   that makes the shared tail a `bne` + two constant loads rather than `xor`/`sltu`.
 2. Apply the two new levers on the next band members *during* the first transcription: for-init walking
    pointers, and store-before-call for any parameter that reaches memory.
