@@ -1429,3 +1429,135 @@ What did pay is a third tell this sweep found on its own: **two `return`s of the
 tail-merged into one epilogue** (`func_80056FF4`, 5 → 2, size exact). Writing the guard and the failing test as
 two consecutive `if (...) return 7;` statements is what produces the game's single early return block; the
 `if (ok) { ...; return 0; } return 7;` form duplicates the epilogue and costs two words.
+### Batch 15: the never-opened straight-line pool, 13 opened, best 1 of 34, nothing shippable
+
+`work/open_pool.py` is the new selector: a body counts as *opened* only when some draft is
+**named** for it (`func_8002C3C0g.c` or `29488-v1.c` both count, a body merely *called* from a
+draft does not). By that rule the pool is **219 never-opened bodies, 81 of them with no back edge**
+— larger than the 20 the previous pass worked from, because that count came from
+`enumerate.drafted()`, which only looks at `work/near-miss` and `work/best`.
+
+Opened this pass (all from `work/batch15/`, details in `work/batch15/NOTE.md`):
+
+| unit | words | first | best | class |
+|---|---|---|---|---|
+| `func_80055820` | 34 | 27 | **1** | one delay slot (constant arg re-materialised where the game keeps the branch-delay copy) |
+| `func_80032644` | 63 | 12 | **12** | `$s2`/`$s3` register role |
+| `func_8001C540` | 59 | 14 | **14** | `$a0`/`$a1` register role, stream otherwise identical |
+| `func_800333C8` | 23 | 26 | 26 | reads a caller-clobbered register across a call |
+| `func_8002A198` | 51 | 31 | 31 | dispatch tree order + size |
+| `func_80034758` | 41 | 35 | 35 | register role + schedule |
+| `func_800484B4` | 57 | 37 | 37 | allocator loop bodies |
+| `func_80020D74` | 39 | 47 | 47 | parameter masking placement, pointer local |
+| `func_8002BFFC` | 47 | 46 | 46 | 8 words over |
+| `func_80026EC8` | 61 | 59 | 59 | arguments spilled above `$sp` (not plain C) |
+| `func_8003BA14` | 61 | 60 | 60 | stack temp + `$gp` block stores |
+| `func_80038864` | 67 | 60 | 64 | absolute-vs-`$gp` tell only partly applied |
+| `func_80038970` | 68 | 62 | 62 | same family |
+
+Rejected fast without a draft: `func_80045828`, `func_80045838` (`$gp` stubs), `func_80027538`,
+`func_800262E8` (`$sp` reseat through `0x1F8003FC`), `func_800331FC`, `func_8003353C` (fixmul
+family), `func_80032E94` (`$ra` parked in `$t7` across calls).
+
+**New lever: absolute vs `$gp`-relative extern addressing is decided by the object's size against
+`-G8`, not by its type name.** `extern u8 D_8008B4D8;` compiles to `%gp_rel`; declaring the same
+symbol as a >8-byte aggregate (`extern u8 D_8008B4D8[16];`, read as `D_8008B4D8[0]`) makes gcc emit
+the game's `lui` + absolute `lbu`. That single change took `func_80055820` from 27 to 1 of 34. On
+`func_80038970`/`func_80038864` the same tell fixed the load but left gcc pinning the symbol's
+address in a callee-saved register, which costs a saved word — so the tell is necessary, not
+sufficient. Nothing shipped, so `docs/MATCHING_GUIDE.md` is untouched (no record-only commit).
+
+### The mechanical address-form sweep: 103 bodies, 27 disagreements, 3 zeros, 2 shipped
+
+`work/gp_sweep.py` turns last pass's `-G8` rule into a check over every body that has a draft, instead
+of a hunt unit by unit: it reads the listing's addressing form for each global (`lui`/`%lo` absolute vs
+`%gp_rel($gp)`), reads how the draft declares that symbol, and where they disagree emits a variant with
+the declaration resized across the 8-byte threshold, then scores both through `tools/match.py`.
+Result: **27** disagreements, **14** of them semantic, **13** address-use (where resizing turns the
+address into an element load and the score can move for the wrong reason — the tool now labels those
+`fix*` as shape probes), one semantic improvement (`func_80056F4C` 38 -> 34), and **three units at zero
+words differing**.
+
+Two shipped in PR #201 (`func_8001BD0C` 56 words, `func_8004B1D4` 79 words) — both were drafts that
+already matched, which no earlier pass had scored because it only measured the draft it was iterating
+on. The third, `func_80034B98` (16 words, draft `work/d-34B98-i.c`), matches but cannot ship: the body
+stores the literal `0x801FC000` into `D_8008B0F4`, `tools/scan.py` demands the symbol `D_801FC000`, and
+that symbol is not in the split config while the game's instruction carries no relocation. That is an
+owner decision (add the symbol, or exempt this literal). Progress after the PR: **678/1081 functions,
+70,476/289,476 bytes, 24.346%**.
+
+The floors were re-checked in the same run: none of them is an addressing disagreement. `func_8002DD88`
+3/22, `func_80032D88` 16/17, `func_80029488` 7/29, `func_80015684` 7/44, `func_8002C3C0` 25/37,
+`func_80058448` 33/43, `func_80056C90` 31/36 all either already declare their globals on the side the
+listing uses, or are the case where resizing costs a saved register (`func_80043294` 6 -> 15,
+`func_80034A78` 31 -> 40). The addressing class among the 146 floors is closed.
+
+### Every-draft scan: 3528 drafts, 5 zeros, 2 shipped, 2 floors re-confirmed
+
+`work/all_drafts.py` scores **every** draft under `work/` against its own unit instead of the one a
+pass happens to be iterating on — the seam the previous pass opened. Numbers: 161 unmatched units
+have a named draft, 140 of them have at least one draft that compiles, 3528 unique draft contents
+(deduplicated by sha1) compiled, 131 drafts failed to compile, 7333 `.c` files carry no unit address
+in their name and cannot be attributed. **Five units reach zero words.**
+
+| unit | words | verdict |
+|---|---|---|
+| `func_8001E3A0` | 84 | shipped (PR #203) |
+| `func_80029BBC` | 68 | shipped (PR #203) |
+| `func_80034B98` | 16 | excluded: literal `0x801FC000` vs the required `D_801FC000` symbol, which the split config lacks — owner decision |
+| `func_800382C0` | 12 | rejected: dead diamond (`if (arg0) { return -1U; } else { return -1U; }`); clean body 6/12, exactly the recorded floor |
+| `func_80058448` | 43 | rejected: three `__asm__`-renamed aliases of one symbol; single `extern` spellings 34/43 |
+
+Only one draft reaches zero for each of those units, so there were no alternates to choose between.
+
+**Answer to the floor question: no floor was mis-parked.** Two of the 200 recorded floor units do
+have a zero-scoring draft on disk — `func_800382C0` and `func_80058448` — but both zeros depend on a
+construct `scan.py` forbids (a dead diamond, and asm-labelled aliases that stop gcc merging the
+loads). Reading the draft is what separates a match from a score.
+
+Progress after PR #203: **682/1081 functions, 71,684/289,476 bytes (24.763%)**. The lesson for the
+next pass is that the corpus still holds unshipped zeros only in the sense that it holds near-miss
+drafts; the ones that match are now shipped, so new work has to be written, not found.
+
+Coverage bound on that floor claim: of the 327 floor/census units still unmatched, 142 have a named
+draft and 123 were scored; the remaining 19 have **no draft that compiles**, so they are unmeasured
+rather than cleared (`work/all-drafts/SCREEN.md` lists them).
+
+### Attributed the abbreviated names: 1,170 files mapped, 1 match, 19 floors measured
+
+The previous pass could not read the 7,333 drafts whose file name carries no full address. Most of
+them do carry an **abbreviated** one (`c4bc-v1.c`, `residue-a550.c`, `2d734-a.c`); `work/attrib.py`
+matches a 4- to 6-digit hex token against the low digits of all 1,494 tracked addresses and keeps
+only tokens that resolve to exactly one unit. 1,170 files attributed, 55 tokens rejected as
+ambiguous, 3,646 unique draft contents rescored.
+
+**One match: `func_8001C4BC`** (33 words, `work/c4bc-v1.c`) — a comparator over two table rows
+selected by index from `D_8008AE5C` (16-byte stride): primary key `row->f4`, then the sum
+`row->f8 + node->f4`, returning `-1`/`0`/`1`. Shipped. The screen read it before it counted; the
+three other zeros are the previously rejected `func_80034B98` (literal vs `D_801FC000`, owner
+decision), `func_800382C0` (dead diamond) and `func_80058448` (asm-aliased externs).
+
+**Newly first-time-scored units: 4 compiling drafts, all far off** — `func_8001A550` 11/106,
+`func_8001D88C` 49/58, `func_8002F730` 60/56, `func_8001A834` 70/106 (register role / allocator
+class on inspection). 22 more had no compiling draft: the 19 floors plus `func_80023B1C`,
+`func_8002E14C`, `func_80033268`.
+
+**No new near miss.** Every unit under 10 diffs in `work/attrib/report.md` was already in the
+corpus with a recorded residue, so the abbreviated names held one shippable body, not a hidden
+pile.
+
+**The 19 unmeasured floors are now 11 measured / 8 blocked.** `work/floor_unblock.py` normalises
+decompiler output without changing its shape (`?`→`s32`, `void *`→`u8 *`, `(unaligned T)`→`(T)`,
+`p->unkN`→`*(T *)(p + 0xN)` byte arithmetic, `D_XXXXXXXX.unkN` likewise). Best scores are 25/39
+(`func_8002DE60`) downward — a measurement of the draft, not a proof about the floor, so no floor
+changes status. The two `/* Handwritten function */` units in the set (`func_80033384`,
+`func_80033E78`) score 14/14 and 14/15, i.e. nothing agrees, which reproduces the handwritten
+classification from the listing alone. The 8 blocked need invented stack temporaries or a syntax
+repair the generator broke (`stray )` in a parameter list, `->unk` with the offset truncated, a
+missing `)`, a lost type turned into `*field`); repairing them is writing the body.
+
+The name rule and the normalisation pass behind these counts now live in `tools/attribute.py` and
+`tools/normalise.py`, with tests pinned on fixtures, in the separate tooling PR #211; this PR carries
+the one match they found and the ledger.
+
+Progress after this PR: **689/1081 functions** (the steward counts on its own denominator).

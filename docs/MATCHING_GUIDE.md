@@ -96,6 +96,25 @@ label or a load from the wrong table is a real difference: nothing is masked.
 - Declare an argument as a struct with named fields instead of `*(T *)((u8 *)p + off)` casts; gcc then
   treats globals and fields as non-aliasing and schedules like the game.
 
+## Finding the body: reading the corpus
+
+- **Check the listing's first line before spending attempts.** `/* Handwritten function */` means the unit is
+  not compiled C and no draft can ever match it. Measured twice: `func_80033384` and `func_80033E78` are marked
+  that way, and a sane typed draft agrees with 0 and 1 of their 14 and 15 words — exactly what a handwritten body
+  predicts. `tools/siblings.py` lists 43 units in this class.
+- **A draft's file name may carry only an abbreviated address** (`c4bc-v1.c`, `residue-a550.c`, `2d734-a.c`).
+  The low 5 hex digits are unique inside this binary (its whole span is < 0x100000); 4-digit tokens are usable
+  only when exactly one address ends in them — 1,170 files were attributed this way and 55 tokens were rejected as
+  ambiguous. `work/attrib.py` does the attribution and scores every hit; it found `func_8001C4BC` sitting at
+  zero in a file no full-name scan could see.
+- **Raw decompiler output can be made to compile without changing its shape**, and is then at least measurable:
+  `?` -> `s32`, `void *` -> `u8 *` (so `p + 4` is a byte offset under C89), `(unaligned T)` -> `(T)`,
+  `p->unkN` -> `*(T *)(p + 0xN)`, `D_XXXXXXXX.unkN` -> `*(T *)((u8 *) D_XXXXXXXX + 0xN)`. Keep `->unkN` for a
+  pointer already typed as a typedef'd struct, or the access is scaled by the struct size. `work/floor_unblock.py`
+  does this for the 19 floors that had no compiling draft; 11 now score (best 25 of 39 diffs) and 8 need invented
+  stack temporaries or a syntax repair, so they stay blocked. **A decompiler draft's score measures the draft,
+  not the floor** — treat it as coverage, never as evidence that a body is reachable.
+
 ## Flags
 
 The game mixes settings per source file. Try them on the first line only, from the allowed list:
