@@ -81,7 +81,7 @@ func_8002028C	open	56/67	work/census-corrected.md
 func_80020398	merged	3/87	work/census-corrected.md
 func_8002050C	open	3/3	work/band-oct28/pass-argument-tell-note.md
 func_80020570	open	30/38	work/band-oct28/func_80020570.c
-func_80020608	open	1/135	work/volume-oct29/func_80020608-119of135.c
+func_80020608	open	108/135	work/volume-oct29/func_80020608-119of135.c
 func_80020C34	merged	76/80	work/census-corrected.md
 func_80020D74	open	4/39	work/band-oct28/pass-argument-tell-note.md
 func_80020E10	open	93/139	work/lane-notes.md
@@ -159,7 +159,7 @@ func_8002CE0C	open	71/83	work/pass-oct28/func_8002CE0C-v3.c
 func_8002CF94	merged	4/0	work/census-corrected.md
 func_8002D0B0	open	61/58	work/census-corrected.md
 func_8002D198	open	42/102	work/band-oct28/func_8002D198-42of102.c
-func_8002D330	open	0/143	work/volume-oct29/func_8002D330-96of143.c
+func_8002D330	open	96/143	work/volume-oct29/func_8002D330-96of143.c
 func_8002D56C	open	unrecorded	work/near-miss/func_8002D56C-whole.c
 func_8002D734	merged	32/58	work/census-corrected.md
 func_8002D904	merged	2/46	work/census-corrected.md
@@ -218,7 +218,7 @@ func_8003453C	open	12/63	work/census-corrected.md
 func_80034698	open	28/48	work/census-corrected.md
 func_80034758	open	11/41	work/census-corrected.md
 func_80034824	merged	11/20	work/residue-r.md
-func_80034874	open	31/129	work/volume-oct29b/func_80034874-128of129.c
+func_80034874	open	127/129	work/volume-oct29c/func_80034874-127of129.c
 func_80034A78	open	42/60	work/census-corrected.md
 func_80034B98	open	0/16	work/address-sweep-oct27.md
 func_80034BD8	merged	3/15	work/census-corrected.md
@@ -229,7 +229,7 @@ func_80034F14	open	67/83	work/pass-oct28/func_80034F14.c
 func_8003571C	merged	40/45	work/census-corrected.md
 func_80035810	merged	18/20	work/census-corrected.md
 func_800358A8	open	52/61	work/census-corrected.md
-func_8003599C	open	2/137	work/volume-oct29b/func_8003599C-129of137.c
+func_8003599C	open	134/137	work/volume-oct29c/func_8003599C-134of137.c
 func_80035BC0	merged	18/21	work/best/func_80035BC0.c
 func_80035C14	open	4/34	work/census-corrected.md
 func_80035C9C	open	32/36	work/census-corrected.md
