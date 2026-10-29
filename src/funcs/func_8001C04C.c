@@ -2,12 +2,13 @@
 
 s32 func_8002CA48(s32, s32 *);
 
-s32 func_8001C04C(s32 a0, s32 *out) {
-    s32 v;
-    s32 r = func_8002CA48(a0, &v);
+s32 func_8001C04C(s32 arg0, s32 *arg1) {
+    s32 tmp;
+    s32 r;
 
-    if (out != 0) {
-        *out = v;
+    r = func_8002CA48(arg0, &tmp);
+    if (arg1 != 0) {
+        *arg1 = tmp;
     }
     return r;
 }
