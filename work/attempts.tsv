@@ -218,6 +218,7 @@ func_8003453C	open	12/63	work/census-corrected.md
 func_80034698	open	28/48	work/census-corrected.md
 func_80034758	open	11/41	work/census-corrected.md
 func_80034824	merged	11/20	work/residue-r.md
+func_80034874	open	31/129	work/volume-oct29b/func_80034874-128of129.c
 func_80034A78	open	42/60	work/census-corrected.md
 func_80034B98	open	0/16	work/address-sweep-oct27.md
 func_80034BD8	merged	3/15	work/census-corrected.md
@@ -228,6 +229,7 @@ func_80034F14	open	67/83	work/pass-oct28/func_80034F14.c
 func_8003571C	merged	40/45	work/census-corrected.md
 func_80035810	merged	18/20	work/census-corrected.md
 func_800358A8	open	52/61	work/census-corrected.md
+func_8003599C	open	2/137	work/volume-oct29b/func_8003599C-129of137.c
 func_80035BC0	merged	18/21	work/best/func_80035BC0.c
 func_80035C14	open	4/34	work/census-corrected.md
 func_80035C9C	open	32/36	work/census-corrected.md
