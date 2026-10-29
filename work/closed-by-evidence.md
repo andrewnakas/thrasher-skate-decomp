@@ -43,10 +43,23 @@ Closed:
 `func_8002E4B4` stays open only on the saved-set numbering, not on a home; it is listed under A for
 the copy measurement and must not be re-tested for the copy.
 
+## C. Identical default blocks cross-jumped
+
+Proof: `func_8003599C`, pass oct29e. The two dispatches' `default` arms compile to the identical five
+words (`sll $v0,$a1,1; addu $v0,$v0,$a1; sll $v0,$v0,4; addu $v0,$v0,$v1; sw $zero,4($v0)`); the game
+keeps two copies, gcc emitted one and branched both switches into it, and the body came out five words
+short at `0x20` frame and 61/137 matching. No CFLAGS in the allowed list disables cross-jumping, so no
+source shape can express the second copy.
+
+| body | residue | evidence |
+|---|---|---|
+| `func_8003599C` | second dispatch's `default` block cross-jumped into the first | oct29e: frame closed 0x18 → 0x20, 2 → 61 matching, then 132/137 with the missing five words being that copy; turn-on `0x80035B90` |
+
 ## Retired
 
-Seven bodies, two classes, retired by measurement: `func_8002E4B4`, `func_8004ADA4` (A) and
-`func_8002050C`, `func_800382C0`, `func_8003012C`, `func_8003B3CC`, `func_8001A710` (B).
+Eight bodies, three classes, retired by measurement: `func_8002E4B4`, `func_8004ADA4` (A);
+`func_8002050C`, `func_800382C0`, `func_8003012C`, `func_8003B3CC`, `func_8001A710` (B); and
+`func_8003599C` (C).
 `lane/select.py` now classifies these as `closed` and never lists or drafts them, not even with
 `--allow-attempted`; the queue census prints the count. Only rows in the two tables above are
 harvested, so a body named in the proof prose is not retired by mention alone.
