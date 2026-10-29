@@ -17,6 +17,9 @@ enabled = false
 auto_merge = true
 first_timer_needs_human = true
 owner_rule_days = 7
+# owner opt-in: maintainer PRs (tools, docs, lane, work) merge on green gates without a human hold;
+# steward.toml and .github/** still need a human
+maintainers_skip_escalation = true
 max_units_per_pr = 20
 claim_max_bytes = 0x2000
 claim_max_open = 3
