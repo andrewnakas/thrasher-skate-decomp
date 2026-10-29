@@ -208,7 +208,7 @@ func_80033480	open	25/22	work/census-corrected.md
 func_800334D8	open	25/25	work/census-corrected.md
 func_8003353C	open	33/30	work/census-corrected.md
 func_80033714	open	24/21	work/census-corrected.md
-func_800337C4	open	16/16	work/band-oct28/func_800337C4.c
+func_800337C4	open	0/16	work/band-oct28/func_800337C4.c
 func_80033804	merged	3/5	work/census-corrected.md
 func_80033818	open	0/653	work/band-oct28/func_80033818.c
 func_80033DB0	open	23/25	work/census-corrected.md
@@ -289,6 +289,7 @@ func_80047834	open	114/115	work/leaf-population-oct28.md
 func_80047A44	open	14/34	work/census-corrected.md
 func_80047B28	merged	83/91	work/pass-oct28/func_80047B28.c
 func_80047C94	open	146/151	work/pass-oct28/func_80047C94-flag.c
+func_80047EF0	open	118/147	work/best/func_80047EF0.c
 func_8004813C	open	30/51	work/census-corrected.md
 func_80048208	open	33/89	work/pass-oct28/func_80048208.c
 func_8004836C	open	44/57	work/census-corrected.md
