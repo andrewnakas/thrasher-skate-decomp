@@ -1,0 +1,46 @@
+diff --git a/maspsx/__init__.py b/maspsx/__init__.py
+index 0aade6d..d650f73 100644
+--- a/maspsx/__init__.py
++++ b/maspsx/__init__.py
+@@ -515,6 +515,7 @@ class MaspsxProcessor:
+ 
+         self.bss_entries: dict[str, int] = {}
+         self.sbss_entries: dict[str, int] = {}
++        self.extern_entries: dict[str, int] = {}
+         self.sdata_entries: dict[str, int] = {}
+ 
+         self.comm_symbols: set[str] = set()
+@@ -560,7 +561,14 @@ class MaspsxProcessor:
+                 continue
+ 
+             if line.startswith(".extern"):
++                # e.g.	.extern	D_8008B330, 4
+                 in_sdata = False
++                if match := re.match(r"\.extern\s+([^,\s]+)\s*,\s*([0-9]+)", line):
++                    symbol = match.group(1)
++                    size = int(match.group(2))
++                    if 0 < size <= self.sdata_limit:
++                        # defined elsewhere: never emit storage, only treat as $gp for nops
++                        self.extern_entries[symbol] = size
+                 continue
+ 
+             if line.startswith(".comm") or line.startswith(".lcomm"):
+@@ -624,6 +632,7 @@ class MaspsxProcessor:
+         self.bss_entries = {}
+         self.sbss_entries = {}
+         self.sdata_entries = {}
++        self.extern_entries = {}
+ 
+         self.preprocess_lines()
+ 
+@@ -731,7 +740,9 @@ class MaspsxProcessor:
+                     gp_allowed = True
+ 
+                 if gp_allowed and (
+-                    symbol in self.sbss_entries or symbol in self.sdata_entries
++                    symbol in self.sbss_entries
++                    or symbol in self.sdata_entries
++                    or symbol in self.extern_entries
+                 ):
+                     return True
+ 
