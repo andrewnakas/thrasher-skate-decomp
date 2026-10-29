@@ -44,7 +44,7 @@ func_8001BD0C	merged	53/56	work/census-corrected.md
 func_8001C000	open	unrecorded	work/residue-r.md
 func_8001C0AC	open	50/50	work/census-corrected.md
 func_8001C2F0	open	19/49	work/census-corrected.md
-func_8001C4BC	open	18/33	work/census-corrected.md
+func_8001C4BC	merged	18/33	work/census-corrected.md
 func_8001C540	open	70/59	work/census-corrected.md
 func_8001C810	open	35/72	work/census-corrected.md
 func_8001C930	merged	34/81	work/census-corrected.md
@@ -81,6 +81,7 @@ func_8002028C	open	56/67	work/census-corrected.md
 func_80020398	merged	3/87	work/census-corrected.md
 func_8002050C	open	3/3	work/band-oct28/pass-argument-tell-note.md
 func_80020570	open	30/38	work/band-oct28/func_80020570.c
+func_80020608	open	1/135	work/volume-oct29/func_80020608-119of135.c
 func_80020C34	merged	76/80	work/census-corrected.md
 func_80020D74	open	4/39	work/band-oct28/pass-argument-tell-note.md
 func_80020E10	open	93/139	work/lane-notes.md
@@ -89,7 +90,7 @@ func_80021450	open	127/127	work/lane-notes.md
 func_80021894	merged	46/85	work/census-corrected.md
 func_800219E8	open	38/99	work/census-corrected.md
 func_80021B74	merged	6/114	work/lane-notes.md
-func_8002221C	open	56/59	work/census-corrected.md
+func_8002221C	merged	56/59	work/census-corrected.md
 func_80022308	merged	31/41	work/census-corrected.md
 func_800223AC	merged	42/42	work/census-corrected.md
 func_80022F24	merged	4/0	work/band-oct28/func_80022F24-s3.c
@@ -152,12 +153,13 @@ func_8002C454	merged	52/70	work/residue-r.md
 func_8002C490	merged	13/21	work/census-corrected.md
 func_8002C5FC	merged	32/35	work/census-corrected.md
 func_8002C818	merged	10/40	work/census-corrected.md
-func_8002C8B8	open	44/64	work/census-corrected.md
+func_8002C8B8	merged	44/64	work/census-corrected.md
 func_8002C9B8	merged	2/36	work/census-corrected.md
 func_8002CE0C	open	71/83	work/pass-oct28/func_8002CE0C-v3.c
 func_8002CF94	merged	4/0	work/census-corrected.md
 func_8002D0B0	open	61/58	work/census-corrected.md
 func_8002D198	open	42/102	work/band-oct28/func_8002D198-42of102.c
+func_8002D330	open	0/143	work/volume-oct29/func_8002D330-96of143.c
 func_8002D56C	open	unrecorded	work/near-miss/func_8002D56C-whole.c
 func_8002D734	merged	32/58	work/census-corrected.md
 func_8002D904	merged	2/46	work/census-corrected.md
@@ -172,6 +174,7 @@ func_8002DFF8	open	35/55	work/best/func_8002DFF8.c
 func_8002E4B4	open	106/118	work/best/func_8002E4B4.c
 func_8002E8E0	open	67/84	work/pass-oct28/func_8002E8E0-v2.c
 func_8002EC14	open	43/41	work/census-corrected.md
+func_8002ECB8	open	23/119	work/volume-oct29/func_8002ECB8-23of119.c
 func_8002EE94	open	66/78	work/census-corrected.md
 func_8002F4C0	open	23/27	work/band-oct28/func_8002F4C0-23of27.c
 func_8002F52C	open	128/129	work/near-miss/func_8002F52C-whole.c
@@ -180,6 +183,7 @@ func_8002FE80	merged	2/24	work/band-oct28/pass-park-sweep-note.md
 func_8002FEE0	open	57/63	work/census-corrected.md
 func_8002FFDC	open	64/84	work/pass-oct28/func_8002FFDC.c
 func_8003012C	open	120/124	work/best/func_8003012C.c
+func_8003031C	open	87/127	work/volume-oct29/func_8003031C-87of127.c
 func_80030518	open	8/55	work/best/func_80030518.c
 func_8003062C	open	84/230	work/near-miss/func_8003062C-157of230.c
 func_80032400	open	6/27	work/census-corrected.md
@@ -238,12 +242,12 @@ func_800379F4	merged	16/26	work/residue-r.md
 func_80037DC4	open	143/190	work/census-corrected.md
 func_800380BC	open	123/129	work/pass-oct28/func_800380BC-park.c
 func_800382C0	open	0/52	work/band-oct28/pass-guard-on-main.md
-func_8003834C	open	21/39	work/census-corrected.md
+func_8003834C	merged	21/39	work/census-corrected.md
 func_80038610	open	24/79	work/census-corrected.md
 func_800387C8	open	31/37	work/census-corrected.md
 func_80038864	open	49/67	work/census-corrected.md
 func_80038970	open	47/68	work/census-corrected.md
-func_80038A80	open	41/49	work/census-corrected.md
+func_80038A80	merged	41/49	work/census-corrected.md
 func_80039BB4	open	88/90	work/pass-oct28/func_80039BB4.c
 func_8003A09C	open	10/41	work/census-corrected.md
 func_8003A1B8	open	61/71	work/census-corrected.md
