@@ -30,8 +30,8 @@ conditional branches, call-heavy, small frame, ≤3 saves). Result:
 | ≤90 insn, ≤4 branches, ≤3 saves, frame ≤0x40 | — | **0** |
 | ≤200 insn, ≤8 saves | 23 | **0** |
 
-All 72 fresh bodies in range are ≥123 bytes and carry either a dense branch set or a 5-8 register save
-set. The band this lane converts in has been fully attempted; that is a fact about the queue, not about
+All 72 fresh bodies in range at pass start are ≥123 bytes and carry either a dense branch set or a 5-8
+register save set. The band this lane converts in has been fully attempted; that is a fact about the queue, not about
 this pass.
 
 ## Per-body numbers (one measurement each unless noted)
@@ -97,8 +97,9 @@ is unchanged and the run is now idempotent (`355 entries, 0 changes`).
 ## Count
 
 conversions **0**, bodies measured **6** (`func_80047EF0` 118/147, `func_800337C4` 0/16, `func_80032FF4`
-12/13, `func_80033818` 12/13, `func_80032C28` 10/11, `func_800331FC` 27/27 differ). No unit PR. Queue: 72
-open fresh, 238 attempted, 693 merged, 29 not C, 102 recorded-but-merged, 9 closed-by-evidence.
+12/13, `func_80033818` 12/13, `func_80032C28` 10/11, `func_800331FC` 27/27 differ). No unit PR. Queue
+after the pass: **71 open fresh, 239 attempted**, 693 merged, 29 not C, 102 recorded-but-merged, 9
+closed-by-evidence — `func_80047EF0` moved from fresh to attempted and no body left the queue.
 
 ## What the next pass should attack
 
