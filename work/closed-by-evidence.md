@@ -89,11 +89,40 @@ and every call, both `%gp_rel` stores and the final `func_80023BA8(0)` match.
 | `func_800262E8` | the nine-word scratchpad stack switch around the `func_80025B90` call | oct29i: 10/29 matching (19 words differ), size `0x50` vs `0x74`; the gap is exactly the switch |
 | `func_80027538` | the same switch, same nine words, one different callee (`func_80027478`) and two different globals | oct29i: byte-for-byte the twin of `func_800262E8` outside the switch |
 
+## F. Induction-pointer bias under a signed loop test
+
+Proof: `func_8003B478`, passes oct29j–oct29k. The game walks two `0x70`-byte records with an
+incrementing pointer and **positive** field displacements (`sh $s1,0x4($a0)`, `addiu $a0,$a0,0x70`,
+`slt $v0,$a0,$t0`). Our compiler biases the induction pointer by the last field's offset (`+0x6C`), so
+every store becomes a negative displacement (`sh $s1,-0x68($a0)`), and the zero-based walk is lost.
+Every spelling of the walk measured, on the same draft:
+
+| shape | result |
+|---|---|
+| `REC *` walk with `rec++` | **39 of 71 words match**, size `0x11c` vs `0x11c` |
+| `u8 *` walk, cast per iteration, `walk += 0x70` | 39 of 71, size exact |
+| `s32` address walker with explicit offsets (the signed-`slt` hypothesis) | 39 of 71, size exact |
+| `first`/`start`/`end` derived from the symbol, not from the walker | 39 of 71, size exact |
+| signed cast on the loop compare | 39 of 71, size exact |
+| explicit `s32` index over the record array, `slti`/`1`/`0x100` invariants sourced first | **6 of 71**, size `0x110` vs `0x11c` |
+| `/* cflags: -fno-strength-reduce */` | **6 of 71**, size `0x118` vs `0x11c` |
+
+Merged evidence: 21 of 693 merged units emit a positive-displacement pointer walk with a fixed
+increment — smallest `func_80016D00`, source `do { *d++ = *s++; } while (s != end);`, stream
+`sw … 4(v1)`, `8(v1)`, `12(v1)` then `addiu v1,v1,16`. So the offsets are reachable; but every one of
+those 21 walks tests **equality**, while this body's tail is a signed `slt`, and no merged unit pairs
+positive displacements with a signed compare.
+
+| body | residue | evidence |
+|---|---|---|
+| `func_8003B478` | induction pointer biased to the last field's offset (`0x8003B4D0`) and the three loop invariants sunk below the base materialisation (`0x8003B48C`); turn-on `0x8003B48C` | oct29j–k: best 39 of 71 at exact size across five pointer spellings, and 6 of 71 for both the index rebuild and `-fno-strength-reduce` |
+
 ## Retired
 
-Eleven bodies, five classes, retired by measurement: `func_8002E4B4`, `func_8004ADA4` (A);
+Twelve bodies, six classes, retired by measurement: `func_8002E4B4`, `func_8004ADA4` (A);
 `func_8002050C`, `func_800382C0`, `func_8003012C`, `func_8003B3CC`, `func_8001A710` (B);
-`func_8003599C` (C); `func_80034874` (D); and `func_800262E8`, `func_80027538` (E).
+`func_8003599C` (C); `func_80034874` (D); `func_800262E8`, `func_80027538` (E); and
+`func_8003B478` (F).
 `lane/select.py` now classifies these as `closed` and never lists or drafts them, not even with
 `--allow-attempted`; the queue census prints the count. Only rows in the two tables above are
 harvested, so a body named in the proof prose is not retired by mention alone.
