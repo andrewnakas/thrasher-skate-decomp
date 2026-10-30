@@ -55,11 +55,45 @@ source shape can express the second copy.
 |---|---|---|
 | `func_8003599C` | second dispatch's `default` block cross-jumped into the first | oct29e: frame closed 0x18 → 0x20, 2 → 61 matching, then 132/137 with the missing five words being that copy; turn-on `0x80035B90` |
 
+## D. Prologue constant/save interleave and shared-arm fall-through
+
+Proof: `func_80034874`, passes oct29e–oct29g. Two residues that no source shape closed, each measured:
+
+- **prologue interleave** — the game opens `lui $a1,0xE100` / `ori`, then `addiu $a0,$sp,0x28`, then the
+  `$s2`/`$s6` initials. Writing the constant before the locals seed the block moved the body 64 → 66
+  matching (the only change that ever paid); the permuter then spent ~6,200 iterations on the same body
+  and peaked at score **875 of 1,155**, its winning variants all permutations of exactly this region.
+- **shared-arm fall-through** — the game's `.L80034A10` is `x += 8` placed *after* the body and falling
+  through into `.L80034A14` (`k++`), with both skip tests branching to it. Split `||` into two `if`s:
+  null at 66. If/else with the arm first: 39. Arm as the `else` (body in the `if`, arm last so it can
+  only fall through into `k++`): 39 at `0x1fc` vs the game's `0x204`. gcc will not lay the arm below the
+  body from any of the three orderings.
+
+| body | residue | evidence |
+|---|---|---|
+| `func_80034874` | prologue constant/save interleave (`0x800348B0`) plus the shared `x += 8` arm placed after the body (`0x8003494C`, `0x80034A10`); turn-on `0x80034A10` | oct29e–oct29g: 41 → 64 → 66/129 at exact size, then 39 on the arm-as-else shape; permuter 875/1155 |
+
+## E. Stack switch through the scratchpad (`sw $sp` / `addu $sp`)
+
+Proof: `func_800262E8`, pass oct29i. The body writes `$sp` into the scratchpad and installs a new `$sp`
+from it: `lui $v1,0x1F80` / `ori $v1,0x1F8003FC` / `addu $t0,$v1,$0` / `addiu $t0,$t0,-0x14` /
+`sw $sp,0x10($t0)` / `addiu $t0,$t0,-0x4` / `addu $sp,$t0,$0`, and restores with
+`addiu $sp,$sp,4` / `lw $sp,0x10($sp)`. Nine words, all of them naming `$sp` as an ordinary register.
+Plain C cannot name `$sp` (the frame pointer is the compiler's), and `asm` is forbidden, so no source
+shape reaches this. Measured: the whole rest of the body is already exact — with the switch omitted the
+body compiles to `0x50` against the game's `0x74`, i.e. the missing 0x24 bytes *are* those nine words,
+and every call, both `%gp_rel` stores and the final `func_80023BA8(0)` match.
+
+| body | residue | evidence |
+|---|---|---|
+| `func_800262E8` | the nine-word scratchpad stack switch around the `func_80025B90` call | oct29i: 19/29 differ, size `0x50` vs `0x74`; the gap is exactly the switch |
+| `func_80027538` | the same switch, same nine words, one different callee (`func_80027478`) and two different globals | oct29i: byte-for-byte the twin of `func_800262E8` outside the switch |
+
 ## Retired
 
-Eight bodies, three classes, retired by measurement: `func_8002E4B4`, `func_8004ADA4` (A);
-`func_8002050C`, `func_800382C0`, `func_8003012C`, `func_8003B3CC`, `func_8001A710` (B); and
-`func_8003599C` (C).
+Eleven bodies, five classes, retired by measurement: `func_8002E4B4`, `func_8004ADA4` (A);
+`func_8002050C`, `func_800382C0`, `func_8003012C`, `func_8003B3CC`, `func_8001A710` (B);
+`func_8003599C` (C); `func_80034874` (D); and `func_800262E8`, `func_80027538` (E).
 `lane/select.py` now classifies these as `closed` and never lists or drafts them, not even with
 `--allow-attempted`; the queue census prints the count. Only rows in the two tables above are
 harvested, so a body named in the proof prose is not retired by mention alone.
