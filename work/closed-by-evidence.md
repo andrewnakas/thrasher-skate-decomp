@@ -86,7 +86,7 @@ and every call, both `%gp_rel` stores and the final `func_80023BA8(0)` match.
 
 | body | residue | evidence |
 |---|---|---|
-| `func_800262E8` | the nine-word scratchpad stack switch around the `func_80025B90` call | oct29i: 19/29 differ, size `0x50` vs `0x74`; the gap is exactly the switch |
+| `func_800262E8` | the nine-word scratchpad stack switch around the `func_80025B90` call | oct29i: 10/29 matching (19 words differ), size `0x50` vs `0x74`; the gap is exactly the switch |
 | `func_80027538` | the same switch, same nine words, one different callee (`func_80027478`) and two different globals | oct29i: byte-for-byte the twin of `func_800262E8` outside the switch |
 
 ## Retired
