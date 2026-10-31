@@ -264,10 +264,23 @@ def reconcile(state, write=True):
             if len(f) >= 2:
                 prev[f[0]] = f[1]
     rows, changed, now_merged, new = [], [], 0, 0
+    prev_rows = {}
+    if path.exists():
+        for line in path.read_text().splitlines()[1:]:
+            f = line.split("\t")
+            if len(f) >= 4:
+                prev_rows[f[0]] = (f[2], f[3])
     for name in sorted(state):
         res, srcpath = state[name]
         status = "merged" if merged(name) else "open"
-        rows.append(f"{name}\t{status}\t{fmt(res)}\t{srcpath}")
+        # Reconcile owns *status* only. Re-deriving the best from prose re-picks whichever number
+        # pair a record happens to spell first, which republished func_80034874 as 41/129 over a
+        # measured 66/129 and func_8003599C as 129/137 from the retirement table. A measured best
+        # is a fact; the prose is not, so an existing row keeps its number and source.
+        if name in prev_rows:
+            rows.append(f"{name}\t{status}\t{prev_rows[name][0]}\t{prev_rows[name][1]}")
+        else:
+            rows.append(f"{name}\t{status}\t{fmt(res)}\t{srcpath}")
         old = prev.get(name)
         if old is None:
             new += 1
