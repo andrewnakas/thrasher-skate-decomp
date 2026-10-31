@@ -1,7 +1,13 @@
 #include "common.h"
 
-void func_80026DAC(s32 *a, s32 *b, s32 *out) {
-    out[0] = a[0] - b[0];
-    out[1] = a[1] - b[1];
-    out[2] = a[2] - b[2];
+typedef struct {
+    s32 x;
+    s32 y;
+    s32 z;
+} Vec3;
+
+void func_80026DAC(Vec3 *a, Vec3 *b, Vec3 *o) {
+    o->x = a->x - b->x;
+    o->y = a->y - b->y;
+    o->z = a->z - b->z;
 }

@@ -1,12 +1,20 @@
 #include "common.h"
 
-void func_8002B060(s32 *);
+typedef struct Obj {
+    u8 pad0[8];
+    struct Obj *child;
+    u8 pad1[0x34];
+    struct Obj *next;
+} Obj;
 
-void func_8002B124(s32 *p) {
-    s32 *n = (s32 *) p[2];
+void func_8002B060(Obj *);
 
-    while (n != 0) {
-        func_8002B060(n);
-        n = (s32 *) n[0x10];
+void func_8002B124(Obj *arg0) {
+    Obj *p;
+
+    p = arg0->child;
+    while (p != 0) {
+        func_8002B060(p);
+        p = p->next;
     }
 }

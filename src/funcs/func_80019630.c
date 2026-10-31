@@ -1,19 +1,20 @@
 #include "common.h"
 
-typedef struct N_80019630 {
-    u16 key;
+typedef struct Node {
+    u16 id;
     u16 pad;
-    struct N_80019630 *next;
-} N_80019630;
+    struct Node *next;
+} Node;
 
-extern N_80019630 *D_8008AD70;
+extern Node *D_8008AD70;
 
-N_80019630 *func_80019630(u16 key) {
-    N_80019630 *n = D_8008AD70;
+s32 func_80019630(u16 id) {
+    Node *n;
 
+    n = D_8008AD70;
     while (n != 0) {
-        if (n->key == key) {
-            return n;
+        if (n->id == id) {
+            return (s32) n;
         }
         n = n->next;
     }
