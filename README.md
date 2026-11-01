@@ -83,6 +83,28 @@ toolchain/    compiler.toml (the pinned pipeline), setup.py, maspsx submodule
 configure.py  writes build.ninja + the link script (every object pinned to its address)
 ```
 
+## Community
+
+This project is open to everyone, and every matched function moves the whole game closer to a full,
+readable source. Contributions from people outside the original team are especially welcome.
+
+**[@Ktnsmly](https://github.com/Ktnsmly)** is the project's first outside contributor. On 2026-11-01
+they matched three functions, each instruction-for-instruction at the original size, on a clean pinned
+toolchain with a byte-identical rebuild:
+
+| Function | What it is | Size | PR |
+|---|---|---|---|
+| `func_8002980C` | nested record loader: fixed fields, entry arrays, two-byte item expansion, aligned source records | 0x1EC (123 insns) | [#218](https://github.com/andrewnakas/thrasher-skate-decomp/pull/218) |
+| `func_8001FABC` | byte-indexed entry dispatch with flag conversion and fixed-point position updates | 0x1F4 (125 insns) | [#219](https://github.com/andrewnakas/thrasher-skate-decomp/pull/219) |
+| `func_80019210` | type-selected entry cleanup: array and single-record paths, packed values, handle/list teardown | 0x234 (141 insns) | [#220](https://github.com/andrewnakas/thrasher-skate-decomp/pull/220) |
+
+The PRs were a model of how to contribute: each function was claimed first, provenance was fully
+declared (AI-assisted with OpenAI Codex, human-directed), and every gate was run and reported before
+asking for review. Thank you!
+
+Want to join in? Start with [START_HERE.md](START_HERE.md), claim a function on the
+[Active claims](https://github.com/andrewnakas/thrasher-skate-decomp/issues/1) issue, and open a PR.
+
 ## Credits
 
 Built on [splat](https://github.com/ethteck/splat), [spimdisasm](https://github.com/Decompollaborate/spimdisasm),
