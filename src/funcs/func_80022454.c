@@ -1,0 +1,108 @@
+#include "common.h"
+
+typedef struct {
+    s32 vx;
+    s32 vy;
+    s32 vz;
+} Vec_80022454;
+
+typedef struct {
+    u8 pad0[4];
+    Vec_80022454 v1;
+    Vec_80022454 v2;
+    Vec_80022454 v3;
+} Shape_80022454;
+
+typedef struct {
+    u16 flag;
+    u8 pad2[0x32];
+    s32 mass;
+    u8 pad38[0xC];
+    Vec_80022454 pos;
+} Body_80022454;
+
+typedef struct {
+    u8 pad0[4];
+    Body_80022454 *a;
+    Body_80022454 *b;
+    Body_80022454 *c;
+    Shape_80022454 *sa;
+    Shape_80022454 *sb;
+    s32 mode;
+    s32 axisA;
+    s32 axisB;
+    s32 k;
+} Joint_80022454;
+
+s32 func_80032C28(s32, s32);
+s32 func_80032C54(s32, s32);
+void func_80032FF4(Vec_80022454 *, Vec_80022454 *);
+void func_800330A4(Vec_80022454 *);
+void func_800331FC(Vec_80022454 *, s32);
+s32 func_8003353C(Vec_80022454 *, Vec_80022454 *);
+
+#define GET_AXIS(out, sh, type)                \
+    if ((type) == 1) {                         \
+        (out).vx = (sh)->v1.vx;                \
+        (out).vy = (sh)->v1.vy;                \
+        (out).vz = (sh)->v1.vz;                \
+    } else if ((type) == 3) {                  \
+        (out).vx = (sh)->v3.vx;                \
+        (out).vy = (sh)->v3.vy;                \
+        (out).vz = (sh)->v3.vz;                \
+    } else if ((type) == 2) {                  \
+        (out).vx = (sh)->v2.vx;                \
+        (out).vy = (sh)->v2.vy;                \
+        (out).vz = (sh)->v2.vz;                \
+    } else if ((type) == 4) {                  \
+        (out).vx = (sh)->v1.vx;                \
+        (out).vy = (sh)->v1.vy;                \
+        (out).vz = (sh)->v1.vz;                \
+        func_800331FC(&(out), -0x10000);       \
+    } else if ((type) == 6) {                  \
+        (out).vx = (sh)->v3.vx;                \
+        (out).vy = (sh)->v3.vy;                \
+        (out).vz = (sh)->v3.vz;                \
+        func_800331FC(&(out), -0x10000);       \
+    } else {                                   \
+        (out).vx = (sh)->v2.vx;                \
+        (out).vy = (sh)->v2.vy;                \
+        (out).vz = (sh)->v2.vz;                \
+        func_800331FC(&(out), -0x10000);       \
+    }
+
+void func_80022454(Joint_80022454 *j) {
+    Vec_80022454 n;
+    Vec_80022454 m;
+    Vec_80022454 d;
+    s32 s;
+    s32 t;
+
+    GET_AXIS(n, j->sa, j->axisA);
+    GET_AXIS(m, j->sb, j->axisB);
+    d.vx = j->a->pos.vx - j->c->pos.vx;
+    d.vy = j->a->pos.vy - j->c->pos.vy;
+    d.vz = j->a->pos.vz - j->c->pos.vz;
+    s = -func_8003353C(&d, &m);
+    if (j->mode == 1 && s > 0) {
+        return;
+    }
+    if (j->mode == 2 && s < 0) {
+        return;
+    }
+    s = func_80032C28(s, j->k);
+    s = func_80032C28(s, func_80032C54(j->a->mass, j->a->mass + j->b->mass));
+    func_800331FC(&m, s);
+    if (j->a->flag != 0) {
+        func_80032FF4(&j->a->pos, &m);
+    }
+    d.vx = j->b->pos.vx - j->c->pos.vx;
+    d.vy = j->b->pos.vy - j->c->pos.vy;
+    d.vz = j->b->pos.vz - j->c->pos.vz;
+    t = func_80032C28(-func_8003353C(&d, &n), j->k);
+    t = func_80032C28(t, func_80032C54(j->b->mass, j->a->mass + j->b->mass));
+    func_800331FC(&n, t);
+    if (j->b->flag != 0) {
+        func_80032FF4(&j->b->pos, &n);
+    }
+}
