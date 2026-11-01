@@ -34,5 +34,5 @@ jobs:
       - name: Steward config
         run: |
           git clone -q https://github.com/andrewnakas/decompathon-steward "$RUNNER_TEMP/steward"
-          git -C "$RUNNER_TEMP/steward" checkout -q afc2c61
+          git -C "$RUNNER_TEMP/steward" checkout -q 92006a5
           PYTHONPATH="$RUNNER_TEMP/steward" python -m steward check-config steward.toml
