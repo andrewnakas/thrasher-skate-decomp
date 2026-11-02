@@ -92,9 +92,16 @@ def scan_file(path, allowed, funcs):
         if rx.search(code):
             problems.append(why)
     for lit in ADDR_LIT.findall(code):
+        if int(lit, 16) in STACK_CONSTANTS:
+            continue
         if 0x80010000 <= int(lit, 16) < 0x80200000:
             problems.append(f"hard-coded address 0x{lit}: reference the symbol (D_{lit.upper()}) instead")
     return problems
+
+
+# Fixed stack tops at the end of RAM. The game loads them as lui/ori constants (not %hi/%lo symbol
+# relocations), no object lives there, and a symbol spelling cannot reproduce lui/ori. Owner-approved 2026-11-02.
+STACK_CONSTANTS = {0x801FC000, 0x801FD000}
 
 
 def main(argv):
