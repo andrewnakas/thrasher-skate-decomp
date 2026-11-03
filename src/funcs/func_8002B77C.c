@@ -1,6 +1,6 @@
 #include "common.h"
 
-extern void func_8003031C(u8 *a);
+extern void func_8003031C(u8 *a, u8 *b);
 extern s16 func_800122A0(s32 a);
 extern void func_80014784(s32 a, u16 *b);
 
@@ -10,7 +10,7 @@ void func_8002B77C(u8 *p, u8 *d) {
     u16 v[3];
 
     if ((*(u32 *) self & 0xC00000) != 0xC00000) {
-        func_8003031C(self);
+        func_8003031C(self, src);
     }
     *(u16 *) (self + 4) = *(u16 *) src;
     *(u16 *) (self + 6) = *(u16 *) (src + 2);

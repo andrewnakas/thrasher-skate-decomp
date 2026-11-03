@@ -21,7 +21,7 @@ typedef struct {
     s32 node;
 } Cam_8002BD64;
 
-extern u8 *func_8002BF9C(s32);
+extern u8 *func_8002BF9C(s32, s16 *);
 extern s32 func_8003C77C(Obj_8002BD64 *, s32 *);
 extern s32 func_8003C8C4(Obj_8002BD64 *);
 extern void func_8002A9E0(Obj_8002BD64 *);
@@ -33,7 +33,7 @@ extern Obj_8002BD64 *D_800A4F04[];
 extern Obj_8002BD64 **D_8008B328;
 #define D_8008B324 (*(&D_8008B328 - 1))
 
-void func_8002BD64(Cam_8002BD64 *cam) {
+void func_8002BD64(Cam_8002BD64 *cam, s16 *pos) {
     s32 d;
     s32 lim;
     u32 *p;
@@ -45,7 +45,7 @@ void func_8002BD64(Cam_8002BD64 *cam) {
 
     mask = 0;
     bits = 0;
-    p = (u32 *) (func_8002BF9C(cam->node) + 0xC);
+    p = (u32 *) (func_8002BF9C(cam->node, pos) + 0xC);
     o = D_800A4F04[0];
     lim = 0xC5C0FF;
     do {

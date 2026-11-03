@@ -1,6 +1,6 @@
 #include "common.h"
 
-extern void func_80023004(void);
+extern void func_80023004(u8 *);
 extern void func_80023494(u8 *, s32, s32, s32, u8 *);
 extern void func_80033E14(u8 *, u8 *);
 extern void func_8001483C(u8 *, s16 *, u8 *, u8 *, u8 *);
@@ -13,7 +13,7 @@ void func_80027478(u8 *a0, u8 *a1) {
     u32 i;
     s32 off;
 
-    func_80023004();
+    func_80023004(a0);
     func_80023494(a0, 0, 1, 2, buf);
     i = 0;
     off = 4;

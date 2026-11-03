@@ -3,12 +3,12 @@
 extern s32 func_80047B28(s32, s32, s32);
 extern s32 func_80047C94(s32, s32, s32);
 extern s32 func_80047EF0(s32, s32, s32);
-extern s32 func_8004813C(void);
+extern s32 func_8004813C(s32);
 extern s8 D_8008A8B4;
 
 s32 func_8004836C(s32 a0, s32 a1, s32 a2) {
     s32 ret = 1;
-    s32 r = func_8004813C();
+    s32 r = func_8004813C(a0);
 
     if (r != 0) {
         /* case order from jtbl_80010654 (1..5) */
