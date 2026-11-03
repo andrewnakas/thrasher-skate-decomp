@@ -47,7 +47,7 @@ typedef struct {
 
 extern Tbl_8001EB4C D_8006F2C0[];
 
-extern s32 func_8001DD58(void);
+extern s32 func_8001DD58(Ch_8001EB4C *);
 extern void func_8001DB74(Ch_8001EB4C *);
 extern Inst_8001EB4C *func_8001D870(u16);
 extern void func_8004874C(s32, u16, void *, Arg_8001EB4C *);
@@ -61,7 +61,7 @@ void func_8001EB4C(Ch_8001EB4C *c) {
     s32 i;
     u16 fl;
 
-    if (func_8001DD58() != 0) {
+    if (func_8001DD58(c) != 0) {
         if (c->flags & 1) {
             func_8001DB74(c);
         }
