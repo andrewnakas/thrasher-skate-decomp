@@ -6,7 +6,7 @@ typedef struct {
     u32 z;
 } V3u;
 
-extern void func_80024720(void);
+extern void func_80024720(s32);
 extern void func_80033714(u8 *, V3u *, V3u *);
 extern void func_80032FF4(V3u *, u8 *);
 extern void func_80024DBC(u8 *, V3u *);
@@ -16,7 +16,7 @@ void func_80024E0C(u8 *arg0) {
     V3u w;
     V3u z;
 
-    func_80024720();
+    func_80024720((s32) arg0);
     v.x = 0;
     v.y = 0;
     v.z = 0x360000;

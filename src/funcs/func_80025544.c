@@ -18,7 +18,7 @@ typedef struct {
     Ent28_25544 b[8];
 } World_25544;
 
-void func_80024720(void);
+void func_80024720(s32);
 extern s32 D_8008A2BC;
 extern s32 D_8008A2C8;
 extern s32 D_8008A2CC;
@@ -42,7 +42,7 @@ extern s32 D_8008AF3C[2];
 void func_80025544(World_25544 *w) {
     u32 i;
 
-    func_80024720();
+    func_80024720((s32) w);
     w->b[D_8008A2C8].f0 = 0x10000;
     w->b[D_8008A2D0].f0 = 0x10000;
     w->b[D_8008A2CC].f0 = 0x10000;

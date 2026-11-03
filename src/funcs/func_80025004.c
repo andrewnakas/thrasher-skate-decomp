@@ -25,10 +25,10 @@ extern u32 D_8008A2E0;
 extern u32 D_8008A2E4;
 extern u32 D_8008A2E8;
 extern u32 D_8008A2EC;
-extern void func_80024720();
+extern void func_80024720(s32);
 
 void func_80025004(Obj_80025004 *p) {
-    func_80024720();
+    func_80024720((s32) p);
     p->a[D_8008A2E0].v = 0x100000;
     p->a[D_8008A2E4].v = 0x100000;
     p->a[D_8008A2E8].v = 0x100000;

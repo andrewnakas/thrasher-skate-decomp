@@ -21,7 +21,7 @@ typedef struct {
     u8 bank;
 } Src_8001F9D0;
 
-extern void func_8001EA78(void);
+extern s32 func_8001EA78(void *, void *);
 extern u8 func_8002050C(s32, u8);
 extern void func_80011EF4(Vec_8001F9D0 *, Vec_8001F9D0 *);
 extern s32 func_80020570(s32, u8 *, s32);
@@ -33,7 +33,7 @@ s32 func_8001F9D0(Text_8001F9D0 *t, Src_8001F9D0 *src) {
     u8 bank;
     u8 c;
 
-    func_8001EA78();
+    func_8001EA78(t, src);
     s = src->str;
     bank = src->bank;
     d = t->glyphs;

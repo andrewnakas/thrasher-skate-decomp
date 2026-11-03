@@ -6,13 +6,13 @@ extern u8 D_8008AF34;
 extern u32 D_8008A2BC;
 extern u32 D_8008A2D8;
 extern u32 D_8008A2DC;
-extern void func_80024720();
+extern void func_80024720(s32);
 extern void func_80025544();
 extern void func_80024D6C();
 
 void func_80024F3C(u8 *p, u8 *q)
 {
-    func_80024720();
+    func_80024720((s32) p);
     if (((u32 *) &D_8008AF3C)[D_8008A2BC] != 0) {
         func_80025544(p, q);
     }
