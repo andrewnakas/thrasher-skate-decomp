@@ -18,7 +18,7 @@ extern s32 D_8008B108;
 void func_80035BC0(u8 *, s32);
 void func_80035C14(u8 *, s32);
 void func_80035C9C(u8 *, s32);
-void func_80035D2C(u8 *);
+void func_80035D2C(u8 *, s32);
 
 s32 func_8003599C(void) {
     u8 b1;
@@ -49,7 +49,7 @@ s32 func_8003599C(void) {
             func_80035C9C(D_800A62F4, port << 2);
             break;
         case 8:
-            func_80035D2C(D_800A62F4);
+            func_80035D2C(D_800A62F4, port);
             break;
         default:
             ((Port *) D_800A6294)[port].e[0].b = 0;
@@ -74,7 +74,7 @@ s32 func_8003599C(void) {
             func_80035C9C(D_800A6318, port << 2);
             break;
         case 8:
-            func_80035D2C(D_800A6318);
+            func_80035D2C(D_800A6318, port);
             break;
         default:
             ((Port *) D_800A6294)[port].e[0].b = 0;
