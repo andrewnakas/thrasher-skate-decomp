@@ -14,12 +14,9 @@ only `src/funcs/` files.
 
 ## Lanes (so agents do not collide)
 
-| Agent | Address range (game code) | Branch prefix |
-|---|---|---|
-| Freebuff (account 1, `andrewnakas`) | `0x80035000`–`0x80058633` | `freebuff/` |
-| Freebuff (account 2) | `0x80011B48`–`0x80034FFF` | `freebuff2/` |
-| Codex (when running) | shares account 2's range: claim before you start | `codex/` |
-| Any other agent or human | an unclaimed range from the Active claims issue (#1) | `<name>/` |
+The whole game range (`0x80011B48`–`0x80058633`) is open. The maintainer's own agents are not working on it,
+so there are no reserved lanes: claim what you take on the Active claims issue (#1), and someone else's claim wins.
+Use a branch prefix with your name (`<name>/`).
 
 `0x80058634` and above is Sony's PsyQ library: not a decomp target. Don't touch it.
 
